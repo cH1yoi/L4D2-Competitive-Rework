@@ -4,6 +4,7 @@
 #include <builtinvotes>
 #include <colors>
 #include <sourcemod>
+#include <left4dhooks>
 
 #define L4D2Team_Spectator 1
 
@@ -30,42 +31,56 @@ public void OnPluginStart()
 	HookConVarChange(hMaxSlots, CVarChanged);
 }
 
-Action SlotsRequest(int client, int args)
+public Action SlotsRequest(int client, int args)
 {
-	if (client == 0)
-	{
-		ReplyToCommand(client, "%T", "NotConsoleVote", LANG_SERVER);
-		return Plugin_Handled;
-	}
 
 	if (args == 1)
 	{
 		char sSlots[64];
 		GetCmdArg(1, sSlots, sizeof(sSlots));
 		int Int = StringToInt(sSlots);
-		if (Int > MaxSlots)
+		if(CheckCommandAccess(client, "", ADMFLAG_GENERIC) || client == 0)
 		{
-			CPrintToChat(client, "%t %t", "Tag", "LimitSlotsAbove", MaxSlots);
-		}
-		else
-		{
-			if (CheckCommandAccess(client, "sm_kick", ADMFLAG_KICK))
-			{
-				char sName[MAX_NAME_LENGTH];
+			char sName[MAX_NAME_LENGTH];
+			if(client == 0)
+				sName="远程管理员";
+			else
 				GetClientName(client, sName, sizeof(sName));
-				CPrintToChatAll("%t %t", "Tag", "LimitedSlotsTo", sName, Int);
-				SetConVarInt(FindConVar("sv_maxplayers"), Int);
-			}
-			else if (Int < GetConVarInt(FindConVar("survivor_limit")) + GetConVarInt(FindConVar("z_max_player_zombies")))
+			CPrintToChatAll("%t %t", "Tag", "LimitedSlotsTo", sName, Int);
+			SetConVarInt(FindConVar("sv_maxplayers"), Int);
+			SetConVarInt(FindConVar("sv_visiblemaxplayers"), Int);
+			if(Int > numSlots())
 			{
-				CPrintToChat(client, "%t %t", "Tag", "RequiredPlayers");
-			}
-			else if (StartSlotVote(client, sSlots))
-			{
-				strcopy(g_sSlots, sizeof(g_sSlots), sSlots);
-				FakeClientCommand(client, "Vote Yes");
+				if(L4D_LobbyIsReserved())
+					L4D_LobbyUnreserve();
+				SetConVarInt(FindConVar("sv_allow_lobby_connect_only"), 0);
 			}
 		}
+		else{
+			if (Int > MaxSlots)
+			{
+				CPrintToChat(client, "%t %t", "Tag", "LimitSlotsAbove", MaxSlots);
+			}
+			else
+			{
+				if(Int > numSlots())
+				{
+					if(L4D_LobbyIsReserved())
+						L4D_LobbyUnreserve();
+					SetConVarInt(FindConVar("sv_allow_lobby_connect_only"), 0);
+				}
+				if (Int < GetConVarInt(FindConVar("survivor_limit")))
+				{
+					CPrintToChat(client, "%t %t", "Tag", "RequiredPlayers");
+				}
+				else if (StartSlotVote(client, sSlots))
+				{
+					strcopy(g_sSlots, sizeof(g_sSlots), sSlots);
+					FakeClientCommand(client, "Vote Yes");
+				}
+			}
+		}
+		
 	}
 	else
 	{
@@ -113,7 +128,7 @@ bool StartSlotVote(int client, char[] Slots)
 	return false;
 }
 
-void VoteActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
+public void VoteActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
 {
 	switch (action)
 	{
@@ -129,7 +144,7 @@ void VoteActionHandler(Handle vote, BuiltinVoteAction action, int param1, int pa
 	}
 }
 
-void SlotVoteResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
+public void SlotVoteResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
 {
 	for (int i = 0; i < num_items; i++)
 	{
@@ -143,6 +158,7 @@ void SlotVoteResultHandler(Handle vote, int num_votes, int num_clients, const in
 				Format(Buffer, sizeof(Buffer), "%T", "LimitingSlots", LANG_SERVER);
 				DisplayBuiltinVotePass(vote, Buffer);
 				SetConVarInt(FindConVar("sv_maxplayers"), Slots);
+				SetConVarInt(FindConVar("sv_visiblemaxplayers"), Slots);
 				return;
 			}
 		}
@@ -150,7 +166,11 @@ void SlotVoteResultHandler(Handle vote, int num_votes, int num_clients, const in
 	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
 }
 
-void CVarChanged(Handle cvar, char[] oldValue, char[] newValue)
+public void CVarChanged(Handle cvar, char[] oldValue, char[] newValue)
 {
 	MaxSlots = GetConVarInt(hMaxSlots);
+}
+
+stock int numSlots() {
+	return LoadFromAddress(L4D_GetPointer(POINTER_SERVER) + view_as<Address>(L4D_GetServerOS() ? 380 : 384), NumberType_Int32);
 }

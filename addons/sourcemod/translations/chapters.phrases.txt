@@ -1,0 +1,775 @@
+"Phrases"
+{
+	"c1m1_hotel"
+	{
+		"en"		"1: Hotel"
+	}
+	"c1m2_streets"
+	{
+		"en"		"2: Streets"
+	}
+	"c1m3_mall"
+	{
+		"en"		"3: Mall"
+	}
+	"c1m4_atrium"
+	{
+		"en"		"4: Atrium"
+	}
+	"c2m1_highway"
+	{
+		"en"		"1: Highway"
+	}
+	"c2m2_fairgrounds"
+	{
+		"en"		"2: Fairground"
+	}
+	"c2m3_coaster"
+	{
+		"en"		"3: Coaster"
+	}
+	"c2m4_barns"
+	{
+		"en"		"4: Barns"
+	}
+	"c2m5_concert"
+	{
+		"en"		"5: Concert"
+	}
+	"c3m1_plankcountry"
+	{
+		"en"		"1: Plank Country"
+	}
+	"c3m2_swamp"
+	{
+		"en"		"2: Swamp"
+	}
+	"c3m3_shantytown"
+	{
+		"en"		"3: Shanty Town"
+	}
+	"c3m4_plantation"
+	{
+		"en"		"4: Plantation"
+	}
+	"c4m1_milltown_a"
+	{
+		"en"		"1: Milltown"
+	}
+	"c4m2_sugarmill_a"
+	{
+		"en"		"2: Sugar Mill"
+	}
+	"c4m3_sugarmill_b"
+	{
+		"en"		"3: Mill Escape"
+	}
+	"c4m4_milltown_b"
+	{
+		"en"		"4: Return to Town"
+	}
+	"c4m5_milltown_escape"
+	{
+		"en"		"5: Town Escape"
+	}
+	"c5m1_waterfront"
+	{
+		"en"		"1: Waterfront"
+	}
+	"c5m2_park"
+	{
+		"en"		"2: Park"
+	}
+	"c5m3_cemetery"
+	{
+		"en"		"3: Cemetery"
+	}
+	"c5m4_quarter"
+	{
+		"en"		"4: Quarter"
+	}
+	"c5m5_bridge"
+	{
+		"en"		"5: Bridge"
+	}
+	"c6m1_riverbank"
+	{
+		"en"		"1: Riverbank"
+	}
+	"c6m2_bedlam"
+	{
+		"en"		"2: Underground"
+	}
+	"c6m3_port"
+	{
+		"en"		"3: Port"
+	}
+	"c7m1_docks"
+	{
+		"en"		"1: Docks"
+	}
+	"c7m2_barge"
+	{
+		"en"		"2: Barge"
+	}
+	"c7m3_port"
+	{
+		"en"		"3: Port"
+	}
+	"c8m1_apartment"
+	{
+		"en"		"1: The Apartments"
+	}
+	"c8m2_subway"
+	{
+		"en"		"2: The Subway"
+	}
+	"c8m3_sewers"
+	{
+		"en"		"3: The Sewer"
+	}
+	"c8m4_interior"
+	{
+		"en"		"4: The Hospital"
+	}
+	"c8m5_rooftop"
+	{
+		"en"		"5: Rooftop Finale"
+	}
+	"c9m1_alleys"
+	{
+		"en"		"1: The Alleys"
+	}
+	"c9m2_lots"
+	{
+		"en"		"2: The Truck Depot Finale"
+	}
+	"c10m1_caves"
+	{
+		"en"		"1: The Turnpike"
+	}
+	"c10m2_drainage"
+	{
+		"en"		"2: The Drains"
+	}
+	"c10m3_ranchhouse"
+	{
+		"en"		"3: The Church"
+	}
+	"c10m4_mainstreet"
+	{
+		"en"		"4: The Town"
+	}
+	"c10m5_houseboat"
+	{
+		"en"		"5: Boathouse Finale"
+	}
+	"c11m1_greenhouse"
+	{
+		"en"		"1: The Greenhouse"
+	}
+	"c11m2_offices"
+	{
+		"en"		"2: The Crane"
+	}
+	"c11m3_garage"
+	{
+		"en"		"3: The Construction Site"
+	}
+	"c11m4_terminal"
+	{
+		"en"		"4: The Terminal"
+	}
+	"c11m5_runway"
+	{
+		"en"		"5: Runway Finale"
+	}
+	"c12m1_hilltop"
+	{
+		"en"		"1: The Woods"
+	}
+	"c12m2_traintunnel"
+	{
+		"en"		"2: The Tunnel"
+	}
+	"c12m3_bridge"
+	{
+		"en"		"3: The Bridge"
+	}
+	"c12m4_barn"
+	{
+		"en"		"4: The Train Station"
+	}
+	"c12m5_cornfield"
+	{
+		"en"		"5: Farmhouse Finale"
+	}
+	"c13m1_alpinecreek"
+	{
+		"en"		"1: Alpine Creek"
+	}
+	"c13m2_southpinestream"
+	{
+		"en"		"2: South Pine Stream"
+	}
+	"c13m3_memorialbridge"
+	{
+		"en"		"3: Memorial Bridge"
+	}
+	"c13m4_cutthroatcreek"
+	{
+		"en"		"4: Cut-throat Creek"
+	}
+	"c14m1_junkyard"
+	{
+		"en"		"1: The Junkyard"
+	}
+	"c14m2_lighthouse"
+	{
+		"en"		"2: Lighthouse Finale"
+	}
+	"l4d2_diescraper1_apartment_361"
+	{
+		"en"		"Apartment complex"
+	}
+	"l4d2_diescraper2_streets_361"
+	{
+		"en"		"Downtown military outpost"
+	}
+	"l4d2_diescraper3_mid_361"
+	{
+		"en"		"The Skymall"
+	}
+	"l4d2_diescraper4_top_361"
+	{
+		"en"		"The top suites"
+	}
+	"dkr_m1_motel"
+	{
+		"en"		"The Motel"
+	}
+	"dkr_m2_carnival"
+	{
+		"en"		"The Carnival"
+	}
+	"dkr_m3_tunneloflove"
+	{
+		"en"		"The Tunnel of Love"
+	}
+	"dkr_m4_ferris"
+	{
+		"en"		"The Ferris Wheel"
+	}
+	"dkr_m5_stadium"
+	{
+		"en"		"The Stadium"
+	}
+	"l4d_dbd2dc_anna_is_gone"
+	{
+		"en"		"Anna is gone"
+	}
+	"l4d_dbd2dc_the_mall"
+	{
+		"en"		"The mall"
+	}
+	"l4d_dbd2dc_clean_up"
+	{
+		"en"		"Clean up"
+	}
+	"l4d_dbd2dc_undead_center"
+	{
+		"en"		"Undead center"
+	}
+	"l4d_dbd2dc_new_dawn"
+	{
+		"en"		"New dawn"
+	}
+	"l4d_deadline02"
+	{
+		"en"		"Dead Line Survival"
+	}
+	"l4d_dbd2_undead_center"
+	{
+		"en"		"Dead Line Scavenge"
+	}
+	"cdta_01detour"
+	{
+		"en"		"DTA1 Detour"
+	}
+	"cdta_02road"
+	{
+		"en"		"DTA2 Hill"
+	}
+	"cdta_03warehouse"
+	{
+		"en"		"DTA3 Warehouse"
+	}
+	"cdta_04onarail"
+	{
+		"en"		"DTA4 On A Rail"
+	}
+	"cdta_05finalroad"
+	{
+		"en"		"DTA5 Final Road"
+	}
+	"l4d_ihm01_forest"
+	{
+		"en"		"1: Lost in the Woods"
+	}
+	"l4d_ihm02_manor"
+	{
+		"en"		"2: Climbing the Manor"
+	}
+	"l4d_ihm03_underground"
+	{
+		"en"		"3: The Underground Way"
+	}
+	"l4d_ihm04_lumberyard"
+	{
+		"en"		"4: Lumberyard Evacuation"
+	}
+	"l4d_ihm05_lakeside"
+	{
+		"en"		"5: Lakeside Finale"
+	}
+	"pr1_waterfront_f"
+	{
+		"en"		"Waterfront"
+	}
+	"pr2_park_f"
+	{
+		"en"		"park"
+	}
+	"pr3_highway_f"
+	{
+		"en"		"Highway"
+	}
+	"pr4_quarter_f"
+	{
+		"en"		"Quarter"
+	}
+	"pr5_bridge_f"
+	{
+		"en"		"bridge"
+	}
+	"l4d2_stadium1_apartment"
+	{
+		"en"		"The Apartment"
+	}
+	"l4d2_stadium2_riverwalk"
+	{
+		"en"		"The Riverwalk"
+	}
+	"l4d2_stadium3_city1"
+	{
+		"en"		"The Law"
+	}
+	"l4d2_stadium4_city2"
+	{
+		"en"		"The City"
+	}
+	"l4d2_stadium5_stadium"
+	{
+		"en"		"The Stadium"
+	}
+	"l4d2_vs_stadium2_riverwalk"
+	{
+		"en"		"The Riverwalk Versus"
+	}
+	"l4d2_sv_stadium2_riverwalk"
+	{
+		"en"		"The Riverwalk Survival"
+	}
+	"l4d2_sv_stadium3_city1"
+	{
+		"en"		"The Law Survival"
+	}
+	"l4d2_sv_stadium4_city2"
+	{
+		"en"		"The City Survival"
+	}
+	"l4d2_city17_01"
+	{
+		"en"		"1: Tunnels"
+	}
+	"l4d2_city17_02"
+	{
+		"en"		"2: To the surface"
+	}
+	"l4d2_city17_03"
+	{
+		"en"		"3: Streets"
+	}
+	"l4d2_city17_04"
+	{
+		"en"		"4: Hospital"
+	}
+	"l4d2_city17_05"
+	{
+		"en"		"5: Trainstation"
+	}
+	"x1m1_cliffs"
+	{
+		"en"		"Cliffs"
+	}
+	"x1m2_path"
+	{
+		"en"		"Path"
+	}
+	"x1m3_city"
+	{
+		"en"		"City"
+	}
+	"x1m4_forest"
+	{
+		"en"		"Forest"
+	}
+	"x1m5_salvation"
+	{
+		"en"		"Salvation"
+	}
+	"x1m6_aftermath"
+	{
+		"en"		"Aftermath"
+	}
+	"cwm1_intro"
+	{
+		"en"		"The Riverbed"
+	}
+	"cwm2_warehouse"
+	{
+		"en"		"The Town"
+	}
+	"cwm3_drain"
+	{
+		"en"		"The Sewers"
+	}
+	"cwm4_building"
+	{
+		"en"		"The Office Building"
+	}
+	"uf1_boulevard"
+	{
+		"en"		"1: Boulevard"
+	}
+	"uf2_rooftops"
+	{
+		"en"		"2: Rooftops"
+	}
+	"uf3_harbor"
+	{
+		"en"		"3: Harbor"
+	}
+	"uf4_airfield"
+	{
+		"en"		"4: Airfield"
+	}
+	"noecho_m1"
+	{
+		"en"		"noecho_m1"
+	}
+	"noecho_m2"
+	{
+		"en"		"noecho_m2"
+	}
+	"noecho_m3"
+	{
+		"en"		"noecho_m2"
+	}
+	"noecho_m4"
+	{
+		"en"		"noecho_m4"
+	}
+	"nmrm1_apartment"
+	{
+		"en"		"#L4D360UI_LevelName_COOP_C8M1"
+	}
+	"nmrm2_subway"
+	{
+		"en"		"#L4D360UI_LevelName_COOP_C8M2"
+	}
+	"nmrm3_sewers"
+	{
+		"en"		"#L4D360UI_LevelName_COOP_C8M3"
+	}
+	"nmrm4_hospital"
+	{
+		"en"		"#L4D360UI_LevelName_COOP_C8M4"
+	}
+	"nmrm5_rooftop"
+	{
+		"en"		"#L4D360UI_LevelName_COOP_C8M5"
+	}
+	"uz_crash"
+	{
+		"en"		"Crash"
+	}
+	"uz_town"
+	{
+		"en"		"Town"
+	}
+	"uz_desert"
+	{
+		"en"		"Desert"
+	}
+	"uz_bunker"
+	{
+		"en"		"Bunker"
+	}
+	"uz_escape"
+	{
+		"en"		"Escape"
+	}
+	"lastbreath_m1"
+	{
+		"en"		"Fitness Center"
+	}
+	"lastbreath_m2"
+	{
+		"en"		"Underground Facility"
+	}
+	"lastbreath_m3"
+	{
+		"en"		"Subway"
+	}
+	"lastbreath_m4"
+	{
+		"en"		"Escape"
+	}
+	"wfp1_track"
+	{
+		"en"		"Trainyard"
+	}
+	"wfp2_horn"
+	{
+		"en"		"Cave"
+	}
+	"wfp3_mill"
+	{
+		"en"		"Industrial Warehouses"
+	}
+	"wfp4_commstation"
+	{
+		"en"		"Radio Stations"
+	}
+	"outline_m1"
+	{
+		"en"		"Rise up"
+	}
+	"outline_m2"
+	{
+		"en"		"Visit the city"
+	}
+	"outline_m3"
+	{
+		"en"		"Through the town"
+	}
+	"outline_m4"
+	{
+		"en"		"Rest in yard"
+	}
+	"dprm1_milltown_a"
+	{
+		"en"		"Chapter 1: Milltown"
+	}
+	"dprm2_sugarmill_a"
+	{
+		"en"		"Chapter 2: Sugarmill"
+	}
+	"dprm3_sugarmill_b"
+	{
+		"en"		"Chapter 3: Sugarmill Return"
+	}
+	"dprm4_milltown_b"
+	{
+		"en"		"Chapter 4: Milltown Return"
+	}
+	"dprm5_milltown_escape"
+	{
+		"en"		"Chapter 5: Milltown Escape"
+	}
+	"l4d2_ff01_woods"
+	{
+		"en"		"1: The Woods"
+	}
+	"l4d2_ff02_factory"
+	{
+		"en"		"2: The Factory"
+	}
+	"l4d2_ff03_highway"
+	{
+		"en"		"3: The Highway"
+	}
+	"l4d2_ff04_plant"
+	{
+		"en"		"4: The Plant"
+	}
+	"l4d2_ff05_station"
+	{
+		"en"		"5: Trainyard Finale"
+	}
+	"l4d2_daybreak01_hotel"
+	{
+		"en"		"1: The Hotel"
+	}
+	"l4d2_daybreak02_coastline"
+	{
+		"en"		"2: The Coastline"
+	}
+	"l4d2_daybreak03_bridge"
+	{
+		"en"		"3: The Bridge"
+	}
+	"l4d2_daybreak04_cruise"
+	{
+		"en"		"4: The Outskirts"
+	}
+	"l4d2_daybreak05_rescue"
+	{
+		"en"		"5: Alcatraz Finale"
+	}
+	"DCR1_meetup_F"
+	{
+		"en"		"meetup"
+	}
+	"DCR2_TheVannha_F"
+	{
+		"en"		"Vannha"
+	}
+	"DCR3_Streets_F"
+	{
+		"en"		"Streets"
+	}
+	"DCR4_Mallentrance_F"
+	{
+		"en"		"Mallentrance"
+	}
+	"DCR5_Mall_F"
+	{
+		"en"		"Mall"
+	}
+	"daredux_map1_docks_aw"
+	{
+		"en"		"Docks"
+	}
+	"daredux_map2_houses_aw_test2"
+	{
+		"en"		"Houses"
+	}
+	"daredux_map4_offices_aw"
+	{
+		"en"		"Offices"
+	}
+	"daredux_map5_garage_aw"
+	{
+		"en"		"Garage"
+	}
+	"daredux_map6_terminal_aw"
+	{
+		"en"		"Terminal"
+	}
+	"daredux_runway_aw"
+	{
+		"en"		"Runway Finale"
+	}
+	"hf01_theforest"
+	{
+		"en"		"1: The Forest"
+	}
+	"hf02_thesteeple"
+	{
+		"en"		"2: The Steeple"
+	}
+	"hf03_themansion"
+	{
+		"en"		"3: The Mansion"
+	}
+	"hf04_escape"
+	{
+		"en"		"4: The Tunnel"
+	}
+	"AirCrash"
+	{
+		"en"		"AirCrash"
+	}
+	"RiverMotel"
+	{
+		"en"		"RiverMotel"
+	}
+	"OutSkirts"
+	{
+		"en"		"OutSkirts"
+	}
+	"CityHall"
+	{
+		"en"		"CityHall"
+	}
+	"BombShelter"
+	{
+		"en"		"BombShelter"
+	}
+	"l4d_ravenholm01_blackmesa"
+	{
+		"en"		"1: Black Mesa East"
+	}
+	"l4d_ravenholm02_traptown"
+	{
+		"en"		"2: Trap Town"
+	}
+	"l4d_ravenholm03_church"
+	{
+		"en"		"3: The Church"
+	}
+	"l4d_ravenholm04_cavern"
+	{
+		"en"		"4: The Mines"
+	}
+	"l4d_ravenholm05_docks"
+	{
+		"en"		"5: Coast Finale"
+	}
+	"tripday_new_m1"
+	{
+		"en"		"tripday_new_m1"
+	}
+	"tripday_new_m2"
+	{
+		"en"		"tripday_new_m2"
+	}
+	"tripday_new_m3"
+	{
+		"en"		"tripday_new_m3"
+	}
+	"tripday_new_m4"
+	{
+		"en"		"tripday_new_m4"
+	}
+	"tripday_new_m5"
+	{
+		"en"		"tripday_new_m5"
+	}
+	"pt2_m1"
+	{
+		"en"		"Wake up"
+	}
+	"pt2_m2"
+	{
+		"en"		"Behind the scenes"
+	}
+	"pt2_m3"
+	{
+		"en"		"Fire storm"
+	}
+	"pt2_m4"
+	{
+		"en"		"High rise"
+	}
+	"pt2_m5"
+	{
+		"en"		"Reception area"
+	}
+	"pt2_overgrown_m1"
+	{
+		"en"		"Destroyed chambers"
+	}
+}

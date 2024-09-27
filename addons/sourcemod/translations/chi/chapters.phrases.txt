@@ -1,0 +1,931 @@
+"Phrases"
+{
+	"c1m1_hotel"
+	{
+		"chi"		"旅馆"
+	}
+	"c1m2_streets"
+	{
+		"chi"		"街道"
+	}
+	"c1m3_mall"
+	{
+		"chi"		"购物中心"
+	}
+	"c1m4_atrium"
+	{
+		"chi"		"中厅"
+	}
+	"c2m1_highway"
+	{
+		"chi"		"高速公路"
+	}
+	"c2m2_fairgrounds"
+	{
+		"chi"		"游乐场"
+	}
+	"c2m3_coaster"
+	{
+		"chi"		"过山车"
+	}
+	"c2m4_barns"
+	{
+		"chi"		"谷仓"
+	}
+	"c2m5_concert"
+	{
+		"chi"		"音乐会"
+	}
+	"c3m1_plankcountry"
+	{
+		"chi"		"乡村"
+	}
+	"c3m2_swamp"
+	{
+		"chi"		"沼泽"
+	}
+	"c3m3_shantytown"
+	{
+		"chi"		"贫民窟"
+	}
+	"c3m4_plantation"
+	{
+		"chi"		"种植园"
+	}
+	"c4m1_milltown_a"
+	{
+		"chi"		"密尔城"
+	}
+	"c4m2_sugarmill_a"
+	{
+		"chi"		"糖厂"
+	}
+	"c4m3_sugarmill_b"
+	{
+		"chi"		"逃离工厂"
+	}
+	"c4m4_milltown_b"
+	{
+		"chi"		"重返小镇"
+	}
+	"c4m5_milltown_escape"
+	{
+		"chi"		"逃离小镇"
+	}
+	"c5m1_waterfront"
+	{
+		"chi"		"码头"
+	}
+	"c5m2_park"
+	{
+		"chi"		"公园"
+	}
+	"c5m3_cemetery"
+	{
+		"chi"		"墓地"
+	}
+	"c5m4_quarter"
+	{
+		"chi"		"特区"
+	}
+	"c5m5_bridge"
+	{
+		"chi"		"桥"
+	}
+	"c6m1_riverbank"
+	{
+		"chi"		"河畔"
+	}
+	"c6m2_bedlam"
+	{
+		"chi"		"地下通道"
+	}
+	"c6m3_port"
+	{
+		"chi"		"港口"
+	}
+	"c7m1_docks"
+	{
+		"chi"		"码头"
+	}
+	"c7m2_barge"
+	{
+		"chi"		"驳船"
+	}
+	"c7m3_port"
+	{
+		"chi"		"港口"
+	}
+	"c8m1_apartment"
+	{
+		"chi"		"公寓"
+	}
+	"c8m2_subway"
+	{
+		"chi"		"地铁"
+	}
+	"c8m3_sewers"
+	{
+		"chi"		"下水道"
+	}
+	"c8m4_interior"
+	{
+		"chi"		"医院"
+	}
+	"c8m5_rooftop"
+	{
+		"chi"		"屋顶"
+	}
+	"c9m1_alleys"
+	{
+		"chi"		"小巷"
+	}
+	"c9m2_lots"
+	{
+		"chi"		"卡车停车场"
+	}
+	"c10m1_caves"
+	{
+		"chi"		"收费公路"
+	}
+	"c10m2_drainage"
+	{
+		"chi"		"水沟"
+	}
+	"c10m3_ranchhouse"
+	{
+		"chi"		"教堂"
+	}
+	"c10m4_mainstreet"
+	{
+		"chi"		"小镇"
+	}
+	"c10m5_houseboat"
+	{
+		"chi"		"码头"
+	}
+	"c11m1_greenhouse"
+	{
+		"chi"		"花房"
+	}
+	"c11m2_offices"
+	{
+		"chi"		"起重机"
+	}
+	"c11m3_garage"
+	{
+		"chi"		"建筑工地"
+	}
+	"c11m4_terminal"
+	{
+		"chi"		"航空机场"
+	}
+	"c11m5_runway"
+	{
+		"chi"		"飞机跑道"
+	}
+	"c12m1_hilltop"
+	{
+		"chi"		"森林"
+	}
+	"c12m2_traintunnel"
+	{
+		"chi"		"隧道"
+	}
+	"c12m3_bridge"
+	{
+		"chi"		"桥"
+	}
+	"c12m4_barn"
+	{
+		"chi"		"火车站"
+	}
+	"c12m5_cornfield"
+	{
+		"chi"		"农舍"
+	}
+	"c13m1_alpinecreek"
+	{
+		"chi"		"高山小溪"
+	}
+	"c13m2_southpinestream"
+	{
+		"chi"		"松木之河"
+	}
+	"c13m3_memorialbridge"
+	{
+		"chi"		"纪念大桥"
+	}
+	"c13m4_cutthroatcreek"
+	{
+		"chi"		"残酷溪流"
+	}
+	"c14m1_junkyard"
+	{
+		"chi"		"教区桥梁"
+	}
+	"c14m2_lighthouse"
+	{
+		"chi"		"灯塔"
+	}
+	"l4d2_diescraper1_apartment_361"
+	{
+		"chi"		"Apartment complex"
+	}
+	"l4d2_diescraper2_streets_361"
+	{
+		"chi"		"Downtown military outpost"
+	}
+	"l4d2_diescraper3_mid_361"
+	{
+		"chi"		"The Skymall"
+	}
+	"l4d2_diescraper4_top_361"
+	{
+		"chi"		"The top suites"
+	}
+	"dprm1_milltown_a"
+	{
+		"chi"		"Chapter 1: Milltown"
+	}
+	"dprm2_sugarmill_a"
+	{
+		"chi"		"Chapter 2: Sugarmill"
+	}
+	"dprm3_sugarmill_b"
+	{
+		"chi"		"Chapter 3: Sugarmill Return"
+	}
+	"dprm4_milltown_b"
+	{
+		"chi"		"Chapter 4: Milltown Return"
+	}
+	"dprm5_milltown_escape"
+	{
+		"chi"		"Chapter 5: Milltown Escape"
+	}
+	"dkr_m1_motel"
+	{
+		"chi"		"The Motel"
+	}
+	"dkr_m2_carnival"
+	{
+		"chi"		"The Carnival"
+	}
+	"dkr_m3_tunneloflove"
+	{
+		"chi"		"The Tunnel of Love"
+	}
+	"dkr_m4_ferris"
+	{
+		"chi"		"The Ferris Wheel"
+	}
+	"dkr_m5_stadium"
+	{
+		"chi"		"The Stadium"
+	}
+	"l4d_dbd2dc_anna_is_gone"
+	{
+		"chi"		"Anna is gone"
+	}
+	"l4d_dbd2dc_the_mall"
+	{
+		"chi"		"The mall"
+	}
+	"l4d_dbd2dc_clean_up"
+	{
+		"chi"		"Clean up"
+	}
+	"l4d_dbd2dc_undead_center"
+	{
+		"chi"		"Undead center"
+	}
+	"l4d_dbd2dc_new_dawn"
+	{
+		"chi"		"New dawn"
+	}
+	"l4d_deadline02"
+	{
+		"chi"		"Dead Line Survival"
+	}
+	"l4d_dbd2_undead_center"
+	{
+		"chi"		"Dead Line Scavenge"
+	}
+	"cdta_01detour"
+	{
+		"chi"		"DTA1 Detour"
+	}
+	"cdta_02road"
+	{
+		"chi"		"DTA2 Hill"
+	}
+	"cdta_03warehouse"
+	{
+		"chi"		"DTA3 Warehouse"
+	}
+	"cdta_04onarail"
+	{
+		"chi"		"DTA4 On A Rail"
+	}
+	"cdta_05finalroad"
+	{
+		"chi"		"DTA5 Final Road"
+	}
+	"hf01_theforest"
+	{
+		"chi"		"1: The Forest"
+	}
+	"hf02_thesteeple"
+	{
+		"chi"		"2: The Steeple"
+	}
+	"hf03_themansion"
+	{
+		"chi"		"3: The Mansion"
+	}
+	"hf04_escape"
+	{
+		"chi"		"4: The Tunnel"
+	}
+	"l4d_ihm01_forest"
+	{
+		"chi"		"1: Lost in the Woods"
+	}
+	"l4d_ihm02_manor"
+	{
+		"chi"		"2: Climbing the Manor"
+	}
+	"l4d_ihm03_underground"
+	{
+		"chi"		"3: The Underground Way"
+	}
+	"l4d_ihm04_lumberyard"
+	{
+		"chi"		"4: Lumberyard Evacuation"
+	}
+	"l4d_ihm05_lakeside"
+	{
+		"chi"		"5: Lakeside Finale"
+	}
+	"pr1_waterfront_f"
+	{
+		"chi"		"Waterfront"
+	}
+	"pr2_park_f"
+	{
+		"chi"		"park"
+	}
+	"pr3_highway_f"
+	{
+		"chi"		"Highway"
+	}
+	"pr4_quarter_f"
+	{
+		"chi"		"Quarter"
+	}
+	"pr5_bridge_f"
+	{
+		"chi"		"bridge"
+	}
+	"l4d2_stadium1_apartment"
+	{
+		"chi"		"The Apartment"
+	}
+	"l4d2_stadium2_riverwalk"
+	{
+		"chi"		"The Riverwalk"
+	}
+	"l4d2_stadium3_city1"
+	{
+		"chi"		"The Law"
+	}
+	"l4d2_stadium4_city2"
+	{
+		"chi"		"The City"
+	}
+	"l4d2_stadium5_stadium"
+	{
+		"chi"		"The Stadium"
+	}
+	"l4d2_vs_stadium2_riverwalk"
+	{
+		"chi"		"The Riverwalk Versus"
+	}
+	"l4d2_sv_stadium2_riverwalk"
+	{
+		"chi"		"The Riverwalk Survival"
+	}
+	"l4d2_sv_stadium3_city1"
+	{
+		"chi"		"The Law Survival"
+	}
+	"l4d2_sv_stadium4_city2"
+	{
+		"chi"		"The City Survival"
+	}
+	"l4d2_city17_01"
+	{
+		"chi"		"1: Tunnels"
+	}
+	"l4d2_city17_02"
+	{
+		"chi"		"2: To the surface"
+	}
+	"l4d2_city17_03"
+	{
+		"chi"		"3: Streets"
+	}
+	"l4d2_city17_04"
+	{
+		"chi"		"4: Hospital"
+	}
+	"l4d2_city17_05"
+	{
+		"chi"		"5: Trainstation"
+	}
+	"x1m1_cliffs"
+	{
+		"chi"		"Cliffs"
+	}
+	"x1m2_path"
+	{
+		"chi"		"Path"
+	}
+	"x1m3_city"
+	{
+		"chi"		"City"
+	}
+	"x1m4_forest"
+	{
+		"chi"		"Forest"
+	}
+	"x1m5_salvation"
+	{
+		"chi"		"Salvation"
+	}
+	"x1m6_aftermath"
+	{
+		"chi"		"Aftermath"
+	}
+	"cwm1_intro"
+	{
+		"chi"		"The Riverbed"
+	}
+	"cwm2_warehouse"
+	{
+		"chi"		"The Town"
+	}
+	"cwm3_drain"
+	{
+		"chi"		"The Sewers"
+	}
+	"cwm4_building"
+	{
+		"chi"		"The Office Building"
+	}
+	"l4d2_daybreak01_hotel"
+	{
+		"chi"		"1: The Hotel"
+	}
+	"l4d2_daybreak02_coastline"
+	{
+		"chi"		"2: The Coastline"
+	}
+	"l4d2_daybreak03_bridge"
+	{
+		"chi"		"3: The Bridge"
+	}
+	"l4d2_daybreak04_cruise"
+	{
+		"chi"		"4: The Outskirts"
+	}
+	"l4d2_daybreak05_rescue"
+	{
+		"chi"		"5: Alcatraz Finale"
+	}
+	"uf1_boulevard"
+	{
+		"chi"		"1: Boulevard"
+	}
+	"uf2_rooftops"
+	{
+		"chi"		"2: Rooftops"
+	}
+	"uf3_harbor"
+	{
+		"chi"		"3: Harbor"
+	}
+	"uf4_airfield"
+	{
+		"chi"		"4: Airfield"
+	}
+	"outline_m1"
+	{
+		"chi"		"Rise up"
+	}
+	"outline_m2"
+	{
+		"chi"		"Visit the city"
+	}
+	"outline_m3"
+	{
+		"chi"		"Through the town"
+	}
+	"outline_m4"
+	{
+		"chi"		"Rest in yard"
+	}
+	"l4d2_ff01_woods"
+	{
+		"chi"		"1: The Woods"
+	}
+	"l4d2_ff02_factory"
+	{
+		"chi"		"2: The Factory"
+	}
+	"l4d2_ff03_highway"
+	{
+		"chi"		"3: The Highway"
+	}
+	"l4d2_ff04_plant"
+	{
+		"chi"		"4: The Plant"
+	}
+	"l4d2_ff05_station"
+	{
+		"chi"		"5: Trainyard Finale"
+	}
+	"noecho_m1"
+	{
+		"chi"		"noecho_m1"
+	}
+	"noecho_m2"
+	{
+		"chi"		"noecho_m2"
+	}
+	"noecho_m3"
+	{
+		"chi"		"noecho_m2"
+	}
+	"noecho_m4"
+	{
+		"chi"		"noecho_m4"
+	}
+	"nmrm1_apartment"
+	{
+		"chi"		"#L4D360UI_LevelName_COOP_C8M1"
+	}
+	"nmrm2_subway"
+	{
+		"chi"		"#L4D360UI_LevelName_COOP_C8M2"
+	}
+	"nmrm3_sewers"
+	{
+		"chi"		"#L4D360UI_LevelName_COOP_C8M3"
+	}
+	"nmrm4_hospital"
+	{
+		"chi"		"#L4D360UI_LevelName_COOP_C8M4"
+	}
+	"nmrm5_rooftop"
+	{
+		"chi"		"#L4D360UI_LevelName_COOP_C8M5"
+	}
+	"tripday_new_m1"
+	{
+		"chi"		"废区"
+	}
+	"tripday_new_m2"
+	{
+		"chi"		"郊野"
+	}
+	"tripday_new_m3"
+	{
+		"chi"		"野外"
+	}
+	"tripday_new_m4"
+	{
+		"chi"		"加油站"
+	}
+	"uz_crash"
+	{
+		"chi"		"Crash"
+	}
+	"uz_town"
+	{
+		"chi"		"Town"
+	}
+	"uz_desert"
+	{
+		"chi"		"Desert"
+	}
+	"uz_bunker"
+	{
+		"chi"		"Bunker"
+	}
+	"uz_escape"
+	{
+		"chi"		"Escape"
+	}
+	"dcr_m1_hotel"
+	{
+		"chi"		"1: Hotel"
+	}
+	"dcr_m2_streets"
+	{
+		"chi"		"2: Streets"
+	}
+	"dcr_m3_mall"
+	{
+		"chi"		"3: Mall"
+	}
+	"dcr_m4_atrium"
+	{
+		"chi"		"4: Atrium"
+	}
+	"cotd01_apartments"
+	{
+		"chi"		"1: Apartments"
+	}
+	"cotd02_warehouse"
+	{
+		"chi"		"2: Warehouse"
+	}
+	"cotd03_mall"
+	{
+		"chi"		"3: Abandoned Mall"
+	}
+	"cotd04_rooftop"
+	{
+		"chi"		"4: Rooftop Escape"
+	}
+	"DCR1_meetup_F"
+	{
+		"chi"		"meetup"
+	}
+	"DCR2_TheVannha_F"
+	{
+		"chi"		"Vannha"
+	}
+	"DCR3_Streets_F"
+	{
+		"chi"		"Streets"
+	}
+	"DCR4_Mallentrance_F"
+	{
+		"chi"		"Mallentrance"
+	}
+	"DCR5_Mall_F"
+	{
+		"chi"		"Mall"
+	}
+	"lastbreath_m1"
+	{
+		"chi"		"Fitness Center"
+	}
+	"lastbreath_m2"
+	{
+		"chi"		"Underground Facility"
+	}
+	"lastbreath_m3"
+	{
+		"chi"		"Subway"
+	}
+	"lastbreath_m4"
+	{
+		"chi"		"Escape"
+	}
+	"wfp1_track"
+	{
+		"chi"		"Trainyard"
+	}
+	"wfp2_horn"
+	{
+		"chi"		"Cave"
+	}
+	"wfp3_mill"
+	{
+		"chi"		"Industrial Warehouses"
+	}
+	"wfp4_commstation"
+	{
+		"chi"		"Radio Stations"
+	}
+	"daredux_map1_docks_aw"
+	{
+		"chi"		"Docks"
+	}
+	"daredux_map2_houses_aw_test2"
+	{
+		"chi"		"Houses"
+	}
+	"daredux_map4_offices_aw"
+	{
+		"chi"		"Offices"
+	}
+	"daredux_map5_garage_aw"
+	{
+		"chi"		"Garage"
+	}
+	"daredux_map6_terminal_aw"
+	{
+		"chi"		"Terminal"
+	}
+	"daredux_runway_aw"
+	{
+		"chi"		"Runway Finale"
+	}
+	"l4d2_bts01_forest"
+	{
+		"chi"		"1: Forest"
+	}
+	"l4d2_bts02_station"
+	{
+		"chi"		"2: Railroad Station"
+	}
+	"l4d2_bts03_town"
+	{
+		"chi"		"3: Town"
+	}
+	"l4d2_bts04_cinema"
+	{
+		"chi"		"4: Cinema"
+	}
+	"l4d2_bts05_church"
+	{
+		"chi"		"5: Church"
+	}
+	"l4d2_bts06_school"
+	{
+		"chi"		"6: School Finale"
+	}
+	"cf_m1_town"
+	{
+		"chi"		"1: The Town"
+	}
+	"cf_m2_mall"
+	{
+		"chi"		"2: The Mall"
+	}
+	"cf_m3_evac"
+	{
+		"chi"		"3: The Evacuation"
+	}
+	"cf_m4_outskirts"
+	{
+		"chi"		"4: The Outskirts"
+	}
+	"cf_m5_highway"
+	{
+		"chi"		"5: Highway Finale"
+	}
+	"dsr_m1"
+	{
+		"chi"		"Satans Square"
+	}
+	"dsr_m2"
+	{
+		"chi"		"The Stink of Flesh"
+	}
+	"dsr_m3"
+	{
+		"chi"		"Hostil Campsite"
+	}
+	"dsr_m4"
+	{
+		"chi"		"Village of the Damned"
+	}
+	"dsr_m5"
+	{
+		"chi"		"Slaughter Island"
+	}
+	"l4d_yama_1"
+	{
+		"chi"		"Tokyo Streets"
+	}
+	"l4d_yama_2"
+	{
+		"chi"		"Forest Town"
+	}
+	"l4d_yama_3"
+	{
+		"chi"		"Kiyomizu Temple"
+	}
+	"l4d_yama_4"
+	{
+		"chi"		"Mining Village"
+	}
+	"l4d_yama_5"
+	{
+		"chi"		"Maya Kanko Hotel"
+	}
+	"death_sentence_1"
+	{
+		"chi"		"satans square"
+	}
+	"death_sentence_2"
+	{
+		"chi"		"The Stink of Flesh"
+	}
+	"death_sentence_3"
+	{
+		"chi"		"hostil campsite"
+	}
+	"death_sentence_4"
+	{
+		"chi"		"village of the damned"
+	}
+	"death_sentence_5"
+	{
+		"chi"		"slaughter island"
+	}
+	"ec01_outlets"
+	{
+		"chi"		"The Outlet Mall"
+	}
+	"ec02_dam"
+	{
+		"chi"		"The Reservoir"
+	}
+	"ec03_village"
+	{
+		"chi"		"The Village"
+	}
+	"ec04_powerstation"
+	{
+		"chi"		"The Power Station"
+	}
+	"ec05_quarry"
+	{
+		"chi"		"The Quarry"
+	}
+	"AirCrash"
+	{
+		"chi"		"AirCrash"
+	}
+	"RiverMotel"
+	{
+		"chi"		"RiverMotel"
+	}
+	"OutSkirts"
+	{
+		"chi"		"OutSkirts"
+	}
+	"CityHall"
+	{
+		"chi"		"CityHall"
+	}
+	"BombShelter"
+	{
+		"chi"		"BombShelter"
+	}
+	"l4d_ravenholm01_blackmesa"
+	{
+		"chi"		"1: Black Mesa East"
+	}
+	"l4d_ravenholm02_traptown"
+	{
+		"chi"		"2: Trap Town"
+	}
+	"l4d_ravenholm03_church"
+	{
+		"chi"		"3: The Church"
+	}
+	"l4d_ravenholm04_cavern"
+	{
+		"chi"		"4: The Mines"
+	}
+	"l4d_ravenholm05_docks"
+	{
+		"chi"		"5: Coast Finale"
+	}
+	"tripday_new_m5"
+	{
+		"chi"		"tripday_new_m5"
+	}
+	"pt2_m1"
+	{
+		"chi"		"Wake up"
+	}
+	"pt2_m2"
+	{
+		"chi"		"Behind the scenes"
+	}
+	"pt2_m3"
+	{
+		"chi"		"Fire storm"
+	}
+	"pt2_m4"
+	{
+		"chi"		"High rise"
+	}
+	"pt2_m5"
+	{
+		"chi"		"Reception area"
+	}
+	"pt2_overgrown_m1"
+	{
+		"chi"		"Destroyed chambers"
+	}
+}

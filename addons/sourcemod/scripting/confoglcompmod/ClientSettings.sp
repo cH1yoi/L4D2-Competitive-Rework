@@ -6,7 +6,7 @@
 #define CLS_MODULE_NAME				"ClientSettings"
 
 #define CLS_CVAR_MAXLEN				64
-#define CLIENT_CHECK_INTERVAL		5.0
+#define CLIENT_CHECK_INTERVAL		20.0
 
 enum /*CLSAction*/
 {

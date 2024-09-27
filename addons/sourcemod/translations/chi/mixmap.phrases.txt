@@ -1,0 +1,143 @@
+"Phrases"
+{
+	"AlreadyMixed"
+	{
+		"chi"		"当前对局已启用混合地图, 输入{olive}!stopmix{default}投票结束本轮混合地图"
+	}
+	"MixmapMenuTitle"
+	{
+		"chi"		"选择地图集投票混合"
+	}
+	"MixAll"
+	{
+		"chi"		"所有官方地图"
+	}
+	"MixAllLimit"
+	{
+		"chi"		"常用官方地图"
+	}
+	"MixGeneration1"
+	{
+		"chi"		"仅官方1代图"
+	}
+	"MixGeneration2"
+	{
+		"chi"		"仅官方2代图"
+	}
+	"MixAll4Missions"
+	{
+		"chi"		"所有官方地图 [4关]"
+	}
+	"MixAll4MLimit"
+	{
+		"chi"		"常用官方地图 [4关]"
+	}
+	"TeamCantVote"
+	{
+		"chi"		"只有{olive}对局中的玩家{default}才能投票"
+	}
+	"PlayerChose"
+	{
+		"chi"		"{teamcolor}{1}{default}选择了 {olive}{2}"
+	}
+	"InitVoter"
+	{
+		"chi"		"{teamcolor}{1}{default}发起了混合地图投票 ({olive}{2}{default})"
+	}
+	"InitStopMixVoter"
+	{
+		"chi"		"{teamcolor}{1}{default}发起了停止混合地图投票"
+	}
+	"VoteAsk"
+	{
+		"chi"		"开始混合地图?"
+	}
+	"mix"
+	{
+		"chi"		"所有官图"
+	}
+	"mix_limit"
+	{
+		"chi"		"常用官图"
+	}
+	"gen1"
+	{
+		"chi"		"1代官图"
+	}
+	"gen2"
+	{
+		"chi"		"2代官图"
+	}
+	"mix_4m"
+	{
+		"chi"		"所有官图4关"
+	}
+	"mix_4m_limit"
+	{
+		"chi"		"常用官图4关"
+	}
+	"LoadingPreset"
+	{
+		"chi"		"开始加载{olive}{1}{default}预设..."
+	}
+	"NoMixed"
+	{
+		"chi"		"当前对局未加载混合地图, 不需要停止混合"
+	}
+	"StopMix"
+	{
+		"chi"		"混合地图{orange}已停止{default}, 重置中..."
+	}
+	"VoteStopAsk"
+	{
+		"chi"		"停止混合地图?"
+	}
+	"SetNaxtMap"
+	{
+		"chi"		"本回合已结束, 下一张地图是{orange}{1}{default}"
+	}
+	"NoMaplist"
+	{
+		"chi"		"当前对局{orange}未启用{default}混合地图"
+	}
+	"MaplistTitle"
+	{
+		"chi"		"{lightgreen} 地图列表 {default}"
+	}
+	"FailedLoadPreset"
+	{
+		"chi"		"加载预设地图集失败! "
+	}
+	"PresetImproper"
+	{
+		"chi"		"预设文件中有{orange}不正确{default}的rank标签"
+	}
+	"MapsetLoaded"
+	{
+		"chi"		"地图集读取成功"
+	}
+	"MapSettled"
+	{
+		"chi"		"混合地图设置成功"
+	}
+	"GameWillStart"
+	{
+		"chi"		"对局将在{orange}{1}{default}秒后开始"
+	}
+	"FinalMapDone"
+	{
+		"chi"		"本轮混合地图游戏全部完成, 服务器开始{orange}下一轮{default}混合"
+	}
+	"MapInMix"
+	{
+		"chi"		"{orange}已启用{default}地图混合模式, 输入{olive}!maplist{default}查看地图列表"
+	}
+	"MixForceStop"
+	{
+		"chi"		"地图已被玩家更换，{orange}停止{default}混合地图模式"
+	}
+	"CantStartVote"
+	{
+		"chi"		"当前{olive}无法发起投票{default}, {orange}{1}{default}秒后可重试"
+	}
+}

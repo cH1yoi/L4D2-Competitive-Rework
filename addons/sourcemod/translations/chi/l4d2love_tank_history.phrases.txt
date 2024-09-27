@@ -1,0 +1,11 @@
+"Phrases"
+{
+	"No Played Tank"
+	{
+		"chi"		"%i. {orange}未生成Tank"
+	}
+	"Who Played Tank"
+	{
+		"chi"		"%i.%s"
+	}
+}

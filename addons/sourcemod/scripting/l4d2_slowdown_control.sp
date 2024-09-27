@@ -148,7 +148,7 @@ void TankSpawn(Event event, const char[] name, bool dontBroadcast)
 	if (!tankInPlay) {
 		tankInPlay = true;
 		if (fSurvWaterSpeedDuringTank > 0.0) {
-			PrintToChatAll("\x05Water Slowdown\x01 has been reduced while Tank is in play.");
+			PrintToChatAll("\x05[Water Slowdown]\x01 克局移除水中减速.");
 		}
 	}
 }
@@ -167,7 +167,7 @@ Action Timer_CheckTank(Handle timer)
 	if (!tankclient || !IsPlayerAlive(tankclient)) {
 		tankInPlay = false;
 		if (fSurvWaterSpeedDuringTank > 0.0) {
-			PrintToChatAll("\x05Water Slowdown\x01 has been restored to normal.");
+			PrintToChatAll("\x05[Water Slowdown]\x01 已恢复水中减速.");
 		}
 	}
 

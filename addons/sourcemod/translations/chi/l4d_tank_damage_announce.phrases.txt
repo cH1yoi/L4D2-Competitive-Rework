@@ -1,0 +1,11 @@
+"Phrases"
+{
+	"HP Remaining"
+	{
+		"chi"		"剩余 {green}%d {default}HP"
+	}
+	"Dmg To Tank"
+	{
+		"chi"		"对{blue}Tank{default}造成的{blue}伤害 {default}"
+	}
+}

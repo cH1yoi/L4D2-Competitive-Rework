@@ -1,0 +1,27 @@
+﻿"Phrases"
+{
+	"KILL"
+	{
+		"chi"		"{olive}%N {green}杀死{default}了队友 {blue}%N{default}."
+	}
+	"FF_dealt (C)"
+	{
+		"chi"		"{green}你{default} 误伤了 {olive}%s{default} @ {red}%d{default} HP"
+	}
+	"FF_dealt"
+	{
+		"chi"		"你误伤了 %s @ %d HP"
+	}
+	"FF_receive (C)"
+	{
+		"chi"		"{olive}%s{default} 误伤了 {green}你{default} @ {blue}%d{default} HP"
+	}
+	"FF_receive"
+	{
+		"chi"		"%s 误伤了你 @ %d HP"
+	}
+	"FF_total"
+	{
+		"chi"		"(总计: {green}%d{default} HP)"
+	}
+}

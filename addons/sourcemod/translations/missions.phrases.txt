@@ -1,0 +1,175 @@
+"Phrases"
+{
+	"L4D2C1"
+	{
+		"en"		"Dead Center"
+	}
+	"L4D2C2"
+	{
+		"en"		"Dark Carnival"
+	}
+	"L4D2C3"
+	{
+		"en"		"Swamp Fever"
+	}
+	"L4D2C4"
+	{
+		"en"		"Hard Rain"
+	}
+	"L4D2C5"
+	{
+		"en"		"The Parish"
+	}
+	"L4D2C6"
+	{
+		"en"		"The Passing"
+	}
+	"L4D2C7"
+	{
+		"en"		"The Sacrifice"
+	}
+	"L4D2C8"
+	{
+		"en"		"No Mercy"
+	}
+	"L4D2C9"
+	{
+		"en"		"Crash Course"
+	}
+	"L4D2C10"
+	{
+		"en"		"Death Toll"
+	}
+	"L4D2C11"
+	{
+		"en"		"Dead Air"
+	}
+	"L4D2C12"
+	{
+		"en"		"Blood Harvest"
+	}
+	"L4D2C13"
+	{
+		"en"		"Cold Stream"
+	}
+	"L4D2C14"
+	{
+		"en"		"The Last Stand"
+	}
+	"Diescraper362"
+	{
+		"en"		"Diescraper Redux 3.62"
+	}
+	"Diescraper362VS"
+	{
+		"en"		"Diescraper Redux 3.62"
+	}
+	"DarkCarnivalRemix"
+	{
+		"en"		"Dark Carnival Remix"
+	}
+	"dbd2dc"
+	{
+		"en"		"Dead Before Dawn DC"
+	}
+	"detourahead"
+	{
+		"en"		"$DetourAhead_Title"
+	}
+	"ihatemountains2"
+	{
+		"en"		"I Hate Mountains 2 (1.5)"
+	}
+	"ParishOverGrowth"
+	{
+		"en"		"Parish: OverGrowth"
+	}
+	"suicideblitz2"
+	{
+		"en"		"Suicide Blitz 2"
+	}
+	"City17l4d2"
+	{
+		"en"		"City 17 v3.2"
+	}
+	"OpenRoadICSX"
+	{
+		"en"		"Open Road"
+	}
+	"CarriedOff"
+	{
+		"en"		"Carried Off"
+	}
+	"urbanflight"
+	{
+		"en"		"Urban Flight"
+	}
+	"noechoMATCH"
+	{
+		"en"		"noecho:match"
+	}
+	"NoMercyRehab"
+	{
+		"en"		"No Mercy: Rehab"
+	}
+	"undeadzone"
+	{
+		"en"		"The Undead Zone"
+	}
+	"LastBreath"
+	{
+		"en"		"Last Breath"
+	}
+	"WhiteForest"
+	{
+		"en"		"White Forest"
+	}
+	"Outline"
+	{
+		"en"		"Outline"
+	}
+	"Downpour"
+	{
+		"en"		"Hard Rain: Downpour"
+	}
+	"FatalFreight"
+	{
+		"en"		"Fatal Freight"
+	}
+	"DayBreak"
+	{
+		"en"		"Day Break"
+	}
+	"DeadCenterReConstructed"
+	{
+		"en"		"Dead Center: ReConstructed"
+	}
+	"deadairreduxaw"
+	{
+		"en"		"Dead Air:Redux Another Way"
+	}
+	"hauntedforest"
+	{
+		"en"		"Haunted Forest"
+	}
+	"heavencanwait2"
+	{
+		"en"		"Heaven Can Wait II"
+	}
+	"Ravenholm"
+	{
+		"en"		"Ravenholm"
+	}
+	"TripDayMATCH"
+	{
+		"en"		"Trip day Match"
+	}
+	"L4PT2"
+	{
+		"en"		"L4PT2"
+	}
+	"L4PT2overgrown"
+	{
+		"en"		"L4PT2"
+	}
+}
