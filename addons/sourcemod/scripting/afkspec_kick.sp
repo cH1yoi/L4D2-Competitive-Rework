@@ -4,6 +4,7 @@
 #include <l4d2util_constants>
 #include <readyup>
 #include <fix_team_shuffle>
+#include <mix_team>
 #define CHECK_INTERVAL 1.0
 
 char snd1[] = "buttons/blip2.wav";
@@ -25,16 +26,16 @@ public void OnMapStart(){
     PrecacheSound(snd4);
     PrecacheSound(snd5);
     for (int i = 1; i <= MaxClients; i++){
-        kicktime[i] = 20;
+        kicktime[i] = 60;
     }
 }
 
 void ResetTimeout(int client){
     if (IsInReady()){
-        kicktime[client] = 90
+        kicktime[client] = 120
     }
     else {
-        kicktime[client] = 20
+        kicktime[client] = 60
     }
 }
 
@@ -63,6 +64,13 @@ public Action Timer_CheckTeams(Handle timer)
                     if (butitolazy-- < 0) {
                         CPrintToChat(i, "[{olive}!{default}] 防错位插件运行中，占位踢出将在防错位结束后开始倒数计时");
                         butitolazy = 5;
+                        }
+                    break;
+                }
+                else if (GetMixState() != STATE_NONE) {
+                    if (butitolazy-- < 0) {
+                        CPrintToChat(i, "[{olive}!{default}] 正在进行分队, 占位踢出将在分队结束后开始倒数计时");
+                        butitolazy = 15;
                         }
                     break;
                 }
