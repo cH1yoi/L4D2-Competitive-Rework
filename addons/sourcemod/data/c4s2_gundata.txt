@@ -1,0 +1,212 @@
+"c4s2_shop"
+{
+	"weapon_pistol"
+	{
+		"name"		"手枪"
+		"price" 	"200"
+		"bounce"	"300"
+		"ap"		"50.0"
+		"dmg"		"30"
+		"decline"	"80"
+		"class"		"pistol"
+	}
+	"weapon_pistol_magnum"
+	{
+		"name"		"马格南"
+		"price" 	"700"
+		"bounce"	"300"
+		"ap"		"93.2"
+		"dmg"		"63"
+		"decline"	"85"
+		"class"		"pistol"
+	}
+	"weapon_smg"
+	{
+		"name"		"Uzi"
+		"price" 	"1250"
+		"bounce"	"600"
+		"ap"		"60.0"
+		"dmg"		"27"
+		"decline"	"87"
+		"class"		"smg"
+	}
+	"weapon_smg_silenced"
+	{
+		"name"		"Mac-10"
+		"price" 	"1250"
+		"bounce"	"600"
+		"ap"		"65.0"
+		"dmg"		"27"
+		"decline"	"80"
+		"class"		"smg"
+	}
+	"weapon_smg_mp5"
+	{
+		"name"		"MP5"
+		"price" 	"1500"
+		"bounce"	"600"
+		"ap"		"70.0"
+		"dmg"		"27"
+		"decline"	"85"
+		"class"		"smg"
+	}
+	"weapon_rifle"
+	{
+		"name"		"M16"
+		"price" 	"2900"
+		"bounce"	"300"
+		"ap"		"70.0"
+		"dmg"		"33"
+		"decline"	"97"
+		"class"		"rifle"
+	}
+	"weapon_rifle_ak47"
+	{
+		"name"		"AK47"
+		"price" 	"2700"
+		"bounce"	"300"
+		"ap"		"77.5"
+		"dmg"		"46"
+		"decline"	"98"
+		"class"		"rifle"
+	}
+	"weapon_rifle_desert"
+	{
+		"name"		"Scar"
+		"price" 	"3300"
+		"bounce"	"300"
+		"ap"		"90.0"
+		"dmg"		"28"
+		"decline"	"100"
+		"class"		"rifle"
+	}
+	"weapon_rifle_sg552"
+	{
+		"name"		"SG552"
+		"price" 	"3200"
+		"bounce"	"300"
+		"ap"		"100.0"
+		"dmg"		"30"
+		"decline"	"98"
+		"class"		"rifle"
+	}
+	"weapon_pumpshotgun"
+	{
+		"name"		"木喷"
+		"price" 	"1050"
+		"bounce"	"900"
+		"ap"		"50.0"
+		"dmg"		"14"
+		"decline"	"70"
+		"class"		"shotgun"
+	}
+	"weapon_shotgun_chrome"
+	{
+		"name"		"铁喷"
+		"price" 	"1100"
+		"bounce"	"900"
+		"ap"		"50.0"
+		"dmg"		"15"
+		"decline"	"73"
+		"class"		"shotgun"
+	}
+	"weapon_autoshotgun"
+	{
+		"name"		"一代连喷"
+		"price" 	"2000"
+		"bounce"	"900"
+		"ap"		"75.0"
+		"dmg"		"10"
+		"decline"	"70"
+		"class"		"shotgun"
+	}
+	"weapon_shotgun_spas"
+	{
+		"name"		"二代连喷"
+		"price" 	"2100"
+		"bounce"	"900"
+		"ap"		"80.0"
+		"dmg"		"10"
+		"decline"	"70"
+		"class"		"shotgun"
+	}
+	"weapon_hunting_rifle"
+	{
+		"name"		"木狙"
+		"price" 	"4500"
+		"bounce"	"300"
+		"ap"		"82.5"
+		"dmg"		"70"
+		"decline"	"100"
+		"class"		"sniper"
+	}
+	"weapon_sniper_military"
+	{
+		"name"		"军狙"
+		"price" 	"5000"
+		"bounce"	"300"
+		"ap"		"82.5"
+		"dmg"		"65"
+		"decline"	"100"
+		"class"		"sniper"
+	}
+	"weapon_sniper_scout"
+	{
+		"name"		"鸟狙"
+		"price" 	"1700"
+		"bounce"	"300"
+		"ap"		"85.0"
+		"dmg"		"70"
+		"decline"	"100"
+		"class"		"sniper"
+	}
+	"weapon_sniper_awp"
+	{
+		"name"		"大狙"
+		"price" 	"4750"
+		"bounce"	"100"
+		"ap"		"97.5"
+		"dmg"		"115"
+		"decline"	"100"
+		"class"		"sniper"
+	}
+	"grenade_pipe_bomb"
+	{
+		"name"		"高爆闪光弹"
+		"price" 	"250"
+		"bounce"	"300"
+		"class"		"grenade"
+	}
+	"grenade_vomitjar"
+	{
+		"name"		"烟雾弹"
+		"price" 	"300"
+		"bounce"	"300"
+		"class"		"grenade"
+	}
+	"grenade_molotov"
+	{
+		"name"		"燃烧瓶"
+		"price" 	"500"
+		"bounce"	"300"
+		"class"		"grenade"
+	}
+	"special_armor"
+	{
+		"name"		"防弹衣"
+		"price" 	"650"
+		"class"		"special"
+	}
+	"special_helmet"
+	{
+		"name"		"防弹头盔及防弹衣"
+		"price" 	"950"
+		"class"		"special"
+	}
+	"special_device"
+	{
+		"name"		"拆弹器"
+		"price" 	"400"
+		"class"		"special"
+	}
+}

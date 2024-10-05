@@ -1,7 +1,4 @@
-#include <sourcemod>
 #include <builtinvotes>
-
-Handle private_fs_hVote;
 
 public bool s_CallVote(int iClient, const char[] info, BuiltinVoteHandler votes)
 {
@@ -26,7 +23,7 @@ public bool s_CallVote(int iClient, const char[] info, BuiltinVoteHandler votes)
 
 		char playername[32];
 		GetClientName(iClient, playername, sizeof(playername));
-		private_fs_hVote = CreateBuiltinVote(s_VoteActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
+		Handle private_fs_hVote = CreateBuiltinVote(s_VoteActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
 		// char infos[128];
 		// FormatEx(infos, sizeof(infos), " %s", info);
 		SetBuiltinVoteArgument(private_fs_hVote, info);
@@ -63,9 +60,7 @@ public bool s_CallVote_ex(int iClient, int team, bool callerdefault, const char[
 
 		char playername[32];
 		GetClientName(iClient, playername, sizeof(playername));
-		private_fs_hVote = CreateBuiltinVote(s_VoteActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
-		// char infos[128];
-		// FormatEx(infos, sizeof(infos), " %s", info);
+		Handle private_fs_hVote = CreateBuiltinVote(s_VoteActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
 		SetBuiltinVoteArgument(private_fs_hVote, info);
 		SetBuiltinVoteInitiator(private_fs_hVote, iClient);					//设置投票发起者
 		SetBuiltinVoteResultCallback(private_fs_hVote, votes);				//设置投票产生结果后执行的函数
@@ -87,7 +82,6 @@ public void s_VoteActionHandler(Handle vote, BuiltinVoteAction action, int param
 		case BuiltinVoteAction_End:
 		{
 			delete vote;
-			private_fs_hVote = null;
 		}
 		case BuiltinVoteAction_Cancel:
 		{

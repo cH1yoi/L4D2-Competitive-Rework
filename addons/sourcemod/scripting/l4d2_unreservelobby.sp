@@ -6,7 +6,7 @@
 #define PLUGIN_VERSION			"2.1.2"
 #define PLUGIN_URL				"http://forums.alliedmods.net/showthread.php?t=87759"
 
-ConVar g_cvUnreserve, g_cvGameMode, g_cvCookie, g_cvLobbyOnly, g_cvMaxPlayers, g_cvForceUnreserse;
+ConVar g_cvUnreserve, g_cvGameMode, g_cvCookie, g_cvLobbyOnly, g_cvMaxPlayers, g_cvForceUnreserse, g_cvAutoRemoveLimit;
 bool g_bUnreserve;
 
 int g_iLobbySlot;
@@ -22,13 +22,14 @@ public Plugin myinfo = {
 public void OnPluginStart() {
 	CreateConVar("l4d_unreserve_version", PLUGIN_VERSION, "Version of the Lobby Unreserve plugin.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
 	g_cvUnreserve = CreateConVar("l4d_unreserve_full", "1", "Automatically unreserve server after a full lobby joins", FCVAR_SPONLY|FCVAR_NOTIFY);
+	g_cvAutoRemoveLimit = CreateConVar("l4d_unreserve_autoremove_whenplayer", "-1", "Automatically unreserve server after a full lobby joins");
 	g_cvUnreserve.AddChangeHook(CvarChanged);
 	g_cvGameMode = FindConVar("mp_gamemode");
 	g_cvCookie = FindConVar("sv_lobby_cookie");
 	g_cvLobbyOnly = FindConVar("sv_allow_lobby_connect_only");
 	g_cvMaxPlayers = FindConVar("sv_maxplayers");
 	g_cvForceUnreserse = FindConVar("sv_force_unreserved");
-
+	HookConVarChange(g_cvAutoRemoveLimit, Convar_OnLimitSet);
 	HookEvent("player_disconnect", Event_PlayerDisconnect, EventHookMode_Pre);
 
 	RegAdminCmd("sm_unreserve", cmdUnreserve, ADMFLAG_BAN, "sm_unreserve - manually force removes the lobby reservation");
@@ -47,6 +48,16 @@ public void OnConfigsExecuted() {
 
 void CvarChanged(ConVar convar, const char[] oldValue, const char[] newValue) {
 	GetCvars();
+}
+void Convar_OnLimitSet(Handle cvar, const char[] oldValue, const char[] newValue){
+	for (int i = 0; i <= MaxClients; i++){
+		if (IsClientInGame(i))
+		{
+			OnClientAuthorized(i, "1");
+			break;
+		}
+	}
+	
 }
 
 void GetCvars() {
@@ -125,7 +136,7 @@ bool IsServerLobbyFull(int client)
 	}
 	return humans >= 4;
 	*/
-	return humans >= g_iLobbySlot;
+	return humans >= (g_cvAutoRemoveLimit.IntValue == -1 ? g_iLobbySlot : g_cvAutoRemoveLimit.IntValue);
 }
 
 int GetConnectedPlayer(int client) {

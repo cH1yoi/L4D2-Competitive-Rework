@@ -9,6 +9,8 @@
 #define PTYPE_SMG 0
 #define PTYPE_SHOTGUN 1
 
+#define IS_VALID_CLIENT(%1)     (%1 > 0 && %1 <= MaxClients)
+
 enum struct PlayerInfo{
     int rankpoint;
     int gametime;	
@@ -20,6 +22,33 @@ enum struct PlayerInfo{
     int smgkills;
     int shotgunkills;
     int type;
+    
+    // 理论最高分
+    int get_player_maxrankpoint(){
+        return this.gametime + this.versustotal;
+    }
+    
+    // 场均击杀
+    float kill_per_round(){
+        int kills = this.smgkills + this.shotgunkills;
+        return float(kills) / float(this.versustotal);
+    }
+    
+    float rock_per_round(){
+        return float(this.tankrocks) / float(this.versustotal);
+    }
+
+    float hour_per_round(){
+        return float(this.gametime) / float(this.versustotal);
+    }
+    
+    // 击杀数修正
+    void reset_max_kills(){
+        if (this.kill_per_round() < 600.0) return;
+        float per = 600.0 / this.kill_per_round();
+        this.smgkills = RoundToNearest(float(this.smgkills) * per);
+        this.shotgunkills = RoundToNearest(float(this.shotgunkills) * per);
+    }
 }
 
 PlayerInfo PlayerInfoData[MAXPLAYERS];
@@ -34,12 +63,20 @@ public void OnPluginStart(){
 
     for (int i = 1; i <= MaxClients; i++){
         if (IsClientInGame(i) && !IsFakeClient(i)){
-            OnClientPutInServer(i);
+            GetTimeOut[i] = 8;
+            CreateTimer(0.1, Timer_GetClientExp, i);
         }
     }
 
 }
 
+public void OnClientAuthorized(int iClient)
+{
+	if(IS_VALID_CLIENT(iClient)) {
+		GetTimeOut[iClient] = 8;
+        CreateTimer(0.1, Timer_GetClientExp, iClient);
+	}
+}
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
     g_hForward_OnGetExp = CreateGlobalForward("L4D2_OnGetExp", ET_Ignore, Param_Cell, Param_Cell);
@@ -58,8 +95,8 @@ public int _Native_CheckAndGetAllClient(Handle plugin, int numParams)
     for (int i = 1; i <= MaxClients; i++){
         if (IsClientInGame(i) && !IsFakeClient(i)){
             if (PlayerInfoData[i].rankpoint <= 0){
-                OnClientPutInServer(i);
-            }
+                GetTimeOut[i] = 8;
+                CreateTimer(0.1, Timer_GetClientExp, i);            }
         }
     }
     return 0;
@@ -77,10 +114,11 @@ public int _Native_GetClientExp(Handle plugin, int numParams){
 
     return PlayerInfoData[client].rankpoint;
 }
-public void OnClientPutInServer(int client){
+/* public void OnClientPutInServer(int client){
     GetTimeOut[client] = 8;
-    CreateTimer(0.5, Timer_GetClientExp, client);
-}
+    CreateTimer(0.0, Timer_GetClientExp, client);
+} */
+
 public void ClearClientExpData(int client){
     PlayerInfoData[client].gametime = 0;
     PlayerInfoData[client].rankpoint = -2;
@@ -119,7 +157,7 @@ public Action Timer_GetClientExp(Handle timer, int iClient){
     Call_PushCell(res);
     Call_Finish();
     // global forward
-    log.info("[%N] Total: %i, gametime: %i, rankpoint: %i, shotgunkills: %i, smgkills:%i, tankrocks: %i, versuswin: %i, versustotal：%i", 
+    log.info("[%N] Total: %i, gametime: %i, rankpoint: %i, shotgunkills: %i, smgkills:%i, tankrocks: %i, versuswin: %i, versustotal：%i, maxrankpoint: %i, kill_per_round: %.0f, rock_per_round: %.0f, hour_per_round: %.0f", 
         iClient, res, 
         PlayerInfoData[iClient].gametime,
         PlayerInfoData[iClient].rankpoint,
@@ -127,7 +165,11 @@ public Action Timer_GetClientExp(Handle timer, int iClient){
         PlayerInfoData[iClient].smgkills,
         PlayerInfoData[iClient].tankrocks,
         PlayerInfoData[iClient].versuswin,
-        PlayerInfoData[iClient].versustotal
+        PlayerInfoData[iClient].versustotal,
+        PlayerInfoData[iClient].get_player_maxrankpoint(),
+        PlayerInfoData[iClient].kill_per_round(),
+        PlayerInfoData[iClient].rock_per_round(),
+        PlayerInfoData[iClient].hour_per_round()
     );
     return Plugin_Stop;
 }
@@ -177,10 +219,12 @@ public int GetClientRP(int iClient){
 int Calculate_RP(PlayerInfo tPlayer)
 {
     int killtotal = tPlayer.shotgunkills + tPlayer.smgkills;
-    float shotgunperc = float(tPlayer.shotgunkills) / float(killtotal);   
-    float rpm = float(tPlayer.tankrocks) / float(tPlayer.gametime);
-    rpm = 1.0 + rpm;
-    float rp = tPlayer.winrounds * (0.55 * float(tPlayer.gametime) + float(tPlayer.tankrocks) * rpm * 0.65 + 
-        float(killtotal) * 0.005 * (1.0 + shotgunperc));
+    float shotgunperc = float(tPlayer.shotgunkills) / float(killtotal);  
+    float maxrp = float(tPlayer.get_player_maxrankpoint()) * 1.135; 
+    float rp = 
+        0.55 * float(tPlayer.gametime) * (tPlayer.hour_per_round() > 5.73 ? 5.73 / tPlayer.hour_per_round() : 1.0) + 
+        float(tPlayer.tankrocks) * 0.65 * (tPlayer.rock_per_round() > 1.88 ? 1.88 / tPlayer.rock_per_round() : 1.0) + 
+        (float(killtotal) * 0.005 * (tPlayer.kill_per_round() > 570.0 ? 570.0 / tPlayer.kill_per_round() : 1.0) * (shotgunperc));
+    if (rp > maxrp) rp = maxrp;
     return RoundToNearest(rp);
 }

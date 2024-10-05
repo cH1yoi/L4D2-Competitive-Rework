@@ -29,11 +29,7 @@ static char query_list[][] = {
 	"r_shadowwireframe",
 	"r_showenvcubemap",
 	"r_drawrenderboxes",
-	"r_modelwireframedecal",
-	"z_gun_vertical_punch",
-	"r_flashlightfov",
-	"mat_fullbright",
-	"cl_max_shadow_renderable_dist"
+	"r_modelwireframedecal"
 };
 
 static int query_index[MAXPLAYERS + 1];
@@ -69,7 +65,7 @@ public Action timer_query(Handle timer)
 		/* Only increments query index if the player
 		 * has responded to the last one. */
 		if (!query_failed[i]) {
-			if (++query_index[i] >= 11)
+			if (++query_index[i] >= 10)
 				query_index[i] = 0;
 		}
 
@@ -121,12 +117,12 @@ public void query_reply(QueryCookie cookie, int client, ConVarQueryResult result
 	 * 除了部分cvar （drawothermodels）以外，非0值为不合法的 */
 	if (StrEqual("r_drawothermodels", cvarName, false) && val == 1)
 		return;
-	else if (StrEqual("z_gun_vertical_punch", cvarName, false) && val == 1)
-		return;
-	else if (StrEqual("r_flashlightfov", cvarName, false)){
-		if(StringToFloat(cvarValue) == 53.0) return;}
-	else if (StrEqual("cl_max_shadow_renderable_dist", cvarName, false) && val == 3000)
-		return;
+	// else if (StrEqual("z_gun_vertical_punch", cvarName, false) && val == 1)
+	// 	return;
+	// else if (StrEqual("r_flashlightfov", cvarName, false)){
+	// 	if(StringToFloat(cvarValue) == 53.0) return;}
+	// else if (StrEqual("cl_max_shadow_renderable_dist", cvarName, false) && val == 3000)
+	// 	return;
 	else if (val == 0)
 		return;
 
