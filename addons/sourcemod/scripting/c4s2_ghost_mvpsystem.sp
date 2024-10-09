@@ -22,7 +22,7 @@ public Plugin myinfo =
 	name		= "C4S2 Ghost - MVP System",
 	author		= "Nepkey",
 	description = "幽灵模式附加插件 - MVP播报",
-	version		= "1.0 - 2024.9.29",
+	version		= "1.1 - 2024.10.8",
 	url			= "https://space.bilibili.com/436650372"
 };
 
@@ -151,7 +151,16 @@ public void OnPlayerKilled_Post(int victim, int attacker, const char[] weaponnam
 	}
 	if ((IsClientInSoilderEx(attacker) && IsClientInSoilderEx(victim)))
 	{
-		CPrintToChatAll("{blue}%N {green}误杀{blue} 队友 %N {green}。", attacker, victim);
+		if (attacker == victim || attacker > MaxClients)
+		{
+			char sname[32];
+			GetClientOriginalName(victim, sname, sizeof(sname));
+			CPrintToChatAll("{blue}%s {green}意外身亡。", sname);
+		}
+		else
+		{
+			CPrintToChatAll("{blue}%N {green}误杀{blue} 队友 %N {green}。", attacker, victim);
+		}
 	}
 }
 
@@ -172,7 +181,6 @@ public void C4S2Ghost_OnRoundEnd_Post()
 //此回调来自gamerule
 public void C4S2_OnGameover()
 {
-	CreateTimer(2.0, WipeData_Delay, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 //---------------------------------------------------------------
@@ -312,6 +320,7 @@ void PrintGameMVPAll()
 			CPrintToChatAll("{green}#%d {blue}%s {green}总分数：{blue}%d", i + 1, oname, g_iKillCount[client]);
 		}
 	}
+	CreateTimer(2.0, WipeData_Delay, _, TIMER_FLAG_NO_MAPCHANGE);
 }
 
 int SortByScore(int elem1, int elem2, const array[], Handle hndl)

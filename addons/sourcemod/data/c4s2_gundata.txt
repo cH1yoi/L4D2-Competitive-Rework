@@ -1,4 +1,4 @@
-"c4s2_shop"
+"c4s2_gundata"
 {
 	"weapon_pistol"
 	{
@@ -7,7 +7,6 @@
 		"bounce"	"300"
 		"ap"		"50.0"
 		"dmg"		"30"
-		"decline"	"80"
 		"class"		"pistol"
 	}
 	"weapon_pistol_magnum"
@@ -17,7 +16,6 @@
 		"bounce"	"300"
 		"ap"		"93.2"
 		"dmg"		"63"
-		"decline"	"85"
 		"class"		"pistol"
 	}
 	"weapon_smg"
@@ -27,7 +25,6 @@
 		"bounce"	"600"
 		"ap"		"60.0"
 		"dmg"		"27"
-		"decline"	"87"
 		"class"		"smg"
 	}
 	"weapon_smg_silenced"
@@ -37,7 +34,6 @@
 		"bounce"	"600"
 		"ap"		"65.0"
 		"dmg"		"27"
-		"decline"	"80"
 		"class"		"smg"
 	}
 	"weapon_smg_mp5"
@@ -47,7 +43,6 @@
 		"bounce"	"600"
 		"ap"		"70.0"
 		"dmg"		"27"
-		"decline"	"85"
 		"class"		"smg"
 	}
 	"weapon_rifle"
@@ -57,7 +52,6 @@
 		"bounce"	"300"
 		"ap"		"70.0"
 		"dmg"		"33"
-		"decline"	"97"
 		"class"		"rifle"
 	}
 	"weapon_rifle_ak47"
@@ -67,7 +61,6 @@
 		"bounce"	"300"
 		"ap"		"77.5"
 		"dmg"		"46"
-		"decline"	"98"
 		"class"		"rifle"
 	}
 	"weapon_rifle_desert"
@@ -77,7 +70,6 @@
 		"bounce"	"300"
 		"ap"		"90.0"
 		"dmg"		"28"
-		"decline"	"100"
 		"class"		"rifle"
 	}
 	"weapon_rifle_sg552"
@@ -87,7 +79,6 @@
 		"bounce"	"300"
 		"ap"		"100.0"
 		"dmg"		"30"
-		"decline"	"98"
 		"class"		"rifle"
 	}
 	"weapon_pumpshotgun"
@@ -96,8 +87,7 @@
 		"price" 	"1050"
 		"bounce"	"900"
 		"ap"		"50.0"
-		"dmg"		"14"
-		"decline"	"70"
+		"dmg"		"26"
 		"class"		"shotgun"
 	}
 	"weapon_shotgun_chrome"
@@ -106,8 +96,7 @@
 		"price" 	"1100"
 		"bounce"	"900"
 		"ap"		"50.0"
-		"dmg"		"15"
-		"decline"	"73"
+		"dmg"		"28"
 		"class"		"shotgun"
 	}
 	"weapon_autoshotgun"
@@ -117,7 +106,6 @@
 		"bounce"	"900"
 		"ap"		"75.0"
 		"dmg"		"10"
-		"decline"	"70"
 		"class"		"shotgun"
 	}
 	"weapon_shotgun_spas"
@@ -127,7 +115,6 @@
 		"bounce"	"900"
 		"ap"		"80.0"
 		"dmg"		"10"
-		"decline"	"70"
 		"class"		"shotgun"
 	}
 	"weapon_hunting_rifle"
@@ -137,7 +124,6 @@
 		"bounce"	"300"
 		"ap"		"82.5"
 		"dmg"		"70"
-		"decline"	"100"
 		"class"		"sniper"
 	}
 	"weapon_sniper_military"
@@ -147,7 +133,6 @@
 		"bounce"	"300"
 		"ap"		"82.5"
 		"dmg"		"65"
-		"decline"	"100"
 		"class"		"sniper"
 	}
 	"weapon_sniper_scout"
@@ -157,7 +142,6 @@
 		"bounce"	"300"
 		"ap"		"85.0"
 		"dmg"		"70"
-		"decline"	"100"
 		"class"		"sniper"
 	}
 	"weapon_sniper_awp"
@@ -167,7 +151,6 @@
 		"bounce"	"100"
 		"ap"		"97.5"
 		"dmg"		"115"
-		"decline"	"100"
 		"class"		"sniper"
 	}
 	"grenade_pipe_bomb"

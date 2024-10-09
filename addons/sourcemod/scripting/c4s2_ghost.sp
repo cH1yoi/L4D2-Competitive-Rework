@@ -35,6 +35,7 @@ enum struct WeaponData
 	float dmg;
 	float ap;
 	float decline;
+	char  showname[64];
 }
 
 public Plugin myinfo =
@@ -62,6 +63,7 @@ public void OnPluginStart()
 	CreateNative("GetGameState", Native_GetGameState);
 	CreateNative("GiveClientRandomWeapon", Native_GiveClientRandomWeapon);
 	CreateNative("GetClientOriginalName", Native_GetClientOriginalName);
+	CreateNative("GetWeaponData", Native_GetWeaponData);
 
 	//设置全局转发
 	g_hOnPlayerHurt_Pre	   = new GlobalForward("OnPlayerHurt_Pre", ET_Single, Param_Cell, Param_Cell, Param_Float);
@@ -141,6 +143,30 @@ any Native_GiveClientRandomWeapon(Handle plugin, int numParams)
 any Native_GetClientOriginalName(Handle plugin, int numParams)
 {
 	SetNativeString(2, g_sClientName[GetNativeCell(1)], GetNativeCell(2));
+}
+
+any Native_GetWeaponData(Handle plugin, int numParams)
+{
+	char searchin[128];
+	GetNativeString(1, searchin, sizeof(searchin));
+	int index = g_hGunData.FindString(searchin);
+	if (index > -1)
+	{
+		WeaponData WD;
+		g_hGunData.GetArray(index, WD);
+		// char info[64];
+		switch (GetNativeCell(2))
+		{
+			case 1:
+			{
+				SetNativeString(3, WD.name, GetNativeCell(4));
+			}
+			case 5:
+			{
+				SetNativeString(3, WD.showname, GetNativeCell(4));
+			}
+		}
+	}
 }
 
 //---------------------------------------------------------------
@@ -495,6 +521,7 @@ void LoadWeaponData()
 		WD.ap	   = hKeyValues.GetFloat("ap", 0.0);
 		WD.dmg	   = hKeyValues.GetFloat("dmg", 0.0);
 		WD.decline = hKeyValues.GetFloat("decline", 100.0);
+		hKeyValues.GetString("name", WD.showname, sizeof(WD.showname));
 		g_hGunData.PushArray(WD);
 	}
 	while (hKeyValues.GotoNextKey());

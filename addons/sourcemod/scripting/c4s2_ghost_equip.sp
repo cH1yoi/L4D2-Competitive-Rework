@@ -16,14 +16,15 @@ Handle hSDKGiveDefaultAmmo;
 bool   g_bPluginEnable;
 ConVar
 	g_hAttackSpeed,
-	g_hRandommelee;
-	
+	g_hRandommelee,
+	g_hSpecialItems;
+
 public Plugin myinfo =
 {
 	name		= "C4S2 Ghost - Equips",
 	author		= "Nepkey",
 	description = "幽灵模式附加插件 - 玩家装备",
-	version		= "1.0 - 2024.9.29",
+	version		= "1.1 - 2024.10.8",
 	url			= "https://space.bilibili.com/436650372"
 };
 
@@ -33,8 +34,9 @@ public Plugin myinfo =
 public void OnPluginStart()
 {
 	InitSDKCall();
-	g_hAttackSpeed = CreateConVar("c4s2_ghost_attackspeed", "1.6");
-	g_hRandommelee = CreateConVar("c4s2_ghost_random_melee", "0");
+	g_hAttackSpeed	= CreateConVar("c4s2_ghost_attackspeed", "1.6");
+	g_hRandommelee	= CreateConVar("c4s2_ghost_random_melee", "0");
+	g_hSpecialItems = CreateConVar("c4s2_ghost_special_items", "0");
 }
 
 public void OnAllPluginsLoaded()
@@ -72,6 +74,10 @@ public void OnPlayerSpawn_Post(int client, bool gamestart)
 		{
 			GiveClientRandomWeapon(client);
 			SDKCall(hSDKGiveDefaultAmmo, 0, client);
+			if (g_hSpecialItems.BoolValue)
+			{
+				GetRandomItem(client);
+			}
 		}
 		int weapon1 = GetPlayerWeaponSlot(client, 3);
 		int weapon2 = GetPlayerWeaponSlot(client, 4);
@@ -100,7 +106,7 @@ public void OnClientPutInServer(int client)
 void PostThinkPost_CallBack(int client)
 {
 	if (!g_bPluginEnable) return;
-	SetFlashlightState(client, false);
+	// SetFlashlightState(client, false);
 	if (IsClientInGhost(client) && IsPlayerAlive(client))
 	{
 		int buttons = GetClientButtons(client);
@@ -116,6 +122,13 @@ Action WeaponCanUse_CallBack(int client, int weapon)
 	if (!g_bPluginEnable) return Plugin_Continue;
 	char sname[64];
 	GetEntityClassname(weapon, sname, sizeof(sname));
+	if (IsClientInSoldier(client))
+	{
+		if (StrContains(sname, "vomitjar") > -1 || StrContains(sname, "pipe_bomb") > -1)
+		{
+			return g_hSpecialItems.BoolValue ? Plugin_Continue : Plugin_Handled;
+		}
+	}
 	if (IsClientInGhost(client))
 	{
 		if (StrContains(sname, "melee") > -1)
@@ -223,5 +236,29 @@ void CreateMelee(int client)
 		TeleportEntity(weapon, pos);
 		SetVariantString("!activator");
 		AcceptEntityInput(weapon, "use", client);
+	}
+}
+
+void GetRandomItem(int client)
+{
+	int percent = GetRandomInt(0, 2);
+	switch (percent)
+	{
+		case 0:
+			GetItem(client, "weapon_pipe_bomb");
+		case 1:
+			GetItem(client, "weapon_vomitjar");
+			// case 2:
+			// case2表示没有道具
+	}
+}
+
+void GetItem(int client, const char[] weaponname)
+{
+	int weaponent = CreateEntityByName(weaponname);
+	if (weaponent > 0)
+	{
+		DispatchSpawn(weaponent);
+		EquipPlayerWeapon(client, weaponent);
 	}
 }

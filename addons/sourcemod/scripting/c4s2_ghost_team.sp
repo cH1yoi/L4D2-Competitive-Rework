@@ -50,15 +50,15 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_start", Callvote);
 	RegConsoleCmd("sm_jg", JG_CMD);
 	RegServerCmd("c4s2_respawn_repetitive", Repetitive_CMD);
-	AddCommandListener(OverRide_ObserveTarget, "spec_next");
-	AddCommandListener(OverRide_ObserveTarget, "spec_prev");
+	// AddCommandListener(OverRide_ObserveTarget, "spec_next");
+	// AddCommandListener(OverRide_ObserveTarget, "spec_prev");
 	AddCommandListener(AFK_CMD, "go_away_from_keyboard");
 
 	SetConVarInt(FindConVar("director_afk_timeout"), 999999);
 	g_hMaxPlayer = CreateConVar("c4s2_ghost_max_players", "10");
 
 	CreateTimer(1.0, DrawPlayersToPanel, _, TIMER_REPEAT);
-	HookEvent("player_death", PlayerDeath_Event);
+	// HookEvent("player_death", PlayerDeath_Event);
 }
 
 public void OnAllPluginsLoaded()
@@ -271,7 +271,7 @@ Action DrawPlayersToPanel(Handle timer)
 		{
 			char sname[128];
 			GetClientName(i, sname, sizeof(sname));
-			DrawPanelItem(g_hPanel, sname);
+			DrawPanelText(g_hPanel, sname);
 		}
 	}
 	DrawPanelText(g_hPanel, "---------------------------------");

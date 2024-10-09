@@ -14,14 +14,15 @@ ConVar
 	g_hGhostAttackSpeed,
 	g_hGhostBuff,
 	g_hGhostRun,
-	g_hRandommelee;
+	g_hRandommelee,
+	g_hSepcialItems;
 
 public Plugin myinfo =
 {
 	name		= "C4S2 Ghost - Votes",
 	author		= "Nepkey",
 	description = "幽灵模式附加插件 - 投票系统。",
-	version		= "1.0 - 2024.9.29",
+	version		= "1.1 - 2024.10.8",
 	url			= "https://space.bilibili.com/436650372"
 };
 
@@ -32,6 +33,7 @@ public void OnAllPluginsLoaded()
 	g_hGhostBuff		= FindConVar("c4s2_ghost_vampirism");
 	g_hGhostRun			= FindConVar("c4s2_ghost_run_stealth");
 	g_hRandommelee		= FindConVar("c4s2_ghost_random_melee");
+	g_hSepcialItems		= FindConVar("c4s2_ghost_special_items");
 }
 
 public void OnLibraryAdded(const char[] name)
@@ -70,6 +72,8 @@ void GhostVoteMenu(int client)
 	menu.AddItem("4", iteam);
 	Format(iteam, sizeof(iteam), "%s", g_hRandommelee.BoolValue ? "禁用幽灵随机近战" : "启用幽灵随机近战");
 	menu.AddItem("5", iteam);
+	Format(iteam, sizeof(iteam), "%s", g_hSepcialItems.BoolValue ? "禁用人类特殊道具" : "启用人类特殊道具");
+	menu.AddItem("6", iteam);
 	menu.ExitBackButton = true;
 	menu.Display(client, MENU_TIME_FOREVER);
 	return;
@@ -99,6 +103,8 @@ public int GhostVoteMenuHandler(Menu menu, MenuAction action, int iClient, int p
 					ChangeGhostRun(iClient);
 				case 5:
 					ChangeGhostRandomMelee(iClient);
+				case 6:
+					ChangeHumanSpecialItems(iClient);
 			}
 		}
 	}
@@ -283,6 +289,30 @@ void ChangeGhostRandomMelee(int client)
 		Format(g_sBuffer[1], 128, "已启用幽灵随机近战。");
 		char title[128];
 		Format(title, sizeof(title), "%s: 启用幽灵随机近战?", oname);
+		s_CallVote(client, title, VoteResult);
+	}
+}
+
+// --------------------------
+
+void ChangeHumanSpecialItems(int client)
+{
+	char oname[128];
+	GetClientOriginalName(client, oname, sizeof(oname));
+	if (g_hRandommelee.BoolValue)
+	{
+		Format(g_sBuffer[0], 128, "c4s2_ghost_special_items 0");
+		Format(g_sBuffer[1], 128, "已禁用人类特殊道具。");
+		char title[128];
+		Format(title, sizeof(title), "%s: 禁用人类特殊道具?", oname);
+		s_CallVote(client, title, VoteResult);
+	}
+	else
+	{
+		Format(g_sBuffer[0], 128, "c4s2_ghost_special_items 1");
+		Format(g_sBuffer[1], 128, "已启用人类特殊道具。回合开始后人类会获得减速弹、探测地雷或无道具。");
+		char title[128];
+		Format(title, sizeof(title), "%s: 启用人类特殊道具?", oname);
 		s_CallVote(client, title, VoteResult);
 	}
 }

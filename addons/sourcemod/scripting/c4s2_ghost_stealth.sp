@@ -12,20 +12,20 @@ char	  g_sHeartBeat[] = "player/heartbeatloop.wav";
 ArrayList g_hGhostTeam_st;
 bool
 	g_bPluginEnable,
-	g_bHasHeartBeat[MAXPLAYERS + 1],
 	g_bTotallyTtealth[MAXPLAYERS + 1],
 	g_bSustainShow[MAXPLAYERS + 1];
 ConVar
 	g_hGhostStealth,
 	g_hGhostBuff,
 	g_hGhostRun;
+int g_iHeartbeatType[MAXPLAYERS + 1];
 
 public Plugin myinfo =
 {
 	name		= "C4S2 Ghost - Ghost Stealth",
 	author		= "Nepkey",
-	description = "幽灵模式附加插件 - 幽灵隐身模块。",
-	version		= "1.0 - 2024.9.29",
+	description = "幽灵模式附加插件 - 幽灵隐身模块",
+	version		= "1.1 - 2024.10.8",
 	url			= "https://space.bilibili.com/436650372"
 };
 
@@ -96,7 +96,7 @@ public void OnPlayerSpawn_Post(int client, bool gamestart)
 	}
 	if (gamestart)
 	{
-		g_bHasHeartBeat[client]	  = false;
+		g_iHeartbeatType[client]  = 0;
 		g_bTotallyTtealth[client] = false;
 		g_bSustainShow[client]	  = false;
 		if (IsClientInGhost(client))
@@ -150,7 +150,7 @@ void PostThinkPost_CallBack(int client)
 	if (!g_bPluginEnable) return;
 	SetGhostHeartBeat(client);
 	SetGhostStealth(client);
-	SetSurvivorCalm(client);
+	// SetSurvivorCalm(client);
 }
 
 Action OnTransmit(int iEntity, int iClient)
@@ -285,24 +285,37 @@ void SetGhostHeartBeat(int client)
 		GetEntPropVector(client, Prop_Data, "m_vecVelocity", vecSpeed);
 		float speed = GetVectorLength(vecSpeed);
 		//重复三次停止播放，很蠢，但很有效果
-		if ((!IsPlayerAlive(client)) && g_bHasHeartBeat[client])
+		if (((!IsPlayerAlive(client)) || speed == 0) && g_iHeartbeatType[client] != 0)
 		{
-			g_bHasHeartBeat[client] = false;
+			g_iHeartbeatType[client] = 0;
 			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
 			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
 			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+			return;
 		}
-		else if (speed < 110 && g_bHasHeartBeat[client] && (GetEntityFlags(client) & FL_ONGROUND))
+		else if (0 < speed < 110 && (GetEntityFlags(client) & FL_ONGROUND) && (GetClientButtons(client) & IN_SPEED))
 		{
-			g_bHasHeartBeat[client] = false;
-			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
-			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
-			EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+			if (g_iHeartbeatType[client] != 1)
+			{
+				g_iHeartbeatType[client] = 1;
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, .vol = 0.2);
+			}
+			return;
 		}
-		else if (speed > 220 && !g_bHasHeartBeat[client] && IsPlayerAlive(client) && (GetEntityFlags(client) & FL_ONGROUND))
+		else if (speed > 0 && IsPlayerAlive(client) && (GetEntityFlags(client) & FL_ONGROUND))
 		{
-			g_bHasHeartBeat[client] = true;
-			EmitAmbientSound(g_sHeartBeat, pos, client, .vol = 1.0);
+			if (g_iHeartbeatType[client] != 2)
+			{
+				g_iHeartbeatType[client] = 2;
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, SNDLEVEL_NORMAL, SND_STOPLOOPING, 0.0);
+				EmitAmbientSound(g_sHeartBeat, pos, client, .vol = 1.0);
+			}
+			return;
 		}
 	}
 }
@@ -341,6 +354,7 @@ void SetGhostStealth(int client)
 }
 
 //额外内容。使生还者始终处于冷静状态，便于听脚步。
+/*
 void SetSurvivorCalm(int client)
 {
 	if (!IsClientInGame(client)) return;
@@ -350,13 +364,14 @@ void SetSurvivorCalm(int client)
 		SetEntProp(client, Prop_Send, "m_isCalm", 1);
 	}
 }
+*/
 
 int AlphaPersent(int client)
 {
 	float vecSpeed[3];
 	GetEntPropVector(client, Prop_Data, "m_vecVelocity", vecSpeed);
 	float speed = GetVectorLength(vecSpeed);
-	if (speed <= 110 || (g_hGhostRun.BoolValue && speed >= 220))
+	if (speed <= 110 || (g_hGhostRun.BoolValue))
 	{
 		return 0;
 	}
@@ -380,13 +395,18 @@ void UpdateViewEffect(int client, int alpha)
 
 void SetGhostThirdStealth(int client, int alpha)
 {
+	int clientflags = GetEntProp(client, Prop_Send, "m_fEffects");
+	int flagsshow	= clientflags & ~32;
+	int flagshide	= clientflags | 32;
 	if (g_bSustainShow[client])
 	{
 		SetEntityRenderColor(client, 255, 0, 0, 255);
+		SetEntProp(client, Prop_Send, "m_fEffects", flagsshow);
 	}
 	else if (GetEntityFlags(client) & FL_ONGROUND)
 	{
 		SetEntityRenderColor(client, 255, 0, 0, alpha);
+		SetEntProp(client, Prop_Send, "m_fEffects", alpha > 0 ? flagsshow : flagshide);
 	}
 	SetEntProp(client, Prop_Send, "m_iAddonBits", 0);
 	int weapon = GetPlayerWeaponSlot(client, 1);

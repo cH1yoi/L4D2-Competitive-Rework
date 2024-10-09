@@ -91,7 +91,7 @@ void NextFrame_EntityCheck(int entity)
 	{
 		return;
 	}
-	if (entity != g_iPlayerScream[client])
+	if (entity > MAXPLAYERS || entity != g_iPlayerScream[client])
 	{
 		AcceptEntityInput(entity, "Kill");
 	}
