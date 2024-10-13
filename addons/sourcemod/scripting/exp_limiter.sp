@@ -11,11 +11,10 @@ bool isFamilyShared[MAXPLAYERS];
 
 public void OnPluginStart(){
     CreateTimer(2.0, Timer_CheckAllPlayer);
-    enable = CreateConVar("exp_limit_enabled", "1");
+    enable = CreateConVar("exp_limit_enabled", "0");
     min = CreateConVar("exp_limit_min", "75");
     max = CreateConVar("exp_limit_max", "7355608");
     sharedmin = CreateConVar("exp_limit_min_fs", "1350");
-    RegConsoleCmd("sm_exp", CMD_Exp);
 }
 
 public Action Timer_CheckAllPlayer(Handle timer){
