@@ -163,5 +163,9 @@
 		{
 			"name" "幽灵模式"
 		}
-	}
+	    "zonemod8v8(测试)"
+		{
+			"name" "ZoneMod 8v8"
+		}
+    }
 }
