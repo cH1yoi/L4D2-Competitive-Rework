@@ -2,9 +2,9 @@
 #pragma newdecls required
 
 #define PLUGIN_NAME				"L4D2 Map vote"
-#define PLUGIN_AUTHOR			"fdxx, sorallll"
+#define PLUGIN_AUTHOR			"fdxx, sorallll, HatsuneImagine"
 #define PLUGIN_DESCRIPTION		""
-#define PLUGIN_VERSION			"0.9"
+#define PLUGIN_VERSION			"1.1"
 #define PLUGIN_URL				""
 
 #define TRANSLATION_MISSIONS	"missions.phrases.txt"
@@ -61,7 +61,7 @@ int
 	g_iType[MAXPLAYERS + 1],
 	g_iPos[MAXPLAYERS + 1][2];
 
-static const char
+char
 	g_sLangCode[][] = {
 		"en",
 		"chi"
@@ -100,10 +100,10 @@ public void OnPluginStart() {
 	loc.Delegate_InitCompleted(OnPhrasesReady);
 
 	CreateConVar("l4d2_map_vote_version", PLUGIN_VERSION, "L4D2 Map vote plugin version.", FCVAR_NOTIFY|FCVAR_DONTRECORD);
-	g_cvNotifyMapNext =	CreateConVar("notify_map_next", "0", "终局开始后提示投票下一张地图的方式. \n0=不提示, 1=聊天栏, 2=屏幕中央, 4=弹出菜单.", FCVAR_NOTIFY);
+	g_cvNotifyMapNext =	CreateConVar("notify_map_next", "1", "终局开始后提示投票下一张地图的方式. \n0=不提示, 1=聊天栏, 2=屏幕中央, 4=弹出菜单.", FCVAR_NOTIFY);
 	g_cvNotifyMapNext.AddChangeHook(CvarChanged);
 
-	AutoExecConfig(true, "l4d2_map_vote");//生成指定文件名的CFG.
+	//AutoExecConfig(true);
 
 	g_cvMPGameMode = FindConVar("mp_gamemode");
 	g_cvMPGameMode.AddChangeHook(CvarChanged_Mode);
@@ -111,13 +111,13 @@ public void OnPluginStart() {
 	RegConsoleCmd("sm_v3", 		cmdMapVote);
 	RegConsoleCmd("sm_maps", 	cmdMapVote);
 	RegConsoleCmd("sm_chmap", 	cmdMapVote);
-	RegConsoleCmd("sm_mapvote",	cmdMapVote);
+	RegConsoleCmd("sm_vmap",	cmdMapVote);
 	RegConsoleCmd("sm_votemap",	cmdMapVote);
 
+	RegConsoleCmd("sm_mapvote",		cmdMapNext);
 	RegConsoleCmd("sm_mapnext",		cmdMapNext);
 	RegConsoleCmd("sm_votenext",	cmdMapNext);
 
-	RegAdminCmd("sm_vpk",				cmdReload,		ADMFLAG_ROOT);
 	RegAdminCmd("sm_reload_vpk",		cmdReload,		ADMFLAG_ROOT);
 	RegAdminCmd("sm_update_vpk",		cmdReload,		ADMFLAG_ROOT);
 	//RegAdminCmd("sm_missions_reload",	cmdReload,		ADMFLAG_ROOT);
@@ -152,7 +152,7 @@ public void OnPhrasesReady() {
 	SourceKeyValues kvMissions = SDKCall(g_hSDK_GetAllMissions, g_pMatchExtL4D);
 	for (kvMissions = kvMissions.GetFirstTrueSubKey(); !kvMissions.IsNull(); kvMissions = kvMissions.GetNextTrueSubKey()) {
 		kvMissions.GetName(phrase, sizeof phrase);
-		if (g_smExclude.GetValue(phrase, value))
+		if (g_smExclude.ContainsKey(phrase))
 			continue;
 
 		kvModes = kvMissions.FindKey("modes");
@@ -346,23 +346,19 @@ void Event_RoundStart(Event event, const char[] name, bool dontBroadcast) {
 	g_bOnce = false;
 }
 
-void OnFinaleStart(const char[] output, int caller, int activator, float delay) 
-{
-	if (!g_bOnce && L4D_IsMissionFinalMap()) 
-	{
+void OnFinaleStart(const char[] output, int caller, int activator, float delay) {
+	if (!g_bOnce && L4D_IsMissionFinalMap()) {
 		g_bOnce = true;
 
-		// if (g_iNotifyMapNext & NOTIFY_CHAT)
-		// 	PrintToChatAll("\x04[提示]\x05聊天栏输入\x03!mapnext\x05投票预选下一张地图\x04.");
+		if (g_iNotifyMapNext & NOTIFY_CHAT)
+			PrintToChatAll("\x01聊天栏输入 \x05!mapnext \x01投票下一张地图.");
 
 		if (g_iNotifyMapNext & NOTIFY_HINT)
-			PrintHintTextToAll("喵~!快结束哩!");
+			PrintHintTextToAll("聊天栏输入 !mapnext 投票下一张地图");
 
-		if (g_iNotifyMapNext & NOTIFY_MENU) 
-		{
+		if (g_iNotifyMapNext & NOTIFY_MENU) {
 			int team;
-			for (int i = 1; i <= MaxClients; i++) 
-			{
+			for (int i = 1; i <= MaxClients; i++) {
 				if (IsClientInGame(i) && !IsFakeClient(i) && ((team = GetClientTeam(i)) == 2) || team == 3)
 					cmdMapNext(i, 0);
 			}
@@ -383,11 +379,11 @@ public void OnConfigsExecuted() {
 	GetCvars();
 	GetCvars_Mode();
 
-	static bool shit;
-	if (shit)
+	static bool val;
+	if (val)
 		return;
 
-	shit = true;
+	val = true;
 	SetFirstMapString();
 }
 
@@ -421,7 +417,7 @@ Action cmdReload(int client, int args) {
 	OnPhrasesReady();
 	SetFirstMapString();
 
-	ReplyToCommand(client, "[提示]已更新VPK文件.");
+	ReplyToCommand(client, "更新VPK文件");
 	return Plugin_Handled;
 }
 
@@ -463,7 +459,7 @@ Action cmdMapNext(int client, int args) {
 	menu.SetTitle("选择下一张地图:");
 	menu.AddItem("", "官方地图");
 	menu.AddItem("", "三方地图");
-	menu.Display(client, 30);
+	menu.Display(client, MENU_TIME_FOREVER);
 	return Plugin_Handled;
 }
 
@@ -485,7 +481,6 @@ int MapNext_MenuHandler(Menu menu, MenuAction action, int client, int param2) {
 }
 
 void ShowNextMap(int client) {
-	int shit;
 	char title[64];
 	char buffer[64];
 	Menu menu = new Menu(ShowNextMap_MenuHandler);
@@ -494,19 +489,20 @@ void ShowNextMap(int client) {
 	SourceKeyValues kvMissions = SDKCall(g_hSDK_GetAllMissions, g_pMatchExtL4D);
 	for (SourceKeyValues kvSub = kvMissions.GetFirstTrueSubKey(); !kvSub.IsNull(); kvSub = kvSub.GetNextTrueSubKey()) {
 		kvSub.GetName(title, sizeof title);
-		if (g_smExclude.GetValue(title, shit))
+		if (g_smExclude.ContainsKey(title))
 			continue;
 
 		FormatEx(buffer, sizeof buffer, "modes/%s", g_sMode);
 		if (kvSub.FindKey(buffer).IsNull())
 			continue;
 
-		shit = kvSub.GetInt("builtin");
-		if (shit && g_iType[client] == 0) {
+		int val;
+		val = kvSub.GetInt("builtin");
+		if (val && g_iType[client] == 0) {
 			fmt_Translate(title, buffer, sizeof buffer, client, title);
 			menu.AddItem(title, buffer);
 		}
-		else if (!shit && g_iType[client] == 1) {
+		else if (!val && g_iType[client] == 1) {
 			fmt_Translate(title, buffer, sizeof buffer, client, title);
 			menu.AddItem(title, buffer);
 		}
@@ -577,7 +573,8 @@ void VoteNextMap(int client, const char[] item) {
 	vote.SetInfo(buffer);
 
 	int team;
-	int clients[1];
+	int playerCount = 0;
+	int[] clients = new int[MaxClients];
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsClientInGame(i) || IsFakeClient(i) || (team = GetClientTeam(i)) < 2 || team > 3)
 			continue;
@@ -585,9 +582,9 @@ void VoteNextMap(int client, const char[] item) {
 		fmt_Translate(item, buffer, sizeof buffer, i, item);
 		vote.SetTitle("设置下一张地图为: %s", buffer);
 
-		clients[0] = i;
-		vote.DisplayVote(clients, 1, 20);
+		clients[playerCount++] = i;
 	}
+	vote.DisplayVote(clients, playerCount, 20);
 }
 
 void NextMap_Handler(L4D2NativeVote vote, VoteAction action, int param1, int param2) {
@@ -610,7 +607,7 @@ void NextMap_Handler(L4D2NativeVote vote, VoteAction action, int param1, int par
 			CPrintToChatAll("{blue}%N {default}已投票", param1);
 
 		case VoteAction_End: {
-			if (vote.YesCount > vote.PlayerCount / 2) {
+			if (vote.YesCount > vote.NoCount) {
 				vote.SetPass("设置中...");
 
 				char buffer[128];
@@ -648,7 +645,7 @@ Action cmdMapVote(int client, int args) {
 	menu.SetTitle("选择地图类型:");
 	menu.AddItem("", "官方地图");
 	menu.AddItem("", "三方地图");
-	menu.Display(client, 30);
+	menu.Display(client, MENU_TIME_FOREVER);
 	return Plugin_Handled;
 }
 
@@ -670,7 +667,6 @@ int MapVote_MenuHandler(Menu menu, MenuAction action, int client, int param2) {
 }
 
 void ShowVoteMap(int client) {
-	int shit;
 	char title[64];
 	char buffer[64];
 	Menu menu = new Menu(ShowVoteMap_MenuHandler);
@@ -679,19 +675,20 @@ void ShowVoteMap(int client) {
 	SourceKeyValues kvMissions = SDKCall(g_hSDK_GetAllMissions, g_pMatchExtL4D);
 	for (SourceKeyValues kvSub = kvMissions.GetFirstTrueSubKey(); !kvSub.IsNull(); kvSub = kvSub.GetNextTrueSubKey()) {
 		kvSub.GetName(title, sizeof title);
-		if (g_smExclude.GetValue(title, shit))
+		if (g_smExclude.ContainsKey(title))
 			continue;
 
 		FormatEx(buffer, sizeof buffer, "modes/%s", g_sMode);
 		if (kvSub.FindKey(buffer).IsNull())
 			continue;
-
-		shit = kvSub.GetInt("builtin");
-		if (shit && g_iType[client] == 0) {
+		
+		int val;
+		val = kvSub.GetInt("builtin");
+		if (val && g_iType[client] == 0) {
 			fmt_Translate(title, buffer, sizeof buffer, client, title);
 			menu.AddItem(title, buffer);
 		}
-		else if (!shit && g_iType[client] == 1) {
+		else if (!val && g_iType[client] == 1) {
 			fmt_Translate(title, buffer, sizeof buffer, client, title);
 			menu.AddItem(title, buffer);
 		}
@@ -754,7 +751,7 @@ void ShowChaptersMenu(int client, const char[] item) {
 		PrintToChat(client, "无有效的章节地图存在");
 
 	menu.ExitBackButton = true;
-	menu.Display(client, 30);
+	menu.Display(client, MENU_TIME_FOREVER);
 }
 
 int Chapters_MenuHandler(Menu menu, MenuAction action, int client, int param2) {
@@ -791,7 +788,8 @@ void VoteChangeMap(int client, const char[] item) {
 	ExplodeString(item, "//", info, sizeof info, sizeof info[]);
 
 	int team;
-	int clients[1];
+	int playerCount = 0;
+	int[] clients = new int[MaxClients];
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsClientInGame(i) || IsFakeClient(i) || (team = GetClientTeam(i)) < 2 || team > 3)
 			continue;
@@ -800,9 +798,9 @@ void VoteChangeMap(int client, const char[] item) {
 		fmt_Translate(info[1], info[1], sizeof info[], i, info[1]);
 		vote.SetTitle("更换地图: %s (%s)", info[0], info[1]);
 
-		clients[0] = i;
-		vote.DisplayVote(clients, 1, 20);
+		clients[playerCount++] = i;
 	}
+	vote.DisplayVote(clients, playerCount, 20);
 }
 
 void ChangeMap_Handler(L4D2NativeVote vote, VoteAction action, int param1, int param2) {
@@ -826,7 +824,7 @@ void ChangeMap_Handler(L4D2NativeVote vote, VoteAction action, int param1, int p
 			CPrintToChatAll("{blue}%N {default}已投票", param1);
 
 		case VoteAction_End: {
-			if (vote.YesCount > vote.PlayerCount / 2) {
+			if (vote.YesCount > vote.NoCount) {
 				vote.SetPass("加载中...");
 
 				char buffer[128];
