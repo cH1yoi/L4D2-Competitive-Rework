@@ -11,7 +11,13 @@ public void OnPluginStart()
     RegConsoleCmd("sm_exp", CMD_Exp);
 }
 
-public void OnRoundIsLive(){
+// 加个牛马计数器
+public void OnRoundIsLive()
+{
+    CreateTimer(3.0, Timer_DelayedRoundIsLive);
+}
+
+public Action Timer_DelayedRoundIsLive(Handle timer){
     int surs, infs;
     int surc, infc;
     int suravg2, infavg2;
@@ -46,7 +52,10 @@ public void OnRoundIsLive(){
     CPrintToChatAll("[{green}EXP{default}] {red}感染者: %i{default} (平均 %i / 标准差 %i)", infs, infs/infc, infavg2);
     CPrintToChatAll("{default}使用{green} !exp{default} 查看每个人的经验分");
     
+    return Plugin_Handled;
+
 }
+
 public Action CMD_Exp(int client, int args){
     int surs, infs;
     int surc, infc;
