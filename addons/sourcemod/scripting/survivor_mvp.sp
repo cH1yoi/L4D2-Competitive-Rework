@@ -129,15 +129,15 @@ public Action showMvpHandler(int client, int args)
 	}
 
 	if (GetClientTeam(client) == TEAM_SPECTATOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 1)) {
-		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向旁观者显示");
+		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向旁观者显示");
 		return Plugin_Handled;
 	}
 	else if (GetClientTeam(client) == TEAM_SURVIVOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 2)) {
-		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向生还者显示");
+		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向生还者显示");
 		return Plugin_Handled;
 	}
 	else if (GetClientTeam(client) == TEAM_INFECTED && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 3)) {
-		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向感染者显示");
+		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向感染者显示");
 		return Plugin_Handled;
 	}
 	printMvpStatus(client);
@@ -207,7 +207,7 @@ public void roundStartHandler(Event event, const char[] name, bool dontBroadcast
 public void missionLostHandler(Event event, const char[] name, bool dontBroadcast)
 {
 	if (g_hAllowShowFailCount.BoolValue) {
-		CPrintToChatAll("{bule}[{default}提示{bule}]: {default}这是你们第 {olive}%d {default}次团灭，请继续努力哦 (*･ω< )", ++failCount);
+		CPrintToChatAll("{blue}[{default}提示{blue}]: {default}这是你们第 {olive}%d {default}次团灭，请继续努力哦 (*･ω< )", ++failCount);
 	}
 
 	if (!g_hAllowShowMvp.BoolValue || g_bHasPrint) {
@@ -370,7 +370,7 @@ void printParticularMvp(int client) {
 	char clientName[MAX_NAME_LENGTH], buffer[512], temp[256];
 	// 允许显示 SI MVP
 	if (g_hAllowShowSi.BoolValue) {
-		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] SI: ");
+		FormatEx(buffer, sizeof(buffer), "{blue}[{default}MVP{blue}] SI: ");
 		if (!IsValidClient(siMvpClient) || siTotal <= 0) {
 			StrCat(buffer, sizeof(buffer), "{olive}本局还没有击杀任何特感");
 		} else {
@@ -379,14 +379,14 @@ void printParticularMvp(int client) {
 
 			dmgPercent = RoundToNearest(float(playerInfos[siMvpClient].totalDamage) / float(dmgTotal) * 100.0);
 			killPercent = RoundToNearest(float(playerInfos[siMvpClient].siCount) / float(siTotal) * 100.0);
-			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}伤害 {bule}[{default}%d%%{bule}]{default}, %d {olive}击杀 {bule}[{default}%d%%{bule}])", clientName, playerInfos[siMvpClient].totalDamage, dmgPercent, playerInfos[siMvpClient].siCount, killPercent);
+			FormatEx(temp, sizeof(temp), "{green}%s {blue}({default}%d {olive}伤害 {blue}[{default}%d%%{blue}]{default}, %d {olive}击杀 {blue}[{default}%d%%{blue}])", clientName, playerInfos[siMvpClient].totalDamage, dmgPercent, playerInfos[siMvpClient].siCount, killPercent);
 			StrCat(buffer, sizeof(buffer), temp);
 		}
 		CPrintToChat(client, "%s", buffer);
 	}
 	// 允许显示 CI MVP
 	if (g_hAllowShowCi.BoolValue) {
-		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] CI: ");
+		FormatEx(buffer, sizeof(buffer), "{blue}[{default}MVP{blue}] CI: ");
 		if (!IsValidClient(ciMvpClient) || ciTotal <= 0) {
 			StrCat(buffer, sizeof(buffer), "{olive}本局还没有击杀任何丧尸");
 		} else {
@@ -394,14 +394,14 @@ void printParticularMvp(int client) {
 			formatMvpClientName(ciMvpClient, clientName, sizeof(clientName));
 
 			killPercent = RoundToNearest(float(playerInfos[ciMvpClient].ciCount) / float(ciTotal) * 100.0);
-			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}丧尸 {bule}[{default}%d%%{bule}])", clientName, playerInfos[ciMvpClient].ciCount, killPercent);
+			FormatEx(temp, sizeof(temp), "{green}%s {blue}({default}%d {olive}丧尸 {blue}[{default}%d%%{blue}])", clientName, playerInfos[ciMvpClient].ciCount, killPercent);
 			StrCat(buffer, sizeof(buffer), temp);
 		}
 		CPrintToChat(client, "%s", buffer);
 	}
 	// 允许显示 FF MVP
 	if (g_hAllowShowFF.BoolValue) {
-		FormatEx(buffer, sizeof(buffer), "{bule}[{default}LVP{bule}] FF: ");
+		FormatEx(buffer, sizeof(buffer), "{blue}[{default}LVP{blue}] FF: ");
 		if (!IsValidClient(ffMvpClient) || ffTotal <= 0) {
 			StrCat(buffer, sizeof(buffer), "{olive}大家都没有黑枪");
 		} else {
@@ -409,13 +409,13 @@ void printParticularMvp(int client) {
 			formatMvpClientName(ffMvpClient, clientName, sizeof(clientName));
 
 			killPercent = RoundToNearest(float(playerInfos[ffMvpClient].ffCount) / float(ffTotal) * 100.0);
-			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}友伤 {bule}[{default}%d%%{bule}])", clientName, playerInfos[ffMvpClient].ffCount, killPercent);
+			FormatEx(temp, sizeof(temp), "{green}%s {blue}({default}%d {olive}友伤 {blue}[{default}%d%%{blue}])", clientName, playerInfos[ffMvpClient].ffCount, killPercent);
 			StrCat(buffer, sizeof(buffer), temp);
 		}
 		CPrintToChat(client, "%s", buffer);
 
 		// 被黑 MVP
-		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] FF Receive: ");
+		FormatEx(buffer, sizeof(buffer), "{blue}[{default}MVP{blue}] FF Receive: ");
 		if (!IsValidClient(gotFFMvpClient) || gotFFTotal <= 0) {
 			StrCat(buffer, sizeof(buffer), "{olive}暂时没有倒霉蛋被黑得最惨");
 		} else {
@@ -423,7 +423,7 @@ void printParticularMvp(int client) {
 			formatMvpClientName(gotFFMvpClient, clientName, sizeof(clientName));
 
 			killPercent = RoundToNearest(float(playerInfos[gotFFMvpClient].gotFFCount) / float(gotFFTotal) * 100.0);
-			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}被黑 {bule}[{default}%d%%{bule}])", clientName, playerInfos[gotFFMvpClient].gotFFCount, killPercent);
+			FormatEx(temp, sizeof(temp), "{green}%s {blue}({default}%d {olive}被黑 {blue}[{default}%d%%{blue}])", clientName, playerInfos[gotFFMvpClient].gotFFCount, killPercent);
 			StrCat(buffer, sizeof(buffer), temp);
 		}
 		CPrintToChat(client, "%s", buffer);
@@ -466,7 +466,7 @@ void printParticularMvp(int client) {
 			}
 
 			killPercent = RoundToNearest(float(playerInfos[client].ciCount) / float(ciTotal) * 100.0);
-			FormatEx(buffer, sizeof(buffer), "{bule}你的排名 {olive}CI: {green}#%d {bule}({default}%d {olive}击杀 {bule}[{default}%d%%{bule}])", rank, playerInfos[client].ciCount, killPercent);
+			FormatEx(buffer, sizeof(buffer), "{blue}你的排名 {olive}CI: {green}#%d {blue}({default}%d {olive}击杀 {blue}[{default}%d%%{blue}])", rank, playerInfos[client].ciCount, killPercent);
 		} else {
 			// 没有特感击杀, 不显示特感排名
 			if (siTotal <= 0) {
@@ -484,7 +484,7 @@ void printParticularMvp(int client) {
 
 			dmgPercent = RoundToNearest(float(playerInfos[client].totalDamage) / float(dmgTotal) * 100.0);
 			killPercent = RoundToNearest(float(playerInfos[client].siCount) / float(siTotal) * 100.0);
-			FormatEx(buffer, sizeof(buffer), "{bule}你的排名 {olive}SI: {green}#%d {bule}({default}%d {olive}伤害 {bule}[{default}%d%%{bule}]{default}, %d {olive}击杀 {bule}[{default}%d%%{bule}])", rank, playerInfos[client].totalDamage, dmgPercent, playerInfos[client].siCount, killPercent);
+			FormatEx(buffer, sizeof(buffer), "{blue}你的排名 {olive}SI: {green}#%d {blue}({default}%d {olive}伤害 {blue}[{default}%d%%{blue}]{default}, %d {olive}击杀 {blue}[{default}%d%%{blue}])", rank, playerInfos[client].totalDamage, dmgPercent, playerInfos[client].siCount, killPercent);
 		}
 		CPrintToChat(client, "%s", buffer);
 	}
