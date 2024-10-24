@@ -352,7 +352,7 @@ void printParticularMvp(int client) {
 		ffTotal += playerInfos[i].ffCount;
 		gotFFTotal += playerInfos[i].gotFFCount;
 
-		if (playerInfos[i].siCount > playerInfos[siMvpClient].siCount) {
+		if (playerInfos[i].totalDamage > playerInfos[siMvpClient].totalDamage) {
 			siMvpClient = i;
 		}
 		if (playerInfos[i].ciCount > playerInfos[ciMvpClient].ciCount) {
