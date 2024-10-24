@@ -1,1324 +1,682 @@
 #pragma semicolon 1
+#pragma newdecls required
 
+// 头文件
 #include <sourcemod>
-#include <sdkhooks>
 #include <sdktools>
 #include <left4dhooks>
 #include <colors>
+#include "treeutil\treeutil.sp"
 
-#define TEAM_SPECTATOR          1 
-#define TEAM_SURVIVOR           2 
-#define TEAM_INFECTED           3
-#define FLAG_SPECTATOR          (1 << TEAM_SPECTATOR)
-#define FLAG_SURVIVOR           (1 << TEAM_SURVIVOR)
-#define FLAG_INFECTED           (1 << TEAM_INFECTED)
+#define CVAR_FLAG FCVAR_NOTIFY
 
-#define ZC_SMOKER               1
-#define ZC_BOOMER               2
-#define ZC_HUNTER               3
-#define ZC_SPITTER              4
-#define ZC_JOCKEY               5
-#define ZC_CHARGER              6
-#define ZC_WITCH                7
-#define ZC_TANK                 8
-
-#define BREV_SI                 1
-#define BREV_CI                 2
-#define BREV_FF                 4
-#define BREV_RANK               8
-//#define BREV_???              16
-#define BREV_PERCENT            32
-#define BREV_ABSOLUTE           64
-
-#define CONBUFSIZE              1024
-#define CONBUFSIZELARGE         4096
-
-#define CHARTHRESHOLD           160         // detecting unicode stuff
-
-
-/**
-* Issues:
-*  - Add damage received from common
-*/
-
-/*
-Changelog
----------
-0.2c
-- added console output table for more stats, fixed it's display
-- fixed console display to always display each player on the survivor team
-
-0.1
-- fixed common MVP ranks being messed up.
-- finally worked in PluginEnabled cvar
-- made FF tracking switch to enabled automatically if brevity flag 4 is unset
-- fixed a bug that caused FF to always report as "no friendly fire" when tracking was disabled
-- adjusted formatting a bit
-- made FF stat hidden by default
-- made convars actually get tracked (doh)
-- added friendly fire tracking (sm_survivor_mvp_trackff 1/0)
-- added brevity-flags cvar for changing verbosity of MVP report (sm_survivor_mvp_brevity bitwise, as shown)
-- discount FF damage before match is live if RUP is active.
-- fixed problem with clients disconnecting before mvp report
-- improved consistency after client reconnect (name-based)
-- fixed mvp stats double showing in scavenge (round starts)
-- now shows if MVP is a bot
-- cleaned up code
-- fixed for scavenge, now shows stats for every scavenge round
-- fixed damage/kills getting recorded for infected players, skewing MVP stats
-- added rank display for non-MVP clients
-*/
-/*
-Brevity flags:
-1       leave out SI stats
-2       leave out CI stats
-4       leave out FF stats
-8       leave out rank notification
-16   (reserved)
-32      leave out percentages
-64      leave out absolutes
-
-*/
-
-public Plugin:myinfo =
+enum struct PlayerInfo
 {
-    name = "Survivor MVP notification",
-    author = "Tabun, Artifacial",
-    description = "Shows MVP for survivor team at end of round",
-    version = "0.3.3",
-    url = "https://github.com/alexberriman/l4d2_survivor_mvp"
-};
+	int totalDamage;
+	int siCount;
+	int ciCount;
+	int ffCount;
+	int gotFFCount;
+	int headShotCount;
+	void init() {
+		this.totalDamage = this.siCount = this.ciCount = this.ffCount = this.gotFFCount = this.headShotCount = 0;
+	}
+} 
+PlayerInfo playerInfos[MAXPLAYERS + 1];
 
+static int
+	failCount;
 
-new     Handle:     hPluginEnabled =    INVALID_HANDLE;
+static bool
+	g_bHasPrint, 
+	g_bHasPrintDetails;
 
-new     Handle:     hCountTankDamage =  INVALID_HANDLE;         // whether we're tracking tank damage for MVP-selection
-new     Handle:     hCountWitchDamage = INVALID_HANDLE;         // whether we're tracking witch damage for MVP-selection
-new     Handle:     hTrackFF =          INVALID_HANDLE;         // whether we're tracking friendly-fire damage (separate stat)
-new     Handle:     hBrevityFlags =     INVALID_HANDLE;         // how verbose/brief the output should be:
+static char
+	mapName[64];
 
-new     bool:       bCountTankDamage;
-new     bool:       bCountWitchDamage;
-new     bool:       bTrackFF;
-new                 iBrevityFlags;
-new     bool:       bRUPLive;
-
-new     String:     sClientName[MAXPLAYERS + 1][64];            // which name is connected to the clientId?
-
-// Basic statistics
-new                 iGotKills[MAXPLAYERS + 1];                  // SI kills             track for each client
-new                 iGotCommon[MAXPLAYERS + 1];                 // CI kills
-new                 iDidDamage[MAXPLAYERS + 1];                 // SI only              these are a bit redundant, but will keep anyway for now
-new                 iDidDamageAll[MAXPLAYERS + 1];              // SI + tank + witch
-new                 iDidDamageTank[MAXPLAYERS + 1];             // tank only
-new                 iDidDamageWitch[MAXPLAYERS + 1];            // witch only
-new                 iDidFF[MAXPLAYERS + 1];                     // friendly fire damage
-
-// Detailed statistics
-new                 iDidDamageClass[MAXPLAYERS + 1][ZC_TANK + 1];   // si classes
-new                 timesPinned[MAXPLAYERS + 1][ZC_TANK + 1];   // times pinned
-new                 totalPinned[MAXPLAYERS + 1];                // total times pinned
-new                 pillsUsed[MAXPLAYERS + 1];                  // total pills eaten
-new                 boomerPops[MAXPLAYERS + 1];                 // total boomer pops
-new                 damageReceived[MAXPLAYERS + 1];             // Damage received
-
-// Tank stats
-new                tankSpawned = false;                        // When tank is spawned
-new                 commonKilledDuringTank[MAXPLAYERS + 1];     // Common killed during the tank
-new                 ttlCommonKilledDuringTank = 0;              // Common killed during the tank
-new                 siDmgDuringTank[MAXPLAYERS + 1];            // SI killed during the tank
-//new                 ttlSiDmgDuringTank = 0;                     // Total SI killed during the tank
-new                tankThrow;                                  // Whether or not the tank has thrown a rock
-new                 rocksEaten[MAXPLAYERS + 1];                 // The amount of rocks a player 'ate'.
-new                 rockIndex;                                  // The index of the rock (to detect how many times we were rocked)
-new                 ttlPinnedDuringTank[MAXPLAYERS + 1];        // The total times we were pinned when the tank was up
-
-
-new                 iTotalKills;                                // prolly more efficient to store than to recalculate
-new                 iTotalCommon;
-//new                 iTotalDamage;
-//new                 iTotalDamageTank;
-//new                 iTotalDamageWitch;
-new                 iTotalDamageAll;
-new                 iTotalFF;
-
-new                 iRoundNumber;
-new                 bInRound;
-new                 bPlayerLeftStartArea;                       // used for tracking FF when RUP enabled
-
-stock char sTmpString[MAX_NAME_LENGTH];                // just used because I'm not going to break my head over why string assignment parameter passing doesn't work
-
-/*
-*      Natives
-*      =======
-*/
-
-public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+public Plugin myinfo = 
 {
-    CreateNative("SURVMVP_GetMVP", Native_GetMVP);
-    CreateNative("SURVMVP_GetMVPDmgCount", Native_GetMVPDmgCount);
-    CreateNative("SURVMVP_GetMVPKills", Native_GetMVPKills);
-    CreateNative("SURVMVP_GetMVPDmgPercent", Native_GetMVPDmgPercent);
-    CreateNative("SURVMVP_GetMVPCI", Native_GetMVPCI);
-    CreateNative("SURVMVP_GetMVPCIKills", Native_GetMVPCIKills);
-    CreateNative("SURVMVP_GetMVPCIPercent", Native_GetMVPCIPercent);
-    
-    return APLRes_Success;
+	name 			= "Survivor Mvp & Round Status",
+	author 			= "夜羽真白",
+	description 	= "生还者 MVP 统计",
+	version 		= "2023-07-26",
+	url 			= "https://steamcommunity.com/id/saku_ra/"
 }
 
-// simply return current round MVP client
-int Native_GetMVP(Handle:plugin, numParams)
+ConVar
+	g_hAllowShowMvp,
+	g_hWhichTeamToShow,
+	g_hAllowShowSi,
+	g_hAllowShowCi,
+	g_hAllowShowFF,
+	g_hAllowShowTotalDmg,
+	g_hAllowShowAccuracy,
+	g_hAllowShowFailCount,
+	g_hAllowShowDetails,
+	g_hAllowShowRank;
+
+public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max) {
+	EngineVersion test = GetEngineVersion();
+	if( test != Engine_Left4Dead2 && test != Engine_Left4Dead) {
+		strcopy(error, err_max, "Plugin only supports Left 4 Dead 1 & 2.");
+		return APLRes_SilentFailure;
+	}
+
+	// 注册插件库函数
+	RegPluginLibrary("survivor_mvp");
+
+	// 注册 Natives
+	CreateNative("GetTotalDamageMvp", Native_GetTotalDamageMvp);
+	CreateNative("GetSiMvp", Native_GetSiMvp);
+	CreateNative("GetCiMvp", Native_GetCiMvp);
+	CreateNative("GetFFMvp", Native_GetFFMvp);
+	CreateNative("GetFFReceiveMvp", Native_GetFFReceiveMvp);
+	CreateNative("GetMapFailCount", Native_GetMapFailCount);
+	CreateNative("GetClientRank", Native_GetClientRank);
+
+	return APLRes_Success;
+}
+
+public void OnPluginStart()
 {
-    new client = findMVPSI();
-    return _:client;
+	g_hAllowShowMvp = CreateConVar("mvp_allow_show", "1", "是否启用插件", CVAR_FLAG, true, 0.0, true, 1.0);
+
+	g_hWhichTeamToShow = CreateConVar("mvp_witch_team_show", "0", "允许给哪个团队显示 MVP 信息 (0: 所有团队, 1: 仅旁观者团队, 2: 仅生还者团队, 3: 仅特感团队)", CVAR_FLAG, true, 0.0, true, 3.0);
+	g_hAllowShowSi = CreateConVar("mvp_allow_show_si", "1", "是否允许显示特感击杀信息", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowCi = CreateConVar("mvp_allow_show_ci", "1", "是否允许显示丧尸击杀信息", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowFF = CreateConVar("mvp_allow_show_ff", "1", "是否允许显示黑枪与被黑信息", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowTotalDmg = CreateConVar("mvp_allow_show_damage", "1", "是否允许显示总伤害信息", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowAccuracy = CreateConVar("mvp_allow_show_acc", "0", "是否允许显示准确度信息", CVAR_FLAG, true, 0.0, true, 1.0);
+
+	g_hAllowShowFailCount = CreateConVar("mvp_show_fail_count", "0", "是否在团灭时显示团灭次数", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowDetails = CreateConVar("mvp_show_details", "1", "是否在过关或团灭时显示各项 MVP 数据 (每项 MVP 数据显示与否与 mvp_allow_show_xx Cvar 挂钩, 本 Cvar 关闭所有单项数据均不会显示)", CVAR_FLAG, true, 0.0, true, 1.0);
+	g_hAllowShowRank = CreateConVar("mvp_show_your_rank", "1", "显示各项 MVP 数据时是否允许显示你的排名", CVAR_FLAG, true, 0.0, true, 1.0);
+
+	// HookEvents
+	HookEvent("player_death", siDeathHandler);
+	HookEvent("infected_death", ciDeathHandler);
+	HookEvent("player_hurt", playerHurtHandler);
+	HookEvent("round_start", roundStartHandler);
+	HookEvent("round_end", roundEndHandler);
+	HookEvent("map_transition", roundEndHandler);
+	HookEvent("mission_lost", missionLostHandler);
+	HookEvent("finale_vehicle_leaving", roundEndHandler);
+	// RegConsoleCmd
+	RegConsoleCmd("sm_mvp", showMvpHandler);
 }
 
-// return damage percent of client
-int Native_GetMVPDmgPercent(Handle:plugin, numParams)
+public void OnMapStart()
 {
-    new client = GetNativeCell(1);
-    new Float: dmgprc = client && iTotalDamageAll > 0 ? (float(iDidDamageAll[client]) / float(iTotalDamageAll)) * 100 : 0.0;
-    return _:dmgprc;
+	g_bHasPrint = g_bHasPrintDetails = false;
+	char nowMapName[64];
+	GetCurrentMap(nowMapName, sizeof(nowMapName));
+	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
+		failCount = 0;
+		strcopy(mapName, sizeof(mapName), nowMapName);
+	}
+	clearStuff();
 }
 
-// return damage of client
-int Native_GetMVPDmgCount(Handle:plugin, numParams)
+public Action showMvpHandler(int client, int args)
 {
-    new client = GetNativeCell(1);
-    new dmg = client && iTotalDamageAll > 0 ? iDidDamageAll[client] : 0;
-    return _:dmg;
+	if (!g_hAllowShowMvp.BoolValue)
+	{
+		ReplyToCommand(client, "[MVP]：当前生还者 MVP 统计数据已禁用");
+		return Plugin_Handled;
+	}
+	if (!IsValidClient(client)) {
+		return Plugin_Handled;
+	}
+
+	if (GetClientTeam(client) == TEAM_SPECTATOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 1)) {
+		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向旁观者显示");
+		return Plugin_Handled;
+	}
+	else if (GetClientTeam(client) == TEAM_SURVIVOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 2)) {
+		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向生还者显示");
+		return Plugin_Handled;
+	}
+	else if (GetClientTeam(client) == TEAM_INFECTED && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 3)) {
+		CPrintToChat(client, "{bule}[{default}MVP{bule}]: {default}当前生还者 MVP 统计数据不允许向感染者显示");
+		return Plugin_Handled;
+	}
+	printMvpStatus(client);
+	if (g_hAllowShowDetails.BoolValue) {
+		printParticularMvp(client);
+	}
+
+	return Plugin_Handled;
 }
 
-// return SI kills of client
-int Native_GetMVPKills(Handle:plugin, numParams)
+// 击杀特感
+public void siDeathHandler(Event event, const char[] name, bool dontBroadcast)
 {
-    new client = GetNativeCell(1);
-    new dmg = client && iTotalKills > 0 ? iGotKills[client] : 0;
-    return _:dmg;
+	int victim = GetClientOfUserId(event.GetInt("userid")), attacker = GetClientOfUserId(event.GetInt("attacker"));
+	if (!IsValidClient(victim) || !IsValidClient(attacker) || GetClientTeam(victim) != TEAM_INFECTED || GetClientTeam(attacker) != TEAM_SURVIVOR) { return; }
+	if (GetInfectedClass(victim) < ZC_SMOKER || GetInfectedClass(victim) > ZC_CHARGER) { return; }
+	playerInfos[attacker].siCount++;
+	if (event.GetBool("headshot")) { playerInfos[attacker].headShotCount++; }
 }
 
-// simply return current round MVP client (Common)
-int Native_GetMVPCI(Handle:plugin, numParams)
+// 击杀丧尸
+public void ciDeathHandler(Event event, const char[] name, bool dontBroadcast)
 {
-    new client = findMVPCommon();
-    return _:client;
+	int attacker = GetClientOfUserId(event.GetInt("attacker"));
+	if (!IsValidSurvivor(attacker)) { return; }
+	playerInfos[attacker].ciCount++;
+	if (event.GetBool("headshot")) { playerInfos[attacker].headShotCount++; }
 }
 
-// return common kills for client
-int Native_GetMVPCIKills(Handle:plugin, numParams)
+// 造成伤害
+public void playerHurtHandler(Event event, const char[] name, bool dontBroadcast)
 {
-    new client = GetNativeCell(1);
-    new dmg = client && iTotalCommon > 0 ? iGotCommon[client] : 0;
-    return _:dmg;
+	int victim = GetClientOfUserId(event.GetInt("userid")), attacker = GetClientOfUserId(event.GetInt("attacker")), damage = event.GetInt("dmg_health");
+	if (IsValidSurvivor(attacker) && IsValidSurvivor(victim))
+	{
+		playerInfos[attacker].ffCount += damage;
+		playerInfos[victim].gotFFCount += damage;
+	}
+	else if (IsValidSurvivor(attacker) && IsValidInfected(victim) && GetInfectedClass(victim) >= ZC_SMOKER && GetInfectedClass(victim) <= ZC_CHARGER) { playerInfos[attacker].totalDamage += damage; }
 }
 
-// return CI percent of client
-int Native_GetMVPCIPercent(Handle:plugin, numParams)
+public void OnClientConnected(int client) {
+	playerInfos[client].init();
+}
+
+public void OnClientDisconnect(int client) {
+	playerInfos[client].init();
+}
+
+public void roundStartHandler(Event event, const char[] name, bool dontBroadcast)
 {
-    new client = GetNativeCell(1);
-    new Float: dmgprc = client && iTotalCommon > 0 ? (float(iGotCommon[client]) / float(iTotalCommon)) * 100 : 0.0;
-    return _:dmgprc;
-}
-
-
-/*
-*      init
-*      ====
-*/
-
-public OnPluginStart()
-{
-    // Round triggers
-    //HookEvent("door_close", DoorClose_Event);
-    HookEvent("finale_vehicle_leaving", FinaleEnd_Event, EventHookMode_PostNoCopy);
-    HookEvent("round_start", RoundStart_Event, EventHookMode_PostNoCopy);
-    HookEvent("round_end", RoundEnd_Event, EventHookMode_PostNoCopy);
-    HookEvent("map_transition", RoundEnd_Event, EventHookMode_PostNoCopy);
-    HookEvent("scavenge_round_start", ScavRoundStart, EventHookMode_PostNoCopy);
-    HookEvent("player_left_start_area", PlayerLeftStartArea, EventHookMode_PostNoCopy);
-    HookEvent("pills_used", pillsUsedEvent);
-    HookEvent("boomer_exploded", boomerExploded);
-    HookEvent("charger_carry_end", chargerCarryEnd);
-    HookEvent("jockey_ride", jockeyRide);
-    HookEvent("lunge_pounce", hunterLunged);
-    HookEvent("choke_start", smokerChoke);
-    HookEvent("tank_killed", tankKilled);
-    HookEvent("tank_spawn", tankSpawn);
-    HookEvent("ability_use", abilityUseEvent);
-    //HookEvent("tank_frustrated", tankFrustrated);
-    
-    // Catching data
-    HookEvent("player_hurt", PlayerHurt_Event, EventHookMode_Post);
-    HookEvent("player_death", PlayerDeath_Event, EventHookMode_Post);
-    HookEvent("infected_hurt" ,InfectedHurt_Event, EventHookMode_Post);
-    HookEvent("infected_death", InfectedDeath_Event, EventHookMode_Post);
-    
-    // Cvars
-    hPluginEnabled =    CreateConVar("sm_survivor_mvp_enabled", "1", "Enable display of MVP at end of round");
-    hCountTankDamage =  CreateConVar("sm_survivor_mvp_counttank", "0", "Damage on tank counts towards MVP-selection if enabled.");
-    hCountWitchDamage = CreateConVar("sm_survivor_mvp_countwitch", "0", "Damage on witch counts towards MVP-selection if enabled.");
-    hTrackFF =          CreateConVar("sm_survivor_mvp_showff", "1", "Track Friendly-fire stat.");
-    hBrevityFlags =     CreateConVar("sm_survivor_mvp_brevity", "0", "Flags for setting brevity of MVP report (hide 1:SI, 2:CI, 4:FF, 8:rank, 32:perc, 64:abs).");
-    
-    bCountTankDamage =  GetConVarBool(hCountTankDamage);
-    bCountWitchDamage = GetConVarBool(hCountWitchDamage);
-    bTrackFF =          GetConVarBool(hTrackFF);
-    iBrevityFlags =     GetConVarInt(hBrevityFlags);
-    
-    // for now, force FF tracking on:
-    bTrackFF = true;
-    
-    HookConVarChange(hCountTankDamage, ConVarChange_CountTankDamage);
-    HookConVarChange(hCountWitchDamage, ConVarChange_CountWitchDamage);
-    HookConVarChange(hTrackFF, ConVarChange_TrackFF);
-    HookConVarChange(hBrevityFlags, ConVarChange_BrevityFlags);
-    
-    if (!(iBrevityFlags & BREV_FF)) { bTrackFF = true; } // force tracking on if we're showing FF
-    
-    bPlayerLeftStartArea = false;
-    
-    // Commands
-    RegConsoleCmd("sm_mvp", SurvivorMVP_Cmd, "Prints the current MVP for the survivor team");
-    RegConsoleCmd("sm_mvpme", ShowMVPStats_Cmd, "Prints the client's own MVP-related stats");
-    
-    RegConsoleCmd("say", Say_Cmd);
-    RegConsoleCmd("say_team", Say_Cmd);
-}
-
-public OnRoundIsLive()
-{
-    bRUPLive = true;
-}
-
-public OnClientPutInServer(client)
-{
-    decl String:tmpBuffer[64];
-    GetClientName(client, tmpBuffer, sizeof(tmpBuffer));
-    
-    // if previously stored name for same client is not the same, delete stats & overwrite name
-    if (strcmp(tmpBuffer, sClientName[client], true) != 0)
-    {
-        iGotKills[client] = 0;
-        iGotCommon[client] = 0;
-        iDidDamage[client] = 0;
-        iDidDamageAll[client] = 0;
-        iDidDamageWitch[client] = 0;
-        iDidDamageTank[client] = 0;
-        iDidFF[client] = 0;
-        
-        
-        //@todo detailed statistics - set to 0
-        for (new siClass = ZC_SMOKER; siClass <= ZC_TANK; siClass++) {
-            iDidDamageClass[client][siClass] = 0;
-            timesPinned[client][siClass] = 0;
-        }
-        pillsUsed[client] = 0;
-        boomerPops[client] = 0;
-        damageReceived[client] = 0;
-        totalPinned[client] = 0;
-        commonKilledDuringTank[client] = 0;
-        siDmgDuringTank[client] = 0;
-        rocksEaten[client] = 0;
-        ttlPinnedDuringTank[client] = 0;
-        
-        // store name for later reference
-        strcopy(sClientName[client], 64, tmpBuffer);
-    }
-}
-
-/*
-*      convar changes
-*      ==============
-*/
-
-void ConVarChange_CountTankDamage(Handle:cvar, const String:oldValue[], const String:newValue[]) {
-    bCountTankDamage = StringToInt(newValue) != 0;
-}
-
-void ConVarChange_CountWitchDamage(Handle:cvar, const String:oldValue[], const String:newValue[]) {
-    bCountWitchDamage = StringToInt(newValue) != 0;
-}
-
-void ConVarChange_TrackFF(Handle:cvar, const String:oldValue[], const String:newValue[]) {
-    //if (StringToInt(newValue) == 0) { bTrackFF = false; } else { bTrackFF = true; }
-    // for now, disable FF tracking toggle (always on)
-}
-
-void ConVarChange_BrevityFlags(Handle:cvar, const String:oldValue[], const String:newValue[]) {
-    iBrevityFlags = StringToInt(newValue);
-    if (!(iBrevityFlags & BREV_FF)) { 
-        bTrackFF = true; 
-    } // force tracking on if we're showing FF
-}
-
-/*
-*      map load / round start/end
-*      ==========================
-*/
-
-void PlayerLeftStartArea(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // if RUP active, now we can start tracking FF
-    bPlayerLeftStartArea = true;
-}
-
-public OnMapStart()
-{
-    bPlayerLeftStartArea = false;
-}
-
-public OnMapEnd()
-{
-    iRoundNumber = 0;
-    bInRound = false;
-}
-
-void ScavRoundStart(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // clear mvp stats
-    new i, maxplayers = MaxClients;
-    for (i = 1; i <= maxplayers; i++)
-    {
-        iGotKills[i] = 0;
-        iGotCommon[i] = 0;
-        iDidDamage[i] = 0;
-        iDidDamageAll[i] = 0;
-        iDidDamageWitch[i] = 0;
-        iDidDamageTank[i] = 0;
-        iDidFF[i] = 0;
-        
-        //@todo detailed statistics - set to 0
-        for (new siClass = ZC_SMOKER; siClass <= ZC_TANK; siClass++) {
-            iDidDamageClass[i][siClass] = 0;
-            timesPinned[i][siClass] = 0;
-        }
-        pillsUsed[i] = 0;
-        boomerPops[i] = 0;
-        damageReceived[i] = 0;
-        totalPinned[i] = 0;
-        commonKilledDuringTank[i] = 0;
-        siDmgDuringTank[i] = 0;
-        rocksEaten[i] = 0;
-        ttlPinnedDuringTank[i] = 0;
-    }
-    iTotalKills = 0;
-    iTotalCommon = 0;
-    //iTotalDamage = 0;
-    //iTotalDamageTank = 0;
-    //iTotalDamageWitch = 0;
-    iTotalDamageAll = 0;
-    iTotalFF = 0;
-    //ttlSiDmgDuringTank = 0;
-    ttlCommonKilledDuringTank = 0;
-    tankThrow = false;
-    
-    bInRound = true;
-    tankSpawned = false;
-}
-
-void RoundStart_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    bPlayerLeftStartArea = false;
-    bRUPLive = false;
-    
-    if (!bInRound)
-    {
-        bInRound = true;
-        iRoundNumber++;
-    }
-    
-    // clear mvp stats
-    new i, maxplayers = MaxClients;
-    for (i = 1; i <= maxplayers; i++)
-    {
-        iGotKills[i] = 0;
-        iGotCommon[i] = 0;
-        iDidDamage[i] = 0;
-        iDidDamageAll[i] = 0;
-        iDidDamageWitch[i] = 0;
-        iDidDamageTank[i] = 0;
-        iDidFF[i] = 0;
-        
-        //@todo detailed statistics init to 0
-        for (new siClass = ZC_SMOKER; siClass <= ZC_TANK; siClass++) {
-            iDidDamageClass[i][siClass] = 0;
-            timesPinned[i][siClass] = 0;
-        }
-        pillsUsed[i] = 0;
-        boomerPops[i] = 0;
-        damageReceived[i] = 0;
-        totalPinned[i] = 0;
-        commonKilledDuringTank[i] = 0;
-        siDmgDuringTank[i] = 0;
-        rocksEaten[i] = 0;
-        ttlPinnedDuringTank[i] = 0;
-    }
-    iTotalKills = 0;
-    iTotalCommon = 0;
-    //iTotalDamage = 0;
-    iTotalDamageAll = 0;
-    iTotalFF = 0;
-    //ttlSiDmgDuringTank = 0;
-    ttlCommonKilledDuringTank = 0;
-    //iTotalDamageTank = 0;
-    tankThrow = false;
-    
-    tankSpawned = false;
-}
-
-void FinaleEnd_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // Co-op modes.
-    if (!L4D_HasPlayerControlledZombies())
-    {
-        if (bInRound)
-        {
-            if (GetConVarBool(hPluginEnabled))
-                CreateTimer(8.0, delayedMVPPrint);
-            bInRound = false;
-        }
-    }
-
-    // No need for versus/other modes as round_end fires just fine on them.
-    
-    tankSpawned = false;
-}
-
-void RoundEnd_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // Co-op modes.
-    if (!L4D_HasPlayerControlledZombies())
-    {
-        if (bInRound)
-        {
-            if (GetConVarBool(hPluginEnabled))
-                CreateTimer(0.01, delayedMVPPrint);
-            bInRound = false;
-        }
-    }
-    else
-    {
-        // Any scavenge/versus mode.
-        if (bInRound && !StrEqual(name, "map_transition", false))
-        {
-            // only show / log stuff when the round is done "the first time"
-            if (GetConVarBool(hPluginEnabled))
-                CreateTimer(2.0, delayedMVPPrint);
-            bInRound = false;
-        }
-    }
-    
-    bRUPLive = false;
-    tankSpawned = false;
-}
-
-
-/*
-*      cmds / reports
-*      ==============
-*/
-
-Action Say_Cmd(client, args)
-{
-    if (!client) { return Plugin_Continue; }
-    
-    decl String:sMessage[MAX_NAME_LENGTH];
-    GetCmdArg(1, sMessage, sizeof(sMessage));
-    
-    if (StrEqual(sMessage, "!mvp") || StrEqual(sMessage, "!mvpme")) { return Plugin_Handled; }
-    
-    return Plugin_Continue;
-}
-
-Action SurvivorMVP_Cmd(client, args)
-{
-    decl String:printBuffer[4096];
-    new String:strLines[8][192];
-    
-    GetMVPString(printBuffer, sizeof(printBuffer));
-    
-    // PrintToChat has a max length. Split it in to individual lines to output separately
-    new intPieces = ExplodeString(printBuffer, "\n", strLines, sizeof(strLines), sizeof(strLines[]));
-    
-    if (client && IsClientConnected(client))
-    {
-        for (new i = 0; i < intPieces; i++) 
-        {
-            CPrintToChat(client, "%s", strLines[i]);
-        }
-    }
-    PrintLoserz(true, client);
-
-    return Plugin_Handled;
-}
-
-Action ShowMVPStats_Cmd(client, args)
-{
-    PrintLoserz(true, client);
-    return Plugin_Handled;
-}
-
-Action:delayedMVPPrint(Handle:timer)
-{
-    decl String:printBuffer[4096];
-    new String:strLines[8][192];
-    
-    GetMVPString(printBuffer, sizeof(printBuffer));
-    
-    // PrintToChatAll has a max length. Split it in to individual lines to output separately
-    new intPieces = ExplodeString(printBuffer, "\n", strLines, sizeof(strLines), sizeof(strLines[]));
-    for (new i = 0; i < intPieces; i++) 
-    {
-        for (new client = 1; client <= MaxClients; client++)
-        {
-            if (IsClientInGame(client)) CPrintToChat(client, "{default}%s", strLines[i]);
-        }
-    }
-    
-    CreateTimer(0.1, PrintLosers);
-}
-
-Action:PrintLosers(Handle:timer)
-{
-    PrintLoserz(false, -1);
-}
-
-void PrintLoserz(bool:bSolo, client)
-{
-    decl String:tmpBuffer[512];
-    // also find the three non-mvp survivors and tell them they sucked
-    // tell them they sucked with SI
-    if (iTotalDamageAll > 0)
-    {
-        new mvp_SI = findMVPSI();
-        new mvp_SI_losers[3];
-        mvp_SI_losers[0] = findMVPSI(mvp_SI);                                                   // second place
-        mvp_SI_losers[1] = findMVPSI(mvp_SI, mvp_SI_losers[0]);                             // third
-        mvp_SI_losers[2] = findMVPSI(mvp_SI, mvp_SI_losers[0], mvp_SI_losers[1]);       // fourth
-        
-        for (new i = 0; i <= 2; i++)
-        {
-            if (IsClientAndInGame(mvp_SI_losers[i]) && !IsFakeClient(mvp_SI_losers[i])) 
-            {
-                if (bSolo)
-                {
-                    if (mvp_SI_losers[i] == client)
-                    {
-                        Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}SI: {olive}#%d - {blue}({default}%d {green}dmg {blue}[{default}%.0f%%{blue}]{olive}, {default}%d {green}kills {blue}[{default}%.0f%%{blue}])", (i + 2), iDidDamageAll[mvp_SI_losers[i]], (float(iDidDamageAll[mvp_SI_losers[i]]) / float(iTotalDamageAll)) * 100, iGotKills[mvp_SI_losers[i]], (float(iGotKills[mvp_SI_losers[i]]) / float(iTotalKills)) * 100);
-                        CPrintToChat(mvp_SI_losers[i], "%s", tmpBuffer);
-                    }
-                }
-                else 
-                {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}SI: {olive}#%d - {blue}({default}%d {green}dmg {blue}[{default}%.0f%%{blue}]{olive}, {default}%d {green}kills {blue}[{default}%.0f%%{blue}])", (i + 2), iDidDamageAll[mvp_SI_losers[i]], (float(iDidDamageAll[mvp_SI_losers[i]]) / float(iTotalDamageAll)) * 100, iGotKills[mvp_SI_losers[i]], (float(iGotKills[mvp_SI_losers[i]]) / float(iTotalKills)) * 100);
-                    CPrintToChat(mvp_SI_losers[i], "%s", tmpBuffer);
-                }
-            }
-        }
-    }
-    
-    // tell them they sucked with Common
-    if (iTotalCommon > 0)
-    {
-        new mvp_CI = findMVPCommon();
-        new mvp_CI_losers[3];
-        mvp_CI_losers[0] = findMVPCommon(mvp_CI);                                                   // second place
-        mvp_CI_losers[1] = findMVPCommon(mvp_CI, mvp_CI_losers[0]);                             // third
-        mvp_CI_losers[2] = findMVPCommon(mvp_CI, mvp_CI_losers[0], mvp_CI_losers[1]);       // fourth
-        
-        for (new i = 0; i <= 2; i++)
-        {
-            if (IsClientAndInGame(mvp_CI_losers[i]) && !IsFakeClient(mvp_CI_losers[i])) 
-            {
-                if (bSolo)
-                {
-                    if (mvp_CI_losers[i] == client)
-                    {
-                        Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}CI{default}: {olive}#%d {blue}({default}%d {green}common {blue}[{default}%.0f%%{blue}])", (i + 2), iGotCommon[mvp_CI_losers[i]], (float(iGotCommon[mvp_CI_losers[i]]) / float(iTotalCommon)) * 100);
-                        CPrintToChat(mvp_CI_losers[i], "%s", tmpBuffer);
-                    }
-                }
-                else
-                {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}CI{default}: {olive}#%d {blue}({default}%d {green}common {blue}[{default}%.0f%%{blue}])", (i + 2), iGotCommon[mvp_CI_losers[i]], (float(iGotCommon[mvp_CI_losers[i]]) / float(iTotalCommon)) * 100);
-                    CPrintToChat(mvp_CI_losers[i], "%s", tmpBuffer);
-                }
-            }
-        }
-    }
-    
-    // tell them they were better with FF (I know, I know, losers = winners)
-    if (iTotalFF > 0)
-    {
-        new mvp_FF = findLVPFF();
-        new mvp_FF_losers[3];
-        mvp_FF_losers[0] = findLVPFF(mvp_FF);                                                   // second place
-        mvp_FF_losers[1] = findLVPFF(mvp_FF, mvp_FF_losers[0]);                             // third
-        mvp_FF_losers[2] = findLVPFF(mvp_FF, mvp_FF_losers[0], mvp_FF_losers[1]);       // fourth
-        
-        for (new i = 0; i <= 2; i++)
-        {
-            if (IsClientAndInGame(mvp_FF_losers[i]) &&  !IsFakeClient(mvp_FF_losers[i])) 
-            {
-                if (bSolo)
-                {
-                    if (mvp_FF_losers[i] == client)
-                    {
-                        Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}FF{default}: {olive}#%d {blue}({default}%d {green}friendly fire {blue}[{default}%.0f%%{blue}])", (i + 2), iDidFF[mvp_FF_losers[i]], (float(iDidFF[mvp_FF_losers[i]]) / float(iTotalFF)) * 100);
-                        CPrintToChat(mvp_FF_losers[i], "%s", tmpBuffer);
-                    }
-                }
-                else
-                {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "{blue}Your Rank {green}FF{default}: {olive}#%d {blue}({default}%d {green}friendly fire {blue}[{default}%.0f%%{blue}])", (i + 2), iDidFF[mvp_FF_losers[i]], (float(iDidFF[mvp_FF_losers[i]]) / float(iTotalFF)) * 100);
-                    CPrintToChat(mvp_FF_losers[i], "%s", tmpBuffer);
-                }
-            }
-        }
-    }    
-}
-/**
-* When an entity is created (which we use to track rocks)
-* don't actually need this
-*/
-public OnEntityCreated(entity, const String:classname[])
-{ 
-    if(! tankThrow) {
-        return;
-    }
-    
-    if(StrEqual(classname, "tank_rock", true))  {
-        rockIndex = entity;
-        tankThrow = true;
-    }
+	g_bHasPrint = g_bHasPrintDetails = false;
+	char nowMapName[64] = {'\0'};
+	GetCurrentMap(nowMapName, sizeof(nowMapName));
+	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
+		failCount = 0;
+		strcopy(mapName, sizeof(mapName), nowMapName);
+	}
+	clearStuff();
 }
 
 /**
-* When an entity has been destroyed (i.e. when a rock lands on someone)
-*/
-public OnEntityDestroyed(entity)
-{   
-    // The rock has been destroyed
-    if (rockIndex == entity) {
-        tankThrow = false;
-    }
+* 团灭 MVP 显示
+* @param 
+* @return void
+**/
+public void missionLostHandler(Event event, const char[] name, bool dontBroadcast)
+{
+	if (g_hAllowShowFailCount.BoolValue) {
+		CPrintToChatAll("{bule}[{default}提示{bule}]: {default}这是你们第 {olive}%d {default}次团灭，请继续努力哦 (*･ω< )", ++failCount);
+	}
+
+	if (!g_hAllowShowMvp.BoolValue || g_bHasPrint) {
+		return;
+	}
+	
+	roundEndPrint();
+
+	clearStuff();
+}
+
+public void roundEndHandler(Event event, const char[] name, bool dontBroadcast)
+{
+	if (!g_hAllowShowMvp.BoolValue) {
+		return;
+	}
+
+	roundEndPrint();
+
+	clearStuff();
+}
+
+// 方法
+void clearStuff() {
+	for (int i = 1; i <= MaxClients; i++) { playerInfos[i].init(); }
+}
+
+void roundEndPrint() {
+	int i;
+	for (i = 1; i <= MaxClients; i++) {
+		if (!IsValidClient(i)) {
+			continue;
+		}
+
+		switch (g_hWhichTeamToShow.IntValue) {
+			case TEAM_SPECTATOR: {
+				if (GetClientTeam(i) != TEAM_SPECTATOR) {
+					continue;
+				}
+			} case TEAM_SURVIVOR: {
+				if (GetClientTeam(i) != TEAM_SURVIVOR) {
+					continue;
+				}
+			} case TEAM_INFECTED: {
+				if (GetClientTeam(i) != TEAM_INFECTED) {
+					continue;
+				}
+			} default: {
+
+			}
+		}
+
+		if (g_bHasPrint) {
+			break;
+		}
+		printMvpStatus(i);
+		
+		if (g_hAllowShowDetails.BoolValue) {
+			if (g_bHasPrintDetails) {
+				break;
+			}
+			printParticularMvp(i);
+		}
+	}
+
+	g_bHasPrint = true;
+	if (g_hAllowShowDetails.BoolValue) {
+		g_bHasPrintDetails = true;
+	}
 }
 
 /**
-* When an infected uses their ability
-*/
-void abilityUseEvent(Handle:event, const String:name[], bool:dontBroadcast)
+* 显示主 MVP 信息 (特感击杀, 丧尸击杀, 总伤害, 黑枪/被黑, 爆头率)
+* @param client 需要显示的客户端索引
+* @return void
+**/
+void printMvpStatus(int client)
 {
-    decl String:ability[32];
-    GetEventString(event, "ability", ability, 32);
-    
-    // If tank is throwing a rock
-    if(StrEqual(ability, "ability_throw", true)) {
-        tankThrow = true;
-    }
+	int i, index = 0;
+	int[] players = new int[MaxClients + 1]; 
+	for (i = 1; i <= MaxClients; i++) {
+		if (!IsValidClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) {
+			continue;
+		}
+		players[index++] = i;
+	}
+	SortCustom1D(players, index, sortByDamageFunction);
+
+	CPrintToChat(client, "{lightgreen}[生还者 MVP 统计]");
+
+	char buffer[128], toPrint[256];
+	for (i = 0; i < index; i++) {
+		// 格式化排序后一个玩家的 MVP 信息
+		if (g_hAllowShowSi.BoolValue) {
+			FormatEx(buffer, sizeof(buffer), "{lightgreen}特感{olive}%d ", playerInfos[players[i]].siCount);
+			StrCat(toPrint, sizeof(toPrint), buffer);
+		}
+		if (g_hAllowShowCi.BoolValue) {
+			FormatEx(buffer, sizeof(buffer), "{lightgreen}丧尸{olive}%d ", playerInfos[players[i]].ciCount);
+			StrCat(toPrint, sizeof(toPrint), buffer);
+		}
+		if (g_hAllowShowTotalDmg.BoolValue) {
+			FormatEx(buffer, sizeof(buffer), "{lightgreen}伤害{olive}%d ", playerInfos[players[i]].totalDamage);
+			StrCat(toPrint, sizeof(toPrint), buffer);
+		}
+		if (g_hAllowShowFF.BoolValue) {
+			FormatEx(buffer, sizeof(buffer), "{lightgreen}黑/被黑{olive}%d/%d ", playerInfos[players[i]].ffCount, playerInfos[players[i]].gotFFCount);
+			StrCat(toPrint, sizeof(toPrint), buffer);
+		}
+		if (g_hAllowShowAccuracy.BoolValue) {
+			float accuracy = playerInfos[players[i]].siCount + playerInfos[players[i]].ciCount == 0 ? 0.0 : float(playerInfos[players[i]].headShotCount) / float(playerInfos[players[i]].siCount + playerInfos[players[i]].ciCount);
+			FormatEx(buffer, sizeof(buffer), "{lightgreen}爆头率{olive}%.0f%% ", accuracy * 100.0);
+			StrCat(toPrint, sizeof(toPrint), buffer);
+		}
+		FormatEx(buffer, sizeof(buffer), "{lightgreen}%N", players[i]);
+		StrCat(toPrint, sizeof(toPrint), buffer);
+
+		// 打印一个玩家的 MVP 信息
+		CPrintToChat(client, "%s", toPrint);
+		FormatEx(toPrint, sizeof(toPrint), "");
+	}
 }
 
 /**
-* Track pill usage
-*/
-void pillsUsedEvent(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new client = GetClientOfUserId(GetEventInt(event, "userid")); 
-    if (client == 0 || ! IsClientInGame(client)) {
-        return;
-    }
-    
-    pillsUsed[client]++;
+* 显示各项 MVP (SI, CI, FF, RANK)
+* @param client 需要显示的客户端索引
+* @return void
+**/
+void printParticularMvp(int client) {
+	int siMvpClient, ciMvpClient, ffMvpClient, gotFFMvpClient;
+	int dmgTotal, siTotal, ciTotal, ffTotal, gotFFTotal;
+
+	int i;
+	for (i = 1; i <= MaxClients; i++) {
+		// 跳过不是生还者的
+		if (!IsValidClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) {
+			continue;
+		}
+		dmgTotal += playerInfos[i].totalDamage;
+		siTotal += playerInfos[i].siCount;
+		ciTotal += playerInfos[i].ciCount;
+		ffTotal += playerInfos[i].ffCount;
+		gotFFTotal += playerInfos[i].gotFFCount;
+
+		if (playerInfos[i].siCount > playerInfos[siMvpClient].siCount) {
+			siMvpClient = i;
+		}
+		if (playerInfos[i].ciCount > playerInfos[ciMvpClient].ciCount) {
+			ciMvpClient = i;
+		}
+		if (playerInfos[i].ffCount > playerInfos[ffMvpClient].ffCount) {
+			ffMvpClient = i;
+		}
+		if (playerInfos[i].gotFFCount > playerInfos[gotFFMvpClient].gotFFCount) {
+			gotFFMvpClient = i;
+		}
+	}
+
+	int dmgPercent, killPercent;
+	char clientName[MAX_NAME_LENGTH], buffer[512], temp[256];
+	// 允许显示 SI MVP
+	if (g_hAllowShowSi.BoolValue) {
+		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] SI: ");
+		if (!IsValidClient(siMvpClient) || siTotal <= 0) {
+			StrCat(buffer, sizeof(buffer), "{olive}本局还没有击杀任何特感");
+		} else {
+
+			formatMvpClientName(siMvpClient, clientName, sizeof(clientName));
+
+			dmgPercent = RoundToNearest(float(playerInfos[siMvpClient].totalDamage) / float(dmgTotal) * 100.0);
+			killPercent = RoundToNearest(float(playerInfos[siMvpClient].siCount) / float(siTotal) * 100.0);
+			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}伤害 {bule}[{default}%d%%{bule}]{default}, %d {olive}击杀 {bule}[{default}%d%%{bule}])", clientName, playerInfos[siMvpClient].totalDamage, dmgPercent, playerInfos[siMvpClient].siCount, killPercent);
+			StrCat(buffer, sizeof(buffer), temp);
+		}
+		CPrintToChat(client, "%s", buffer);
+	}
+	// 允许显示 CI MVP
+	if (g_hAllowShowCi.BoolValue) {
+		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] CI: ");
+		if (!IsValidClient(ciMvpClient) || ciTotal <= 0) {
+			StrCat(buffer, sizeof(buffer), "{olive}本局还没有击杀任何丧尸");
+		} else {
+
+			formatMvpClientName(ciMvpClient, clientName, sizeof(clientName));
+
+			killPercent = RoundToNearest(float(playerInfos[ciMvpClient].ciCount) / float(ciTotal) * 100.0);
+			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}丧尸 {bule}[{default}%d%%{bule}])", clientName, playerInfos[ciMvpClient].ciCount, killPercent);
+			StrCat(buffer, sizeof(buffer), temp);
+		}
+		CPrintToChat(client, "%s", buffer);
+	}
+	// 允许显示 FF MVP
+	if (g_hAllowShowFF.BoolValue) {
+		FormatEx(buffer, sizeof(buffer), "{bule}[{default}LVP{bule}] FF: ");
+		if (!IsValidClient(ffMvpClient) || ffTotal <= 0) {
+			StrCat(buffer, sizeof(buffer), "{olive}大家都没有黑枪");
+		} else {
+
+			formatMvpClientName(ffMvpClient, clientName, sizeof(clientName));
+
+			killPercent = RoundToNearest(float(playerInfos[ffMvpClient].ffCount) / float(ffTotal) * 100.0);
+			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}友伤 {bule}[{default}%d%%{bule}])", clientName, playerInfos[ffMvpClient].ffCount, killPercent);
+			StrCat(buffer, sizeof(buffer), temp);
+		}
+		CPrintToChat(client, "%s", buffer);
+
+		// 被黑 MVP
+		FormatEx(buffer, sizeof(buffer), "{bule}[{default}MVP{bule}] FF Receive: ");
+		if (!IsValidClient(gotFFMvpClient) || gotFFTotal <= 0) {
+			StrCat(buffer, sizeof(buffer), "{olive}暂时没有倒霉蛋被黑得最惨");
+		} else {
+
+			formatMvpClientName(gotFFMvpClient, clientName, sizeof(clientName));
+
+			killPercent = RoundToNearest(float(playerInfos[gotFFMvpClient].gotFFCount) / float(gotFFTotal) * 100.0);
+			FormatEx(temp, sizeof(temp), "{green}%s {bule}({default}%d {olive}被黑 {bule}[{default}%d%%{bule}])", clientName, playerInfos[gotFFMvpClient].gotFFCount, killPercent);
+			StrCat(buffer, sizeof(buffer), temp);
+		}
+		CPrintToChat(client, "%s", buffer);
+	}
+	// 允许显示你的排名
+	if (g_hAllowShowRank.BoolValue) {
+		// 不是生还者, 不显示排名
+		if (!IsValidClient(client) || GetClientTeam(client) != TEAM_SURVIVOR) {
+			return;
+		}
+		// 你是 SI MVP, 则显示你的 CI 排名, 你是 SI, CI MVP 霸榜了, 除非你想显示你的 FF 排名, 则不显示你的排名
+		if (client == siMvpClient && client == ciMvpClient) {
+			return;
+		}
+
+		// 开始排名
+		int index = 0, rank;
+		int[] players = new int[MaxClients + 1];
+		for (i = 1; i <= MaxClients; i++) {
+			if (!IsValidClient(i)) {
+				continue;
+			}
+			players[index++] = i;
+		}
+
+		// 是杀特高手 或 不是杀特高手也不是清僵尸高手, 显示他的杀丧尸排名
+		if (client == siMvpClient || client != ciMvpClient) {
+			// 没有丧尸击杀, 不显示丧尸排名
+			if (ciTotal <= 0) {
+				return;
+			}
+
+			SortCustom1D(players, index, sortByCiCountFunction);
+
+			for (i = 0; i < index; i++) {
+				if (players[i] == client) {
+					rank = i + 1;
+					break;
+				}
+			}
+
+			killPercent = RoundToNearest(float(playerInfos[client].ciCount) / float(ciTotal) * 100.0);
+			FormatEx(buffer, sizeof(buffer), "{bule}你的排名 {olive}CI: {green}#%d {bule}({default}%d {olive}击杀 {bule}[{default}%d%%{bule}])", rank, playerInfos[client].ciCount, killPercent);
+		} else {
+			// 没有特感击杀, 不显示特感排名
+			if (siTotal <= 0) {
+				return;
+			}
+
+			SortCustom1D(players, index, sortBySiCountFunction);
+
+			for (i = 0; i < index; i++) {
+				if (players[i] == client) {
+					rank = i + 1;
+					break;
+				}
+			}
+
+			dmgPercent = RoundToNearest(float(playerInfos[client].totalDamage) / float(dmgTotal) * 100.0);
+			killPercent = RoundToNearest(float(playerInfos[client].siCount) / float(siTotal) * 100.0);
+			FormatEx(buffer, sizeof(buffer), "{bule}你的排名 {olive}SI: {green}#%d {bule}({default}%d {olive}伤害 {bule}[{default}%d%%{bule}]{default}, %d {olive}击杀 {bule}[{default}%d%%{bule}])", rank, playerInfos[client].totalDamage, dmgPercent, playerInfos[client].siCount, killPercent);
+		}
+		CPrintToChat(client, "%s", buffer);
+	}
 }
 
 /**
-* Track boomer pops
-*/
-void boomerExploded(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // We only want to track pops where the boomer didn't bile anyone
-    new bool:biled = GetEventBool(event, "splashedbile");
-    if (! biled) {
-        new attacker = GetClientOfUserId(GetEventInt(event, "attacker"));
-        if (attacker == 0 || ! IsClientInGame(attacker)) {
-            return;
-        }
-        boomerPops[attacker]++;
-    }
-}
-
-
-/**
-* Track when someone gets charged (end of charge for level, or if someone shoots you off etc.)
-*/
-void chargerCarryEnd(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new client = GetClientOfUserId(GetEventInt(event, "victim")); 
-    if (client == 0 || ! IsClientInGame(client)) {
-        return;
-    }
-    
-    timesPinned[client][ZC_CHARGER]++;
-    totalPinned[client]++;
-    
-    if (tankSpawned) {
-        ttlPinnedDuringTank[client]++;
-    }
+* 根据客户端是否为 BOT 在其名字后面添加 [BOT] 字样
+* @param client 需要获取名称的客户端索引
+* @param str 名称字符串
+* @param len 字符串长度
+* @return void
+**/
+void formatMvpClientName(int client, char[] str, int len) {
+	if (IsFakeClient(client)) {
+		FormatEx(str, len, "{green}%N {default}[BOT]", client);
+	} else {
+		FormatEx(str, len, "{green}%N", client);
+	}
 }
 
 /**
-* Track when someone gets jockeyed.
-*/
-void jockeyRide(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new client = GetClientOfUserId(GetEventInt(event, "victim")); 
-    if (client == 0 || ! IsClientInGame(client)) {
-        return;
-    }
-    
-    timesPinned[client][ZC_JOCKEY]++;
-    totalPinned[client]++;
-    
-    if (tankSpawned) {
-        ttlPinnedDuringTank[client]++;
-    }
-}
-
-/** 
-* Track when someone gets huntered.
-*/
-void hunterLunged(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new client = GetClientOfUserId(GetEventInt(event, "victim")); 
-    if (client == 0 || ! IsClientInGame(client)) {
-        return;
-    }
-    
-    timesPinned[client][ZC_HUNTER]++;
-    totalPinned[client]++;
-    
-    if (tankSpawned) {
-        ttlPinnedDuringTank[client]++;
-    }
+* 按照生还者总伤害击杀特感数量 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortBySiCountFunction(int x, int y, const int[] array, Handle hndl) {
+	return playerInfos[x].siCount > playerInfos[y].siCount ? -1 : playerInfos[x].siCount == playerInfos[y].siCount ? 0 : 1;
 }
 
 /**
-* Track when someone gets smoked (we track when they start getting smoked, because anyone can get smoked)
-*/
-void smokerChoke(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new client = GetClientOfUserId(GetEventInt(event, "victim")); 
-    if (client == 0 || ! IsClientInGame(client)) {
-        return;
-    }
-    
-    timesPinned[client][ZC_SMOKER]++;
-    totalPinned[client]++;
-    
-    if (tankSpawned) {
-        ttlPinnedDuringTank[client]++;
-    }
+* 按照生还者击杀丧尸数量 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortByCiCountFunction(int x, int y, const int[] array, Handle hndl) {
+	return playerInfos[x].ciCount > playerInfos[y].ciCount ? -1 : playerInfos[x].ciCount == playerInfos[y].ciCount ? x > y ? -1 : 1 : 1;
 }
 
 /**
-* When the tank spawns
-*/
-void tankSpawn(Handle:event, const String:name[], bool:dontBroadcast) {
-    tankSpawned = true;
+* 按照生还者总伤害 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortByTotalDamageFunction(int x, int y, const int[] array, Handle hndl) {
+	return playerInfos[x].totalDamage > playerInfos[y].totalDamage ? -1 : playerInfos[x].totalDamage == playerInfos[y].totalDamage ? x > y ? -1 : 1 : 1;
 }
 
 /**
-* When the tank is killed
-*/
-void tankKilled(Handle:event, const String:name[], bool:dontBroadcast) {
-    tankSpawned = false;
+* 按照生还者总伤害 -> 爆头率 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortByDamageFunction(int x, int y, const int[] array, Handle hndl) {
+	int xDamage = playerInfos[x].totalDamage, yDamage = playerInfos[y].totalDamage;
+
+	int xCount = playerInfos[x].siCount + playerInfos[x].ciCount,
+		yCount = playerInfos[y].siCount + playerInfos[y].ciCount;
+	float xAcc = xCount == 0 ? 0.0 : float(playerInfos[x].headShotCount) / float(xCount),
+		yAcc = yCount == 0 ? 0.0 : float(playerInfos[y].headShotCount) / float(yCount);
+	// 先按总伤害排名，总伤害一样按爆头率排名, 爆头率一样按客户端索引排名
+	return xDamage > yDamage ? -1 : xDamage == yDamage ? FloatCompare(xAcc, yAcc) > 0 ? -1 : FloatCompare(xAcc, yAcc) == 0 ? x > y ? -1 : 1 : 1 : 1;
 }
 
-/*
-*      track damage/kills
-*      ==================
-*/
-
-void PlayerHurt_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new zombieClass = 0;
-    
-    // Victim details
-    new victimId = GetEventInt(event, "userid");
-    new victim = GetClientOfUserId(victimId);
-    
-    // Attacker details
-    new attackerId = GetEventInt(event, "attacker");
-    new attacker = GetClientOfUserId(attackerId);
-    
-    // Misc details
-    new damageDone = GetEventInt(event, "dmg_health");
-    
-    // no world damage or flukes or whatevs, no bot attackers, no infected-to-infected damage
-    if (victimId && attackerId && IsClientAndInGame(victim) && IsClientAndInGame(attacker))
-    {
-        // If a survivor is attacking infected
-        if (GetClientTeam(attacker) == TEAM_SURVIVOR && GetClientTeam(victim) == TEAM_INFECTED)
-        {
-            zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
-            
-            // Increment the damage for that class to the total
-            iDidDamageClass[attacker][zombieClass] += damageDone;
-            //PrintToConsole(attacker, "Attacked: %d - Dmg: %d", zombieClass, damageDone);
-            //PrintToConsole(attacker, "Total damage for %d: %d", zombieClass, iDidDamageClass[attacker][zombieClass]);
-            
-            // separately store SI and tank damage
-            if (zombieClass >= ZC_SMOKER && zombieClass < ZC_WITCH)
-            {
-                // If the tank is up, let's store separately
-                if (tankSpawned) {
-                    siDmgDuringTank[attacker] += damageDone;
-                    //ttlSiDmgDuringTank += damageDone;
-                }
-                
-                iDidDamage[attacker] += damageDone;
-                iDidDamageAll[attacker] += damageDone;
-               // iTotalDamage += damageDone;
-                iTotalDamageAll += damageDone;
-            }
-            else if (zombieClass == ZC_TANK && damageDone != 5000) // For some reason the last attacker does 5k damage?
-            {
-                // We want to track tank damage even if we're not factoring it in to our mvp result
-                iDidDamageTank[attacker] += damageDone;
-                //iTotalDamageTank += damageDone;
-                
-                // If we're factoring it in, include it in our overall damage
-                if (bCountTankDamage)
-                {
-                    iDidDamageAll[attacker] += damageDone;
-                    iTotalDamageAll += damageDone;
-                }
-            }
-        }
-        
-        // Otherwise if friendly fire
-        else if (GetClientTeam(attacker) == TEAM_SURVIVOR && GetClientTeam(victim) == TEAM_SURVIVOR && bTrackFF && !L4D_IsPlayerIncapacitated(victim))                // survivor on survivor action == FF
-        {
-            if (bRUPLive || bPlayerLeftStartArea) {
-                // but don't record before readyup ended or before leaving saferoom if readyup is not loaded.
-                iDidFF[attacker] += damageDone;
-                iTotalFF += damageDone;
-            }
-        }
-        
-        // Otherwise if infected are inflicting damage on a survivor
-        else if (GetClientTeam(attacker) == TEAM_INFECTED && GetClientTeam(victim) == TEAM_SURVIVOR) {
-            zombieClass = GetEntProp(attacker, Prop_Send, "m_zombieClass");
-            
-            // If we got hit by a tank, let's see what type of damage it was
-            // If it was from a rock throw
-            if (tankThrow && zombieClass == ZC_TANK && damageDone == 24) {
-                rocksEaten[victim]++;
-            }
-            damageReceived[victim] += damageDone;
-        }
-    }
+/**
+* 按照生还者黑枪 -> 被黑 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortByFriendlyFireFunction(int x, int y, const int[] array, Handle hndl) {
+	int xFF = playerInfos[x].ffCount, yFF = playerInfos[y].ffCount;
+	int xGotFF = playerInfos[x].gotFFCount, yGotFF = playerInfos[y].gotFFCount;
+	// 先按黑枪排名, 友伤一样按被黑排名, 黑枪一样按客户端索引排名
+	return xFF > yFF ? -1 : xFF == yFF ? xGotFF > yGotFF ? -1 : xGotFF == yGotFF ? x > y ? -1 : 1 : 1 : 1;
 }
 
-/** 
-* When the infected are hurt (i.e. when a survivor hurts an SI)
-* We want to use this to track damage done to the witch.
-*/
-void InfectedHurt_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // catch damage done to witch
-    new victimEntId = GetEventInt(event, "entityid");
-    
-    if (IsWitch(victimEntId))
-    {
-        new attackerId = GetEventInt(event, "attacker");
-        new attacker = GetClientOfUserId(attackerId);
-        new damageDone = GetEventInt(event, "amount");
-        
-        // no world damage or flukes or whatevs, no bot attackers
-        if (attackerId && IsClientAndInGame(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR)
-        {
-            // We want to track the witch damage regardless of whether we're counting it in our mvp stat
-            iDidDamageWitch[attacker] += damageDone;
-            //iTotalDamageWitch += damageDone;
-            
-            // If we're counting witch damage in our mvp stat, lets add the amount of damage done to the witch
-            if (bCountWitchDamage) 
-            {
-                iDidDamageAll[attacker] += damageDone;
-                iTotalDamageAll += damageDone;
-            }
-        }
-    }
+/**
+* 按照生还者被黑 -> 客户端索引排序
+* @param x 第一个参与排序的元素
+* @param y 第二个参与排序的元素
+* @param array 原数组
+* @param hndl 可选句柄
+* @return int
+**/
+stock int sortByFFReceiveFunction(int x, int y, const int[] array, Handle hndl) {
+	return playerInfos[x].gotFFCount > playerInfos[y].gotFFCount ? -1 : playerInfos[x].gotFFCount == playerInfos[y].gotFFCount ? x > y ? -1 : 1 : 1;
 }
 
-void PlayerDeath_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    // Get the victim details
-    new zombieClass = 0;
-    new victimId = GetEventInt(event, "userid");
-    new victim = GetClientOfUserId(victimId);
-    
-    // Get the attacker details
-    new attackerId = GetEventInt(event, "attacker");
-    new attacker = GetClientOfUserId(attackerId);
-    
-    // no world kills or flukes or whatevs, no bot attackers
-    if (victimId && attackerId && IsClientAndInGame(victim) && IsClientAndInGame(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR)
-    {
-        zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
-        
-        // only SI, not the tank && only player-attackers
-        if (zombieClass >= ZC_SMOKER && zombieClass < ZC_WITCH)
-        {
-            // store kill to count for attacker id
-            iGotKills[attacker]++;
-            iTotalKills++;
-        }
-    }
-    
-    /**
-    * Are we tracking the tank? 
-    * This is a secondary measure. For some reason when I test locally in PM, the
-    * tank_killed event is triggered, but when I test in a custom config, it's not.
-    * Hopefully this should fix it.
-    */
-    if (victimId && IsClientAndInGame(victim)) {
-        zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
-        if (zombieClass == ZC_TANK) {
-            tankSpawned = false;
-        }
-    }
+// Natives
+any Native_GetTotalDamageMvp(Handle plugin, int numParams) {
+	int count;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
+	SortCustom1D(players, count, sortByTotalDamageFunction);
+	return players[0];
 }
 
-// Was the zombie a hunter?
-/*bool:isHunter(zombieClass) {
-    return zombieClass == ZC_HUNTER;
-}*/
-
-void InfectedDeath_Event(Handle:event, const String:name[], bool:dontBroadcast)
-{
-    new attackerId = GetEventInt(event, "attacker");
-    new attacker = GetClientOfUserId(attackerId);
-    
-    if (bPlayerLeftStartArea && attackerId && IsClientAndInGame(attacker) && GetClientTeam(attacker) == TEAM_SURVIVOR)
-    {
-        // If the tank is up, let's store separately
-        if (tankSpawned) {
-            commonKilledDuringTank[attacker]++;
-            ttlCommonKilledDuringTank++;
-        }
-        
-        iGotCommon[attacker]++;
-        iTotalCommon++;
-        // if victimType > 2, it's an "uncommon" (of some type or other) -- do nothing with this ftpresent.
-    }
+any Native_GetSiMvp(Handle plugin, int numParams) {
+	int count;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
+	SortCustom1D(players, count, sortBySiCountFunction);
+	return players[0];
 }
 
-/*
-*      MVP string & 'sorting'
-*      ======================
-*/
-void GetMVPString(char[] printBuffer, const int iSize)
-{
-    decl String:tmpBuffer[1024];
-    printBuffer[0] = '\0';
-
-    decl String:tmpName[64];
-    decl String:mvp_SI_name[64];
-    decl String:mvp_Common_name[64];
-    decl String:mvp_FF_name[64];
-    
-    new mvp_SI = 0;
-    new mvp_Common = 0;
-    new mvp_FF = 0;
-    
-    // calculate MVP per category:
-    //  1. SI damage & SI kills + damage to tank/witch
-    //  2. common kills
-    
-    // SI MVP
-    if (!(iBrevityFlags & BREV_SI))
-    {
-        mvp_SI = findMVPSI();
-        if (mvp_SI > 0)
-        {
-            // get name from client if connected -- if not, use sClientName array
-            if (IsClientConnected(mvp_SI))
-            {
-                GetClientName(mvp_SI, tmpName, sizeof(tmpName));
-                if (IsFakeClient(mvp_SI))
-                {
-                    StrCat(tmpName, 64, " \x01[BOT]");
-                }
-            } else {
-                strcopy(tmpName, 64, sClientName[mvp_SI]);
-            }
-            mvp_SI_name = tmpName;
-        } else {
-            mvp_SI_name = "(nobody)";
-        }
-    }
-    
-    // Common MVP
-    if (!(iBrevityFlags & BREV_CI))
-    {
-        mvp_Common = findMVPCommon();
-        if (mvp_Common > 0)
-        {
-            // get name from client if connected -- if not, use sClientName array
-            if (IsClientConnected(mvp_Common))
-            {
-                GetClientName(mvp_Common, tmpName, sizeof(tmpName));
-                if (IsFakeClient(mvp_Common))
-                {
-                    StrCat(tmpName, 64, " \x01[BOT]");
-                }
-            } else {
-                strcopy(tmpName, 64, sClientName[mvp_Common]);
-            }
-            mvp_Common_name = tmpName;
-        } else {
-            mvp_Common_name = "(nobody)";
-        }
-    }
-    
-    // FF LVP
-    if (!(iBrevityFlags & BREV_FF) && bTrackFF)
-    {
-        mvp_FF = findLVPFF();
-        if (mvp_FF > 0)
-        {
-            // get name from client if connected -- if not, use sClientName array
-            if (IsClientConnected(mvp_FF))
-            {
-                GetClientName(mvp_FF, tmpName, sizeof(tmpName));
-                if (IsFakeClient(mvp_FF))
-                {
-                    StrCat(tmpName, 64, " \x01[BOT]");
-                }
-            } else {
-                strcopy(tmpName, 64, sClientName[mvp_FF]);
-            }
-            mvp_FF_name = tmpName;
-        } else {
-            mvp_FF_name = "(nobody)";
-        }
-    }
-    
-    // report
-    
-    if (mvp_SI == 0 && mvp_Common == 0 && !(iBrevityFlags & BREV_SI && iBrevityFlags & BREV_CI))
-    {
-        Format(tmpBuffer, sizeof(tmpBuffer), "{blue}[{default}MVP{blue}]{default} {blue}({default}not enough action yet{blue}){default}\n");
-        StrCat(printBuffer, iSize, tmpBuffer);
-    }
-    else
-    {
-        if (!(iBrevityFlags & BREV_SI))
-        {
-            if (mvp_SI > 0)
-            {
-                if (iBrevityFlags & BREV_PERCENT) {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "[MVP] SI:\x03 %s \x01(\x05%d \x01dmg,\x05 %d \x01kills)\n", mvp_SI_name, iDidDamageAll[mvp_SI], iGotKills[mvp_SI]);
-                } else if (iBrevityFlags & BREV_ABSOLUTE) {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "[MVP] SI:\x03 %s \x01(dmg \x04%2.0f%%\x01, kills \x04%.0f%%\x01)\n", mvp_SI_name, (float(iDidDamageAll[mvp_SI]) / float(iTotalDamageAll)) * 100, (float(iGotKills[mvp_SI]) / float(iTotalKills)) * 100);
-                } else {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "{blue}[{default}MVP{blue}] SI: {olive}%s {blue}({default}%d {green}dmg {blue}[{default}%.0f%%{blue}]{olive}, {default}%d {green}kills {blue}[{default}%.0f%%{blue}])\n", mvp_SI_name, iDidDamageAll[mvp_SI], (float(iDidDamageAll[mvp_SI]) / float(iTotalDamageAll)) * 100, iGotKills[mvp_SI], (float(iGotKills[mvp_SI]) / float(iTotalKills)) * 100);
-                }
-                StrCat(printBuffer, iSize, tmpBuffer);
-            }
-            else
-            {
-                StrCat(printBuffer, iSize, "{blue}[{default}MVP{blue}] SI: {blue}({default}nobody{blue}){default}\n");
-            }
-        }
-        
-        if (!(iBrevityFlags & BREV_CI))
-        {
-            if (mvp_Common > 0)
-            {
-                if (iBrevityFlags & BREV_PERCENT) {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "[MVP] CI:\x03 %s \x01(\x05%d \x01common)\n", mvp_Common_name, iGotCommon[mvp_Common]);
-                } else if (iBrevityFlags & BREV_ABSOLUTE) {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "[MVP] CI:\x03 %s \x01(\x04%.0f%%\x01)\n", mvp_Common_name, (float(iGotCommon[mvp_Common]) / float(iTotalCommon)) * 100);
-                } else {
-                    Format(tmpBuffer, sizeof(tmpBuffer), "{blue}[{default}MVP{blue}] CI: {olive}%s {blue}({default}%d {green}common {blue}[{default}%.0f%%{blue}])\n", mvp_Common_name, iGotCommon[mvp_Common], (float(iGotCommon[mvp_Common]) / float(iTotalCommon)) * 100);
-                }
-                StrCat(printBuffer, iSize, tmpBuffer);
-            }
-        }
-    }
-    
-    // FF
-    if (!(iBrevityFlags & BREV_FF) && bTrackFF)
-    {
-        if (mvp_FF == 0)
-        {
-            Format(tmpBuffer, sizeof(tmpBuffer), "{blue}[{default}LVP{blue}] FF{default}: {green}no friendly fire at all!{default}\n");
-            StrCat(printBuffer, iSize, tmpBuffer);
-        }
-        else
-        {
-            if (iBrevityFlags & BREV_PERCENT) {
-                Format(tmpBuffer, sizeof(tmpBuffer), "[LVP] FF:\x03 %s \x01(\x05%d \x01dmg)\n", mvp_FF_name, iDidFF[mvp_FF]);
-            } else if (iBrevityFlags & BREV_ABSOLUTE) {
-                Format(tmpBuffer, sizeof(tmpBuffer), "[LVP] FF:\x03 %s \x01(\x04%.0f%%\x01)\n", mvp_FF_name, (float(iDidFF[mvp_FF]) / float(iTotalFF)) * 100);
-            } else {
-                Format(tmpBuffer, sizeof(tmpBuffer), "{blue}[{default}LVP{blue}] FF{default}: {olive}%s {blue}({default}%d {green}friendly fire {blue}[{default}%.0f%%{blue}]){default}\n", mvp_FF_name, iDidFF[mvp_FF], (float(iDidFF[mvp_FF]) / float(iTotalFF)) * 100);
-            }
-            StrCat(printBuffer, iSize, tmpBuffer);
-        }
-    }
+any Native_GetCiMvp(Handle plugin, int numParams) {
+	int count;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
+	SortCustom1D(players, count, sortByCiCountFunction);
+	return players[0];
 }
 
-
-findMVPSI(excludeMeA = 0, excludeMeB = 0, excludeMeC = 0)
-{
-    new i, maxIndex = 0;
-    for(i = 1; i < sizeof(iDidDamageAll); i++)
-    {
-        if(iDidDamageAll[i] > iDidDamageAll[maxIndex]  && i != excludeMeA && i != excludeMeB && i != excludeMeC)
-            maxIndex = i;
-    }
-    return maxIndex;
+any Native_GetFFMvp(Handle plugin, int numParams) {
+	int count;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
+	SortCustom1D(players, count, sortByFriendlyFireFunction);
+	return players[0];
 }
 
-findMVPCommon(excludeMeA = 0, excludeMeB = 0, excludeMeC = 0)
-{
-    new i, maxIndex = 0;
-    for(i = 1; i < sizeof(iGotCommon); i++)
-    {
-        if(iGotCommon[i] > iGotCommon[maxIndex] && i != excludeMeA && i != excludeMeB && i != excludeMeC)
-            maxIndex = i;
-    }
-    return maxIndex;
+any Native_GetFFReceiveMvp(Handle plugin, int numParams) {
+	int count;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
+	SortCustom1D(players, count, sortByFFReceiveFunction);
+	return players[0];
 }
 
-findLVPFF(excludeMeA = 0, excludeMeB = 0, excludeMeC = 0)
-{
-    new i, maxIndex = 0;
-    for(i = 1; i < sizeof(iDidFF); i++)
-    {
-        if(iDidFF[i] > iDidFF[maxIndex]  && i != excludeMeA && i != excludeMeB && i != excludeMeC)
-            maxIndex = i;
-    }
-    return maxIndex;
+any Native_GetMapFailCount(Handle plugin, int numParams) {
+	return failCount;
 }
 
+any Native_GetClientRank(Handle plugin, int numParams) {
+	int client = GetNativeCell(1);
+	int type = GetNativeCell(2);
 
-/*
-*      general functions
-*      =================
-*/
+	if (!IsValidClient(client) || GetClientTeam(client) != TEAM_SURVIVOR) {
+		ThrowNativeError(SP_ERROR_NATIVE, "Client (%d) is invalid or not a survivor", client);
+	}
 
+	int i, count, rank;
+	int[] players = new int[MaxClients + 1];
+	getSurvivorArray(players, count);
 
-stock bool:IsClientAndInGame(index)
-{
-    return (index > 0 && index <= MaxClients && IsClientInGame(index));
+	switch (type) {
+		case 1:
+			SortCustom1D(players, count, sortByDamageFunction);
+		case 2:
+			SortCustom1D(players, count, sortBySiCountFunction);
+		case 3:
+			SortCustom1D(players, count, sortByCiCountFunction);
+		case 4:
+			SortCustom1D(players, count, sortByFriendlyFireFunction);
+		case 5:
+			SortCustom1D(players, count, sortByFFReceiveFunction);
+		default: {
+			return ThrowNativeError(SP_ERROR_NATIVE, "Invalid type (%d), param type should between 1 and 5", type);
+		}
+	}
+	
+	for (i = 0; i < count; i++) {
+		if (players[i] == client) {
+			rank = i + 1;
+			break;
+		}
+	}
+
+	return rank;
 }
 
-stock bool:IsSurvivor(client)
-{
-    return IsClientAndInGame(client) && GetClientTeam(client) == TEAM_SURVIVOR;
-}
-
-stock bool:IsInfected(client)
-{
-    return IsClientAndInGame(client) && GetClientTeam(client) == TEAM_INFECTED;
-}
-
-stock bool:IsWitch(iEntity)
-{
-    if(iEntity > 0 && IsValidEntity(iEntity) && IsValidEdict(iEntity))
-    {
-        decl String:strClassName[64];
-        GetEdictClassname(iEntity, strClassName, sizeof(strClassName));
-        return StrEqual(strClassName, "witch");
-    }
-    return false;
-}
-
-stock getSurvivor(exclude[4])
-{
-    for(new i=1; i <= MaxClients; i++) {
-        if (IsSurvivor(i)) {
-            new tagged = false;
-            // exclude already tagged survs
-            for (new j=0; j < 4; j++) {
-                if (exclude[j] == i) { tagged = true; }
-            }
-            if (!tagged) {
-                return i;
-            }
-        }
-    }
-    return 0;
-}
-
-/* //survivor_mvp.sp(1258) : error 017: undefined symbol "MAXLENGTH"
-void stripUnicode(String:testString[MAX_NAME_LENGTH])
-{
-    new const maxlength = MAXLENGTH;
-    //strcopy(testString, maxlength, sTmpString);
-    sTmpString = testString;
-    
-    new uni=0;
-    new currentChar;
-    new tmpCharLength = 0;
-    //new iReplace[MAX_NAME_LENGTH];      // replace these chars
-    
-    for (new i=0; i < maxlength - 3 && sTmpString[i] != 0; i++)
-    {
-        // estimate current character value
-        if ((sTmpString[i]&0x80) == 0) // single byte character?
-        {
-            currentChar=sTmpString[i]; tmpCharLength = 0;
-        } else if (((sTmpString[i]&0xE0) == 0xC0) && ((sTmpString[i+1]&0xC0) == 0x80)) // two byte character?
-        {
-            currentChar=(sTmpString[i++] & 0x1f); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i] & 0x3f); 
-            tmpCharLength = 1;
-        } else if (((sTmpString[i]&0xF0) == 0xE0) && ((sTmpString[i+1]&0xC0) == 0x80) && ((sTmpString[i+2]&0xC0) == 0x80)) // three byte character?
-        {
-            currentChar=(sTmpString[i++] & 0x0f); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i++] & 0x3f); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i] & 0x3f);
-            tmpCharLength = 2;
-        } else if (((sTmpString[i]&0xF8) == 0xF0) && ((sTmpString[i+1]&0xC0) == 0x80) && ((sTmpString[i+2]&0xC0) == 0x80) && ((sTmpString[i+3]&0xC0) == 0x80)) // four byte character?
-        {
-            currentChar=(sTmpString[i++] & 0x07); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i++] & 0x3f); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i++] & 0x3f); currentChar=currentChar<<6;
-            currentChar+=(sTmpString[i] & 0x3f);
-            tmpCharLength = 3;
-        } else 
-        {
-            currentChar=CHARTHRESHOLD + 1; // reaching this may be caused by bug in sourcemod or some kind of bug using by the user - for unicode users I do assume last ...
-            tmpCharLength = 0;
-        }
-        
-        // decide if character is allowed
-        if (currentChar > CHARTHRESHOLD)
-        {
-            uni++;
-            // replace this character // 95 = _, 32 = space
-            for (new j=tmpCharLength; j >= 0; j--) {
-                sTmpString[i - j] = 95; 
-            }
-        }
-    }
-}*/
-
-/*
-stock bool:IsCommonInfected(iEntity)
-{
-if(iEntity > 0 && IsValidEntity(iEntity) && IsValidEdict(iEntity))
-{
-decl String:strClassName[64];
-GetEdictClassname(iEntity, strClassName, sizeof(strClassName));
-return StrEqual(strClassName, "infected");
-}
-return false;
-}
-*/
+void getSurvivorArray(int[] arr, int& size) {
+	int index = 0, i;
+	for (i = 1; i <= MaxClients; i++) {
+		if (!IsValidClient(i) || GetClientTeam(i) != TEAM_SURVIVOR) {
+			continue;
+		}
+		arr[index++] = i;
+	}
+	size = index;
+} 
