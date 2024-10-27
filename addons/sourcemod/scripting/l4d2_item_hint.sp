@@ -1,14 +1,13 @@
 //fdxx, BHaType	@ 2021
 //Harry @ 2022
-//插件由 QQ：892510007 修改及补充
 
 #pragma semicolon 1
 #pragma newdecls required
 
 #include <sdkhooks>
 #include <sdktools>
-#include <colors>
 #include <sourcemod>
+#include <multicolors>
 
 #define MAXENTITIES 2048
 #define MODEL_MARK_FIELD 	"materials/sprites/laserbeam.vmt"
@@ -23,23 +22,23 @@
 #define DIRECTION_OUT 0
 #define DIRECTION_IN 1
 
-ConVar g_hItemHintCoolDown, g_hSpotMarkCoolDown, g_hInfectedMarkCoolDown, g_hAllNumberTimes, g_hAllCycleTime, g_hAllAnnounceType,
-	g_hItemUseHintRange, g_hAllUseSound, g_hItemUseSound, g_hItemAnnounceType, g_hItemGlowTimer, g_hItemGlowRange, g_hItemCvarColor,
-	g_hItemInstructorHint, g_hItemInstructorColor, g_hItemInstructorIcon,g_hInfectedMarkLicense,g_hAllResAnnType,
-	g_hSpotMarkUseRange, g_hSpotMarkUseSound, g_hSpotMarkGlowTimer, g_hSpotMarkCvarColor, g_hSpotMarkSpriteModel,
+ConVar g_hItemHintCoolDown, g_hSpotMarkCoolDown, g_hInfectedMarkCoolDown,
+	g_hItemUseHintRange, g_hItemUseSound, g_hItemAnnounceType, g_hItemGlowTimer, g_hItemGlowRange, g_hItemCvarColor,
+	g_hItemInstructorHint, g_hItemInstructorColor, g_hItemInstructorIcon,
+	g_hSpotMarkUseRange, g_hSpotMarkUseSound, g_hSpotMarkAnnounceType, g_hSpotMarkGlowTimer, g_hSpotMarkCvarColor, g_hSpotMarkSpriteModel,
 	g_hSpotMarkInstructorHint, g_hSpotMarkInstructorColor, g_hSpotMarkInstructorIcon,
 	g_hInfectedMarkUseRange, g_hInfectedMarkUseSound, g_hInfectedMarkAnnounceType, g_hInfectedMarkGlowTimer, g_hInfectedMarkGlowRange, g_hInfectedMarkCvarColor, g_hInfectedMarkWitch;
-int g_iAllNumberTimes, g_iItemAnnounceType, g_iItemGlowRange, g_iItemCvarColor, g_iAllAnnounceType, g_iAllResAnnType,
-	g_iSpotMarkCvarColorArray[3],i_ItemsNumber[MAXENTITIES+1],
+int g_iItemAnnounceType, g_iItemGlowRange, g_iItemCvarColor,
+	g_iSpotMarkCvarColorArray[3], g_iSpotMarkAnnounceType,
 	g_iInfectedMarkAnnounceType, g_iInfectedMarkGlowRange, g_iInfectedMarkCvarColor;
 float g_fItemHintCoolDown, g_fSpotMarkCoolDown, g_fInfectedMarkCoolDown,
-	g_fItemUseHintRange, g_fItemGlowTimer, g_fAllCycleTime,
+	g_fItemUseHintRange, g_fItemGlowTimer,
 	g_fSpotMarkUseRange, g_fSpotMarkGlowTimer,
 	g_fInfectedMarkUseRange, g_fInfectedMarkGlowTimer;
 float       g_fItemHintCoolDownTime[MAXPLAYERS + 1], g_fSpotMarkCoolDownTime[MAXPLAYERS + 1], g_fInfectedMarkCoolDownTime[MAXPLAYERS + 1];
-static char g_sItemInstructorColor[12], g_sItemInstructorIcon[16], g_sSpotMarkCvarColor[12], g_sAllUseSound[100], g_sItemUseSound[100], g_sSpotMarkUseSound[100], g_sKillDelay[32],
+static char g_sItemInstructorColor[12], g_sItemInstructorIcon[16], g_sSpotMarkCvarColor[12], g_sItemUseSound[100], g_sSpotMarkUseSound[100], g_sKillDelay[32],
 			g_sInfectedMarkUseSound[100], g_sSpotMarkInstructorColor[12], g_sSpotMarkInstructorIcon[16], g_sSpotMarkSpriteModel[PLATFORM_MAX_PATH];
-bool g_bItemInstructorHint, g_bSpotMarkInstructorHint, g_bInfectedMarkLicense, g_bInfectedMarkWitch;
+bool g_bItemInstructorHint, g_bSpotMarkInstructorHint, g_bInfectedMarkWitch;
 
 
 static bool   ge_bMoveUp[MAXENTITIES+1];
@@ -49,7 +48,7 @@ int       g_iInstructorIndex[MAXENTITIES+1] = {0};
 Handle    g_iInstructorTimer[MAXENTITIES+1] = {null};
 int       g_iTargetInstructorIndex[MAXENTITIES+1] = {0};
 Handle    g_iTargetInstructorTimer[MAXENTITIES+1] = {null};
-Handle    g_hUseEntity, increase=INVALID_HANDLE;
+Handle    g_hUseEntity;
 StringMap g_smModelToName;
 StringMap g_smModelHeight;
 bool g_bMapStarted;
@@ -65,7 +64,7 @@ public Plugin myinfo =
 	name        = "L4D2 Item hint",
 	author      = "BHaType, fdxx, HarryPotter",
 	description = "When using 'Look' in vocalize menu, print corresponding item to chat area and make item glow or create spot marker/infeced maker like back 4 blood.",
-	version     = "2.3",
+	version     = "2.7",
 	url         = "https://forums.alliedmods.net/showpost.php?p=2765332&postcount=30"
 };
 
@@ -95,6 +94,8 @@ public void OnAllPluginsLoaded()
 
 public void OnPluginStart()
 {
+	LoadTranslations("l4d2_item_hint.phrases");
+
 	GameData hGameData = new GameData("l4d2_item_hint");
 	if (hGameData != null)
 	{
@@ -120,50 +121,40 @@ public void OnPluginStart()
 	// g_hItemUseHintRange = FindConVar("player_use_radius");
 	AddCommandListener(Vocalize_Listener, "vocalize");
 
-	g_hAllNumberTimes		= CreateConVar("l4d2_all_number_times", "3", "玩家每回合可以创建查看物品和标记的次数（0：不限制）", FCVAR_NOTIFY, true, 0.0);
-	g_hAllCycleTime			= CreateConVar("l4d2_all_cycle_time", "180.0", "每隔多少秒给玩家增加1次标记次数（0：禁用）", FCVAR_NOTIFY, true, 0.0);
-	g_hAllAnnounceType		= CreateConVar("l4d2_all_cycle_announce_type", "1", "增加标记次数的提示方式。（0：禁用，1：在聊天中，2：在提示框中，4：在屏幕中心；数字相加）", FCVAR_NOTIFY);
-	g_hAllResAnnType		= CreateConVar("l4d2_all_residue_announce_type", "1", "剩余标记次数的提示方式。（0：禁用，1：在聊天中，2：在提示框中，4：在屏幕中心；数字相加）", FCVAR_NOTIFY);
-	g_hAllUseSound 		    = CreateConVar("l4d2_all_use_sound", "ui/helpful_event_1.wav", "增加标记次数的提示音（格式一般是：“sound/”，无内容：禁用）", FCVAR_NOTIFY);
 	g_hItemHintCoolDown		= CreateConVar("l4d2_item_hint_cooldown_time", "1.0", "玩家使用语音菜单“Z”键的“看”创建查看物品的冷却时间", FCVAR_NOTIFY, true, 0.0);
-	g_hItemUseHintRange		= CreateConVar("l4d2_item_hint_use_range", "800", "玩家使用语音菜单查看物品最远距离", FCVAR_NOTIFY, true, 1.0);
-	g_hItemUseSound			= CreateConVar("l4d2_item_hint_use_sound", "buttons/blip1.wav", "物品提示音（格式一般是：“sound/”，无内容：禁用）", FCVAR_NOTIFY);
-	g_hItemAnnounceType		= CreateConVar("l4d2_item_hint_announce_type", "3", "物品提示的显示方式。（0：禁用，1：在聊天中，2：在提示框中，4：在屏幕中心；数字相加）", FCVAR_NOTIFY);
-	g_hItemGlowTimer		= CreateConVar("l4d2_item_hint_glow_timer", "180.0", "物品发光的持续时间", FCVAR_NOTIFY, true, 0.0);
-	g_hItemGlowRange		= CreateConVar("l4d2_item_hint_glow_range", "2000", "物品发光的范围", FCVAR_NOTIFY, true, 0.0);
-	g_hItemCvarColor		= CreateConVar("l4d2_item_hint_glow_color", "0 255 255", "物品发光颜色：https://tool.oschina.net/commons?type=3（无内容：禁用物品发光）", FCVAR_NOTIFY);
-	g_hItemInstructorHint	= CreateConVar("l4d2_item_instructorhint_enable", "1", "在物品上方显示物品提示（0：禁用，1启用）", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_hItemUseHintRange		= CreateConVar("l4d2_item_hint_use_range", "150", "玩家使用语音菜单查看物品最远距离", FCVAR_NOTIFY, true, 1.0);
+	g_hItemUseSound			= CreateConVar("l4d2_item_hint_use_sound", "buttons/blip1.wav", "物品提示音 (格式一般是:“sound/”, 无内容:禁用)", FCVAR_NOTIFY);
+	g_hItemAnnounceType		= CreateConVar("l4d2_item_hint_announce_type", "1", "物品提示的方式 (0:禁用, 1:聊天框, 2:弹出提示, 3:屏幕中心)", FCVAR_NOTIFY, true, 0.0, true, 3.0);
+	g_hItemGlowTimer		= CreateConVar("l4d2_item_hint_glow_timer", "10.0", "物品发光的持续时间", FCVAR_NOTIFY, true, 0.0);
+	g_hItemGlowRange		= CreateConVar("l4d2_item_hint_glow_range", "800", "物品发光的范围", FCVAR_NOTIFY, true, 0.0);
+	g_hItemCvarColor		= CreateConVar("l4d2_item_hint_glow_color", "0 255 255", "物品发光颜色 (无内容 = 关闭发光)", FCVAR_NOTIFY);
+	g_hItemInstructorHint	= CreateConVar("l4d2_item_instructorhint_enable", "1", "在物品上方显示物品提示 (0:禁用, 1启用)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_hItemInstructorColor	= CreateConVar("l4d2_item_instructorhint_color", "0 255 255", "物品上方提示的颜色", FCVAR_NOTIFY);
-	g_hItemInstructorIcon	= CreateConVar("l4d2_item_instructorhint_icon", "icon_interact", "物品上方提示的图标：https://developer.valvesoftware.com/wiki/Env_instructor_hint", FCVAR_NOTIFY);
+	g_hItemInstructorIcon	= CreateConVar("l4d2_item_instructorhint_icon", "icon_interact", "物品上方提示的图标 (更多图标: https://developer.valvesoftware.com/wiki/Env_instructor_hint)", FCVAR_NOTIFY);
 
-	g_hSpotMarkCoolDown			= CreateConVar("l4d2_spot_marker_cooldown_time", "1.0", "玩家使用语音菜单“Z”键的“看”创建标记的冷却时间", FCVAR_NOTIFY, true, 0.0);
-	g_hSpotMarkUseRange     	= CreateConVar("l4d2_spot_marker_use_range", "2000", "玩家可以标记的最大范围", FCVAR_NOTIFY, true, 1.0);
-	g_hSpotMarkUseSound     	= CreateConVar("l4d2_spot_marker_use_sound", "buttons/blip1.wav", "标记提示音（格式一般是：“sound/”，无内容：禁用）", FCVAR_NOTIFY);
-	g_hSpotMarkGlowTimer		= CreateConVar("l4d2_spot_marker_duration", "120.0", "标记持续时间", FCVAR_NOTIFY, true, 0.0);
-	g_hSpotMarkCvarColor		= CreateConVar("l4d2_spot_marker_color", "200 200 200", "标记颜色：https://tool.oschina.net/commons?type=3（无内容：禁用标记）", FCVAR_NOTIFY);
-	g_hSpotMarkSpriteModel      = CreateConVar("l4d2_spot_marker_sprite_model", "materials/vgui/icon_arrow_down.vmt", "标记模型(无内容=禁用模型)");
-	g_hSpotMarkInstructorHint	= CreateConVar("l4d2_spot_marker_instructorhint_enable", "1", "在标记上方创建标记提示（0：禁用，1启用）", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_hSpotMarkInstructorColor	= CreateConVar("l4d2_spot_marker_instructorhint_color", "200 200 200", "标记上方提示的颜色：https://tool.oschina.net/commons?type=3", FCVAR_NOTIFY);
+	g_hSpotMarkCoolDown			= CreateConVar("l4d2_spot_marker_cooldown_time", "2.5", "玩家使用语音菜单“Z”键的“看”创建标记的冷却时间", FCVAR_NOTIFY, true, 0.0);
+	g_hSpotMarkUseRange     	= CreateConVar("l4d2_spot_marker_use_range", "1800", "玩家可以标记的最大范围", FCVAR_NOTIFY, true, 1.0);
+	g_hSpotMarkUseSound     	= CreateConVar("l4d2_spot_marker_use_sound", "buttons/blip1.wav", "标记提示音 (格式一般是:“sound/”, 无内容:禁用)", FCVAR_NOTIFY);
+	g_hSpotMarkAnnounceType		= CreateConVar("l4d2_spot_marker_announce_type", "0", "标记提示的方式 (0:禁用, 1:聊天框, 2:弹出提示, 3:屏幕中心)", FCVAR_NOTIFY, true, 0.0, true, 3.0);
+	g_hSpotMarkGlowTimer		= CreateConVar("l4d2_spot_marker_duration", "10.0", "标记持续时间", FCVAR_NOTIFY, true, 0.0);
+	g_hSpotMarkCvarColor		= CreateConVar("l4d2_spot_marker_color", "200 200 200", "标记颜色 (无内容 = 关闭颜色)", FCVAR_NOTIFY);
+	g_hSpotMarkSpriteModel      = CreateConVar("l4d2_spot_marker_sprite_model", "materials/vgui/icon_arrow_down.vmt", "标记模型地址 (无内容:禁用)");
+	g_hSpotMarkInstructorHint	= CreateConVar("l4d2_spot_marker_instructorhint_enable", "1", "在标记上方创建标记提示 (0:禁用, 1:启用)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_hSpotMarkInstructorColor	= CreateConVar("l4d2_spot_marker_instructorhint_color", "200 200 200", "标记上方提示的颜色", FCVAR_NOTIFY);
 	g_hSpotMarkInstructorIcon	= CreateConVar("l4d2_spot_marker_instructorhint_icon", "icon_info", "标记上方提示图标", FCVAR_NOTIFY);
 
-	g_hInfectedMarkLicense		= CreateConVar("l4d2_infected_marker_license", "0", "允许玩家标记特殊感染者（0：禁止，1：允许）", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	g_hInfectedMarkCoolDown		= CreateConVar("l4d2_infected_marker_cooldown_time", "1.0", "玩家使用语音菜单“Z”键的“看”标记发光特殊感染者的冷却时间", FCVAR_NOTIFY, true, 0.0);
-	g_hInfectedMarkUseRange     = CreateConVar("l4d2_infected_marker_use_range", "2000", "玩家多远可以标记特殊感染者", FCVAR_NOTIFY, true, 1.0);
-	g_hInfectedMarkUseSound		= CreateConVar("l4d2_infected_marker_use_sound", "items/suitchargeok1.wav", "标记特殊感染者的提示音（格式一般是：sound/,无内容：禁用）", FCVAR_NOTIFY);
-	g_hInfectedMarkAnnounceType	= CreateConVar("l4d2_infected_marker_announce_type", "3", "特殊感染者提示的显示方式。(0：禁用，1：在聊天中，2：在提示框中，4：在屏幕中心；数字相加）", FCVAR_NOTIFY, true);
-	g_hInfectedMarkGlowTimer   	= CreateConVar("l4d2_infected_marker_glow_timer", "3.0", "特殊感染者标记的持续时间", FCVAR_NOTIFY, true, 0.0);
+	g_hInfectedMarkCoolDown		= CreateConVar("l4d2_infected_marker_cooldown_time", "0.25", "玩家使用语音菜单“Z”键的“看”标记发光特殊感染者的冷却时间", FCVAR_NOTIFY, true, 0.0);
+	g_hInfectedMarkUseRange     = CreateConVar("l4d2_infected_marker_use_range", "1800", "玩家多远可以标记特殊感染者", FCVAR_NOTIFY, true, 1.0);
+	g_hInfectedMarkUseSound		= CreateConVar("l4d2_infected_marker_use_sound", "items/suitchargeok1.wav", "标记特殊感染者的提示音 (格式一般是:“sound/”, 无内容:禁用)", FCVAR_NOTIFY);
+	g_hInfectedMarkAnnounceType	= CreateConVar("l4d2_infected_marker_announce_type", "1", "感染者提示的方式 (0:禁用, 1:聊天框, 2:弹出提示, 3:屏幕中心)", FCVAR_NOTIFY, true, 0.0, true, 3.0);
+	g_hInfectedMarkGlowTimer   	= CreateConVar("l4d2_infected_marker_glow_timer", "10.0", "特殊感染者标记的持续时间", FCVAR_NOTIFY, true, 0.0);
 	g_hInfectedMarkGlowRange   	= CreateConVar("l4d2_infected_marker_glow_range", "2500", "特殊感染者可视的最大距离", FCVAR_NOTIFY, true, 0.0);
-	g_hInfectedMarkCvarColor   	= CreateConVar("l4d2_infected_marker_glow_color", "255 120 203", "特殊感染者标记颜色：https://tool.oschina.net/commons?type=3（无内容=禁用特殊感染者发光）", FCVAR_NOTIFY);
-	g_hInfectedMarkWitch    	= CreateConVar("l4d2_infected_marker_witch_enable", "1", "可以标记Witch（0：禁用，1启用）", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	g_hInfectedMarkCvarColor   	= CreateConVar("l4d2_infected_marker_glow_color", "255 120 203", "特殊感染者标记颜色 （无内容=禁用特殊感染者发光）", FCVAR_NOTIFY);
+	g_hInfectedMarkWitch    	= CreateConVar("l4d2_infected_marker_witch_enable", "1", "可以标记Witch (0:禁用, 1:启用)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
 	AutoExecConfig(true, "l4d2_item_hint");
 
 	GetCvars();
-	g_hAllNumberTimes.AddChangeHook(ConVarChanged_Cvars);
-	g_hAllCycleTime.AddChangeHook(ConVarChanged_Cvars);
-	g_hAllAnnounceType.AddChangeHook(ConVarChanged_Cvars);
-	g_hAllResAnnType.AddChangeHook(ConVarChanged_Cvars);
-	g_hAllUseSound.AddChangeHook(ConVarChanged_Cvars);
 	g_hItemHintCoolDown.AddChangeHook(ConVarChanged_Cvars);
 	g_hItemUseHintRange.AddChangeHook(ConVarChanged_Cvars);
 	g_hItemUseSound.AddChangeHook(ConVarChanged_Cvars);
@@ -178,6 +169,7 @@ public void OnPluginStart()
 	g_hSpotMarkCoolDown.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkUseRange.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkUseSound.AddChangeHook(ConVarChanged_Cvars);
+	g_hSpotMarkAnnounceType.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkGlowTimer.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkCvarColor.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkSpriteModel.AddChangeHook(ConVarChanged_Cvars);
@@ -185,7 +177,6 @@ public void OnPluginStart()
 	g_hSpotMarkInstructorColor.AddChangeHook(ConVarChanged_Cvars);
 	g_hSpotMarkInstructorIcon.AddChangeHook(ConVarChanged_Cvars);
 
-	g_hInfectedMarkLicense.AddChangeHook(ConVarChanged_Cvars);
 	g_hInfectedMarkCoolDown.AddChangeHook(ConVarChanged_Cvars);
 	g_hInfectedMarkUseRange.AddChangeHook(ConVarChanged_Cvars);
 	g_hInfectedMarkUseSound.AddChangeHook(ConVarChanged_Cvars);
@@ -195,8 +186,10 @@ public void OnPluginStart()
 	g_hInfectedMarkCvarColor.AddChangeHook(ConVarChanged_Cvars);
 	g_hInfectedMarkWitch.AddChangeHook(ConVarChanged_Cvars);
 
+	RegConsoleCmd("sm_mark", CMD_MARK, "Mark item/infected/spot");
+
 	HookEvent("round_start", Event_RoundStart);
-	HookEvent("round_end", Event_Round_End_Host);
+	HookEvent("round_end", Event_Round_End);
 	HookEvent("map_transition", Event_Round_End);         //戰役過關到下一關的時候 (沒有觸發round_end)
 	HookEvent("mission_lost", Event_Round_End);           //戰役滅團重來該關卡的時候 (之後有觸發round_end)
 	HookEvent("finale_vehicle_leaving", Event_Round_End); //救援載具離開之時  (沒有觸發round_end)
@@ -216,7 +209,6 @@ public void OnPluginStart()
 			{
 				OnClientPutInServer(i);
 			}
-			i_ItemsNumber[i] = g_iAllNumberTimes;
 		}
 
 		char classname[21];
@@ -257,12 +249,6 @@ public void ConVarChanged_Cvars(ConVar convar, const char[] oldValue, const char
 
 void GetCvars()
 {
-	g_fAllCycleTime = g_hAllCycleTime.FloatValue;
-	g_iAllNumberTimes = g_hAllNumberTimes.IntValue;
-	g_iAllAnnounceType = g_hAllAnnounceType.IntValue;
-	g_iAllResAnnType = g_hAllResAnnType.IntValue;
-	g_hAllUseSound.GetString(g_sAllUseSound, sizeof(g_sAllUseSound));
-	if (strlen(g_sSpotMarkUseSound) > 0 && g_bMapStarted) PrecacheSound(g_sAllUseSound);
 	g_fItemHintCoolDown = g_hItemHintCoolDown.FloatValue;
 	g_fItemUseHintRange = g_hItemUseHintRange.FloatValue;
 	g_hItemUseSound.GetString(g_sItemUseSound, sizeof(g_sItemUseSound));
@@ -282,6 +268,7 @@ void GetCvars()
 	g_fSpotMarkUseRange = g_hSpotMarkUseRange.FloatValue;
 	g_hSpotMarkUseSound.GetString(g_sSpotMarkUseSound, sizeof(g_sSpotMarkUseSound));
 	if (strlen(g_sSpotMarkUseSound) > 0 && g_bMapStarted) PrecacheSound(g_sSpotMarkUseSound);
+	g_iSpotMarkAnnounceType = g_hSpotMarkAnnounceType.IntValue;
 	g_fSpotMarkGlowTimer = g_hSpotMarkGlowTimer.FloatValue;
 	FormatEx(g_sKillDelay, sizeof(g_sKillDelay), "OnUser1 !self:Kill::%.2f:-1", g_fSpotMarkGlowTimer);
 	g_hSpotMarkCvarColor.GetString(g_sSpotMarkCvarColor, sizeof(g_sSpotMarkCvarColor));
@@ -295,7 +282,6 @@ void GetCvars()
 	TrimString(g_sSpotMarkInstructorColor);
 	g_hSpotMarkInstructorIcon.GetString(g_sSpotMarkInstructorIcon, sizeof(g_sSpotMarkInstructorIcon));
 
-	g_bInfectedMarkLicense = g_hInfectedMarkLicense.BoolValue;
 	g_fInfectedMarkCoolDown = g_hInfectedMarkCoolDown.FloatValue;
 	g_fInfectedMarkUseRange = g_hInfectedMarkUseRange.FloatValue;
 	g_hInfectedMarkUseSound.GetString(g_sInfectedMarkUseSound, sizeof(g_sInfectedMarkUseSound));
@@ -313,78 +299,78 @@ void CreateStringMap()
 	g_smModelToName = new StringMap();
 
 	// Case-sensitive
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_medkit.mdl", "急救包");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_defibrillator.mdl", "心脏除颤器");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_painpills.mdl", "止痛药");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_adrenaline.mdl", "肾上腺素");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_bile_flask.mdl", "胆汁");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_molotov.mdl", "燃烧瓶");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_pipebomb.mdl", "土制炸弹");
-	g_smModelToName.SetString("models/w_models/weapons/w_laser_sights.mdl", "激光瞄准器");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_incendiary_ammopack.mdl", "燃烧弹部署盒");
-	g_smModelToName.SetString("models/w_models/weapons/w_eq_explosive_ammopack.mdl", "高爆弹部署盒");
-	g_smModelToName.SetString("models/props/terror/ammo_stack.mdl", "弹药堆");
-	g_smModelToName.SetString("models/props_unique/spawn_apartment/coffeeammo.mdl", "弹药堆");
-	g_smModelToName.SetString("models/props/de_prodigy/ammo_can_02.mdl", "弹药堆");
-	g_smModelToName.SetString("models/weapons/melee/w_chainsaw.mdl", "电锯");
-	g_smModelToName.SetString("models/w_models/weapons/w_pistol_b.mdl", "P226");
-	g_smModelToName.SetString("models/w_models/weapons/w_pistol_a.mdl", "P226");
-	g_smModelToName.SetString("models/w_models/weapons/w_desert_eagle.mdl", "Magnum");
-	g_smModelToName.SetString("models/w_models/weapons/w_shotgun.mdl", "Pump");
-	g_smModelToName.SetString("models/w_models/weapons/w_pumpshotgun_a.mdl", "Chrome");
-	g_smModelToName.SetString("models/w_models/weapons/w_smg_uzi.mdl", "UZI");
-	g_smModelToName.SetString("models/w_models/weapons/w_smg_a.mdl", "MAC10");
-	g_smModelToName.SetString("models/w_models/weapons/w_smg_mp5.mdl", "MP5");
-	g_smModelToName.SetString("models/w_models/weapons/w_rifle_m16a2.mdl", "M16");
-	g_smModelToName.SetString("models/w_models/weapons/w_rifle_sg552.mdl", "SG552");
-	g_smModelToName.SetString("models/w_models/weapons/w_rifle_ak47.mdl", "AK47");
-	g_smModelToName.SetString("models/w_models/weapons/w_desert_rifle.mdl", "SCAR");
-	g_smModelToName.SetString("models/w_models/weapons/w_shotgun_spas.mdl", "SPAS-12");
-	g_smModelToName.SetString("models/w_models/weapons/w_autoshot_m4super.mdl", "XM1014");
-	g_smModelToName.SetString("models/w_models/weapons/w_sniper_mini14.mdl", "MINI14");
-	g_smModelToName.SetString("models/w_models/weapons/w_sniper_military.mdl", "G3SG1");
-	g_smModelToName.SetString("models/w_models/weapons/w_sniper_scout.mdl", "Scout");
-	g_smModelToName.SetString("models/w_models/weapons/w_sniper_awp.mdl", "AWP");
-	g_smModelToName.SetString("models/w_models/weapons/w_grenade_launcher.mdl", "Grenade Launcher");
-	g_smModelToName.SetString("models/w_models/weapons/w_m60.mdl", "M60");
-	g_smModelToName.SetString("models/props_junk/gascan001a.mdl", "汽油桶");
-	g_smModelToName.SetString("models/props_junk/explosive_box001.mdl", "烟花礼盒");
-	g_smModelToName.SetString("models/props_junk/propanecanister001a.mdl", "煤气罐");
-	g_smModelToName.SetString("models/props_equipment/oxygentank01.mdl", "氧气瓶");
-	g_smModelToName.SetString("models/props_junk/gnome.mdl", "玩偶");
-	g_smModelToName.SetString("models/w_models/weapons/w_cola.mdl", "可乐");
-	g_smModelToName.SetString("models/w_models/weapons/50cal.mdl", "重机枪炮台");
-	g_smModelToName.SetString("models/w_models/weapons/w_minigun.mdl", "轻机枪炮台");
-	g_smModelToName.SetString("models/props/terror/exploding_ammo.mdl", "高爆弹药盒");
-	g_smModelToName.SetString("models/props/terror/incendiary_ammo.mdl", "燃烧弹药盒");
-	g_smModelToName.SetString("models/w_models/weapons/w_knife_t.mdl", "海豹短刀");
-	g_smModelToName.SetString("models/weapons/melee/w_bat.mdl", "棒球棍");
-	g_smModelToName.SetString("models/weapons/melee/w_cricket_bat.mdl", "板球拍");
-	g_smModelToName.SetString("models/weapons/melee/w_crowbar.mdl", "撬棍");
-	g_smModelToName.SetString("models/weapons/melee/w_electric_guitar.mdl", "吉他");
-	g_smModelToName.SetString("models/weapons/melee/w_fireaxe.mdl", "消防斧");
-	g_smModelToName.SetString("models/weapons/melee/w_frying_pan.mdl", "平底锅");
-	g_smModelToName.SetString("models/weapons/melee/w_katana.mdl", "武士刀");
-	g_smModelToName.SetString("models/weapons/melee/w_machete.mdl", "砍刀");
-	g_smModelToName.SetString("models/weapons/melee/w_tonfa.mdl", "警棍");
-	g_smModelToName.SetString("models/weapons/melee/w_golfclub.mdl", "高尔夫球杆");
-	g_smModelToName.SetString("models/weapons/melee/w_pitchfork.mdl", "草叉");
-	g_smModelToName.SetString("models/weapons/melee/w_shovel.mdl", "铁铲");
-	g_smModelToName.SetString("models/infected/boomette.mdl", "Boomer");
-	g_smModelToName.SetString("models/infected/boomer.mdl", "Boomer");
-	g_smModelToName.SetString("models/infected/boomer_l4d1.mdl", "Boomer");
-	g_smModelToName.SetString("models/infected/hulk.mdl", "Tank");
-	g_smModelToName.SetString("models/infected/hulk_l4d1.mdl", "Tank");
-	g_smModelToName.SetString("models/infected/hulk_dlc3.mdl", "Tank");
-	g_smModelToName.SetString("models/infected/smoker.mdl", "Smoker");
-	g_smModelToName.SetString("models/infected/smoker_l4d1.mdl", "Smoker");
-	g_smModelToName.SetString("models/infected/hunter.mdl", "Hunter");
-	g_smModelToName.SetString("models/infected/hunter_l4d1.mdl", "Hunter");
-	g_smModelToName.SetString("models/infected/witch.mdl", "Witch");
-	g_smModelToName.SetString("models/infected/witch_bride.mdl", "Witch");
-	g_smModelToName.SetString("models/infected/spitter.mdl", "Spitter");
-	g_smModelToName.SetString("models/infected/jockey.mdl", "Jockey");
-	g_smModelToName.SetString("models/infected/charger.mdl", "Charger");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_medkit.mdl", "医疗包!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_defibrillator.mdl", "电击器!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_painpills.mdl", "止痛药!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_adrenaline.mdl", "肾上腺素!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_bile_flask.mdl", "胆汁!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_molotov.mdl", "燃烧瓶!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_pipebomb.mdl", "土制炸弹!");
+	g_smModelToName.SetString("models/w_models/weapons/w_laser_sights.mdl", "激光瞄准!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_incendiary_ammopack.mdl", "燃烧弹药包!");
+	g_smModelToName.SetString("models/w_models/weapons/w_eq_explosive_ammopack.mdl", "高爆弹药包!");
+	g_smModelToName.SetString("models/props/terror/ammo_stack.mdl", "子弹堆!");
+	g_smModelToName.SetString("models/props_unique/spawn_apartment/coffeeammo.mdl", "子弹堆!");
+	g_smModelToName.SetString("models/props/de_prodigy/ammo_can_02.mdl", "子弹堆!");
+	g_smModelToName.SetString("models/weapons/melee/w_chainsaw.mdl", "电锯!");
+	g_smModelToName.SetString("models/w_models/weapons/w_pistol_b.mdl", "手枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_pistol_a.mdl", "手枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_desert_eagle.mdl", "马格南!");
+	g_smModelToName.SetString("models/w_models/weapons/w_shotgun.mdl", "木喷!");
+	g_smModelToName.SetString("models/w_models/weapons/w_pumpshotgun_a.mdl", "铁喷!");
+	g_smModelToName.SetString("models/w_models/weapons/w_smg_uzi.mdl", "UZI!");
+	g_smModelToName.SetString("models/w_models/weapons/w_smg_a.mdl", "SMG!");
+	g_smModelToName.SetString("models/w_models/weapons/w_smg_mp5.mdl", "MP5!");
+	g_smModelToName.SetString("models/w_models/weapons/w_rifle_m16a2.mdl", "M16步枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_rifle_sg552.mdl", "SG552步枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_rifle_ak47.mdl", "AK47步枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_desert_rifle.mdl", "SCAR三连发!");
+	g_smModelToName.SetString("models/w_models/weapons/w_shotgun_spas.mdl", "SPAS12散弹枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_autoshot_m4super.mdl", "一代连喷!");
+	g_smModelToName.SetString("models/w_models/weapons/w_sniper_mini14.mdl", "木狙!");
+	g_smModelToName.SetString("models/w_models/weapons/w_sniper_military.mdl", "30连!");
+	g_smModelToName.SetString("models/w_models/weapons/w_sniper_scout.mdl", "鸟狙!");
+	g_smModelToName.SetString("models/w_models/weapons/w_sniper_awp.mdl", "AWP!");
+	g_smModelToName.SetString("models/w_models/weapons/w_grenade_launcher.mdl", "榴弹!");
+	g_smModelToName.SetString("models/w_models/weapons/w_m60.mdl", "M60!");
+	g_smModelToName.SetString("models/props_junk/gascan001a.mdl", "油桶!");
+	g_smModelToName.SetString("models/props_junk/explosive_box001.mdl", "烟花!");
+	g_smModelToName.SetString("models/props_junk/propanecanister001a.mdl", "煤气罐!");
+	g_smModelToName.SetString("models/props_equipment/oxygentank01.mdl", "氧气罐!");
+	g_smModelToName.SetString("models/props_junk/gnome.mdl", "侏儒!");
+	g_smModelToName.SetString("models/w_models/weapons/w_cola.mdl", "可乐!");
+	g_smModelToName.SetString("models/w_models/weapons/50cal.mdl", "一代固定机枪!");
+	g_smModelToName.SetString("models/w_models/weapons/w_minigun.mdl", "二代固定机枪!");
+	g_smModelToName.SetString("models/props/terror/exploding_ammo.mdl", "高爆弹药堆!");
+	g_smModelToName.SetString("models/props/terror/incendiary_ammo.mdl", "燃烧弹药堆!");
+	g_smModelToName.SetString("models/w_models/weapons/w_knife_t.mdl", "小刀!");
+	g_smModelToName.SetString("models/weapons/melee/w_bat.mdl", "棒球棒!");
+	g_smModelToName.SetString("models/weapons/melee/w_cricket_bat.mdl", "板球棒!");
+	g_smModelToName.SetString("models/weapons/melee/w_crowbar.mdl", "撬棍!");
+	g_smModelToName.SetString("models/weapons/melee/w_electric_guitar.mdl", "电吉他!");
+	g_smModelToName.SetString("models/weapons/melee/w_fireaxe.mdl", "消防斧!");
+	g_smModelToName.SetString("models/weapons/melee/w_frying_pan.mdl", "平底锅!");
+	g_smModelToName.SetString("models/weapons/melee/w_katana.mdl", "武士刀!");
+	g_smModelToName.SetString("models/weapons/melee/w_machete.mdl", "砍刀!");
+	g_smModelToName.SetString("models/weapons/melee/w_tonfa.mdl", "警棍!");
+	g_smModelToName.SetString("models/weapons/melee/w_golfclub.mdl", "高尔夫球棍!");
+	g_smModelToName.SetString("models/weapons/melee/w_pitchfork.mdl", "干草叉!");
+	g_smModelToName.SetString("models/weapons/melee/w_shovel.mdl", "铲子!");
+	g_smModelToName.SetString("models/infected/boomette.mdl", "胖子!");
+	g_smModelToName.SetString("models/infected/boomer.mdl", "胖子!");
+	g_smModelToName.SetString("models/infected/boomer_l4d1.mdl", "胖子!");
+	g_smModelToName.SetString("models/infected/hulk.mdl", "坦克!");
+	g_smModelToName.SetString("models/infected/hulk_l4d1.mdl", "坦克!");
+	g_smModelToName.SetString("models/infected/hulk_dlc3.mdl", "坦克!");
+	g_smModelToName.SetString("models/infected/smoker.mdl", "舌头!");
+	g_smModelToName.SetString("models/infected/smoker_l4d1.mdl", "舌头!");
+	g_smModelToName.SetString("models/infected/hunter.mdl", "猎人!");
+	g_smModelToName.SetString("models/infected/hunter_l4d1.mdl", "猎人!");
+	g_smModelToName.SetString("models/infected/witch.mdl", "女巫!");
+	g_smModelToName.SetString("models/infected/witch_bride.mdl", "新娘女巫!");
+	g_smModelToName.SetString("models/infected/spitter.mdl", "口水!");
+	g_smModelToName.SetString("models/infected/jockey.mdl", "猴子!");
+	g_smModelToName.SetString("models/infected/charger.mdl", "牛子!");
 
 	g_smModelHeight = CreateTrie();
 
@@ -452,7 +438,6 @@ int g_iFieldModelIndex;
 public void OnMapStart()
 {
 	g_bMapStarted = true;
-	if (strlen(g_sAllUseSound) > 0) PrecacheSound(g_sAllUseSound);
 	if (strlen(g_sItemUseSound) > 0) PrecacheSound(g_sItemUseSound);
 	if (strlen(g_sSpotMarkUseSound) > 0) PrecacheSound(g_sSpotMarkUseSound);
 	if (strlen(g_sInfectedMarkUseSound) > 0) PrecacheSound(g_sInfectedMarkUseSound);
@@ -488,68 +473,31 @@ public void OnWeaponEquipPost(int client, int weapon)
 	delete g_iTargetInstructorTimer[weapon];
 }
 
+public Action CMD_MARK(int client, int args)
+{
+	if (client == 0)
+	{
+		PrintToServer("[TS] This command cannot be used by server.");
+		return Plugin_Handled;
+	}
+
+	if (IsRealSur(client) && !IsHandingFromLedge(client) && GetInfectedAttacker(client) == -1)
+	{
+		PlayerMarkHint(client);
+	}
+
+	return Plugin_Handled;
+}
+
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	Clear();
-	if(g_fAllCycleTime>0)
-		increase = CreateTimer(g_fAllCycleTime, NumberTimesPlusOne, _, TIMER_REPEAT|TIMER_FLAG_NO_MAPCHANGE);
-}
-
-public Action NumberTimesPlusOne(Handle timer)
-{
-	for (int k = 1; k <= MaxClients; k++)
-	{
-		if(i_ItemsNumber[k] < g_iAllNumberTimes)
-		{
-			i_ItemsNumber[k]++;
-			if(IsClientInGame(k) && g_iAllNumberTimes>0)
-			{
-				switch(g_iAllAnnounceType)
-				{
-					case 0:{/*nothing*/}
-					case 1:SwitchAllAnnounceType(k,1);
-					case 2:SwitchAllAnnounceType(k,2);
-					case 4:SwitchAllAnnounceType(k,4);
-					
-					case 3:{SwitchAllAnnounceType(k,1);SwitchAllAnnounceType(k,2);}
-					case 5:{SwitchAllAnnounceType(k,1);SwitchAllAnnounceType(k,4);}
-					case 6:{SwitchAllAnnounceType(k,2);SwitchAllAnnounceType(k,4);}
-					case 7:{SwitchAllAnnounceType(k,1);SwitchAllAnnounceType(k,2);SwitchAllAnnounceType(k,4);}
-				}
-				if (strlen(g_sSpotMarkUseSound) > 0)
-					EmitSoundToClient(k, g_sAllUseSound);
-			}
-		}
-	}
-	return Plugin_Continue;
-}
-
-public void SwitchAllAnnounceType(int player, int select)
-{
-	switch(select)
-	{
-		case 1:PrintToChat(player, "\x04[提示]\x03标记次数加\x011\x03，剩余\x01%d/%d\x03次。", i_ItemsNumber[player], g_iAllNumberTimes);
-		case 2:PrintHintText(player, "标记次数加1，剩余〈%d/%d〉次。", i_ItemsNumber[player], g_iAllNumberTimes);
-		case 4:PrintCenterText(player, "标记次数加1，剩余〈%d/%d〉次。", i_ItemsNumber[player], g_iAllNumberTimes);
-	}
 }
 
 public void Event_Round_End(Event event, const char[] name, bool dontBroadcast)
 {
 	RemoveAllGlow_Timer();
 	RemoveAllSpotMark();
-}
-
-public void Event_Round_End_Host(Event event, const char[] name, bool dontBroadcast)
-{
-	RemoveAllGlow_Timer();
-	RemoveAllSpotMark();
-	
-	if(increase != INVALID_HANDLE)
-	{
-		KillTimer(increase);
-		increase = INVALID_HANDLE;
-	}
 }
 
 public void Event_SpawnerGiveItem(Event event, const char[] name, bool dontBroadcast)
@@ -607,168 +555,12 @@ public Action Vocalize_Listener(int client, const char[] command, int argc)
 		{
 			if (strncmp(sCmdString, "smartlook #", 11, false) == 0)
 			{
-				bool bIsAimInfeced = false, bIsAimWitch = false, bIsVaildItem = false;
-				static char sItemName[64], sEntModelName[PLATFORM_MAX_PATH];
-
-				// marker priority (infected maker > item hint > spot marker)
-
-				if (g_iInfectedMarkCvarColor != 0)
-				{
-					int clientAim = GetClientViewClient(client); //ignore glow model
-
-					if (1 <= clientAim <= MaxClients && IsClientInGame(clientAim) && GetClientTeam(clientAim) == TEAM_INFECTED && IsPlayerAlive(clientAim) && !IsPlayerGhost(clientAim))
-					{
-						bIsAimInfeced = true;
-						//PrintToChatAll("look at %N", clientAim);
-						
-						if( CreateInfectedMarker(client, clientAim) == true )
-							return Plugin_Continue;
-					}
-					else if ( IsWitch(clientAim) )
-					{
-						bIsAimWitch = true;
-
-						if( CreateInfectedMarker(client, clientAim, true) == true )
-							return Plugin_Continue;
-					}
-				}
-
-				static int iEntity;
-				iEntity = GetUseEntity(client, g_fItemUseHintRange);
-				//PrintToChatAll("%N is looking at %d", client, iEntity);
-				if ( !bIsAimInfeced && !bIsAimWitch && IsValidEntityIndex(iEntity) && IsValidEntity(iEntity) && HasParentClient(iEntity) == false )
-				{
-					static char targetname[128];
-					GetEntPropString(iEntity, Prop_Data, "m_iName", targetname, sizeof(targetname));
-					if (strcmp(targetname, "harry_marked_item") == 0) //custom model
-					{
-						iEntity = GetEntPropEnt(iEntity, Prop_Data, "m_pParent");
-					}
-
-					if (HasEntProp(iEntity, Prop_Data, "m_ModelName"))
-					{
-						if (GetEntPropString(iEntity, Prop_Data, "m_ModelName", sEntModelName, sizeof(sEntModelName)) > 1)
-						{
-							//PrintToChatAll("Model - %s", sEntModelName);
-							StringToLowerCase(sEntModelName);
-							float fHeight = 10.0;
-							if (g_smModelToName.GetString(sEntModelName, sItemName, sizeof(sItemName)))
-							{
-								g_smModelHeight.GetValue(sEntModelName, fHeight);
-								bIsVaildItem = true;
-							}
-							else if (StrContains(sEntModelName, "/melee/") != -1) // entity is not in the listb(custom melee weapon model)
-							{
-								FormatEx(sItemName, sizeof sItemName, "%s", "Melee!");
-								fHeight = 5.0;
-
-								bIsVaildItem = true;
-							}
-							else if (StrContains(sEntModelName, "/weapons/") != -1) // entity is not in the list (custom weapom model)
-							{
-								FormatEx(sItemName, sizeof sItemName, "%s", "Weapons!");
-								fHeight = 10.0;
-
-								bIsVaildItem = true;
-							}
-							else // entity is not in the list (other entity model on the map)
-							{
-								bIsVaildItem = false;
-							}
-
-							if(bIsVaildItem)
-							{
-								if(i_ItemsNumber[client]>0 || g_iAllNumberTimes==0)
-								{
-									if(GetEngineTime() > g_fItemHintCoolDownTime[client])
-									{
-										i_ItemsNumber[client]--;
-										
-										if(g_iAllNumberTimes>0)
-											switch(g_iAllResAnnType)
-											{
-												case 1:SwitchAllResAnnType(client,1);
-												case 2:SwitchAllResAnnType(client,2);
-												case 4:SwitchAllResAnnType(client,4);
-												
-												case 3:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,2);}
-												case 5:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,4);}
-												case 6:{SwitchAllResAnnType(client,2);SwitchAllResAnnType(client,4);}
-												case 7:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,2);SwitchAllResAnnType(client,4);}
-											}
-										
-										NotifyMessage(client, sItemName, view_as<EHintType>(eItemHint));
-										if (strlen(g_sItemUseSound) > 0)
-										{
-											for (int target = 1; target <= MaxClients; target++)
-											{
-												if (!IsClientInGame(target))
-													continue;
-
-												if (IsFakeClient(target))
-													continue;
-
-												if (GetClientTeam(target) == TEAM_INFECTED)
-													continue;
-
-												EmitSoundToClient(target, g_sItemUseSound, client);
-											}
-										}
-
-										g_fItemHintCoolDownTime[client] = GetEngineTime() + g_fItemHintCoolDown;
-										CreateEntityModelGlow(iEntity, sEntModelName);
-
-										if(g_bItemInstructorHint)
-										{
-											float vEndPos[3];
-											GetEntPropVector(iEntity, Prop_Send, "m_vecOrigin", vEndPos);
-											vEndPos[2] = vEndPos[2] + fHeight;
-											CreateInstructorHint(client, vEndPos, sItemName, iEntity, view_as<EHintType>(eItemHint));
-										}
-									}
-								}
-								return Plugin_Continue;
-							}
-						}
-					}
-				}
-
-				// client / world / witch
-				CreateSpotMarker(client, bIsAimInfeced);
+				PlayerMarkHint(client);
 			}
 		}
 	}
 
 	return Plugin_Continue;
-}
-
-public void SwitchAllResAnnType(int client, int select)
-{
-		switch(select)
-		{
-			case 0:{}
-			case 1:
-			{
-				if(i_ItemsNumber[client]>0)
-					PrintToChat(client, "\x04[提示]\x03还剩\x01%d\x03次标记次数。", i_ItemsNumber[client]);
-				else
-					PrintToChat(client, "\x04[提示]\x03标记次数已用尽。");
-			}
-			case 2:
-			{
-				if(i_ItemsNumber[client]>0)
-					PrintHintText(client, "还剩%d次标记次数", i_ItemsNumber[client]);
-				else
-					PrintHintText(client, "标记次数已用尽");
-			}
-			case 4:
-			{
-				if(i_ItemsNumber[client]>0)
-					PrintCenterText(client, "还剩%d次标记次数", i_ItemsNumber[client]);
-				else
-					PrintCenterText(client, "标记次数已用尽");
-			}
-		}
 }
 
 public Action Timer_ItemGlow(Handle timer, int iEntity)
@@ -807,7 +599,6 @@ void Clear(int client = -1)
 			g_fItemHintCoolDownTime[i] = 0.0;
 			g_fSpotMarkCoolDownTime[i] = 0.0;
 			g_fInfectedMarkCoolDownTime[i] = 0.0;
-			i_ItemsNumber[i] = g_iAllNumberTimes;
 		}
 	}
 	else
@@ -815,7 +606,6 @@ void Clear(int client = -1)
 		g_fItemHintCoolDownTime[client] = 0.0;
 		g_fSpotMarkCoolDownTime[client] = 0.0;
 		g_fInfectedMarkCoolDownTime[client] = 0.0;
-		i_ItemsNumber[client] = g_iAllNumberTimes;
 	}
 }
 
@@ -995,20 +785,13 @@ bool CreateInfectedMarker(int client, int infected, bool bIsWitch = false)
 {
 	if( GetEngineTime() < g_fInfectedMarkCoolDownTime[client]) return true; //colde down not yet
 
-	if (bIsWitch && g_bInfectedMarkWitch == false)	// disable infected mark on witch
-	{
-		CreateSpotMarker(client, false);
-		return false;
-	}
+	if (bIsWitch && g_bInfectedMarkWitch == false) return false; // disable infected mark on witch
 
 	float vStartPos[3], vEndPos[3];
 	GetEntPropVector(client, Prop_Data, "m_vecOrigin", vStartPos);
 	GetEntPropVector(infected, Prop_Data, "m_vecOrigin", vEndPos);
-	if (!g_bInfectedMarkLicense || GetVectorDistance(vStartPos, vEndPos, true) > g_fInfectedMarkUseRange * g_fInfectedMarkUseRange) // over distance
-	{
-		CreateSpotMarker(client, false);
+	if (GetVectorDistance(vStartPos, vEndPos, true) > g_fInfectedMarkUseRange * g_fInfectedMarkUseRange) // over distance
 		return false;
-	}
 
 	// Spawn dynamic prop entity
 	int entity = -1;
@@ -1075,17 +858,16 @@ bool CreateInfectedMarker(int client, int infected, bool bIsWitch = false)
 	static char sItemName[64];
 	StringToLowerCase(sModelName);
 	g_smModelToName.GetString(sModelName, sItemName, sizeof(sItemName));
-	NotifyMessage(client, sItemName, view_as<EHintType>(eInfectedMaker));
+	NotifyMessage(client, sItemName, eInfectedMaker);
 
 	return true;
 }
 
 void CreateSpotMarker(int client, bool bIsAimInfeced)
 {
-	if (bIsAimInfeced || i_ItemsNumber[client]<=0 && g_iAllNumberTimes>0) return;
+	if (bIsAimInfeced) return;
 	if (GetEngineTime() < g_fSpotMarkCoolDownTime[client]) return; // cool down not yet
-	i_ItemsNumber[client]--;
-	
+
 	bool hit = false;
 	float vStartPos[3], vEndPos[3];
 	GetClientAbsOrigin(client, vStartPos);
@@ -1413,7 +1195,7 @@ void StringToLowerCase(char[] input)
 
 void NotifyMessage(int client, const char[] sItemName, EHintType eType)
 {
-	if (eType == view_as<EHintType>(eItemHint))
+	if (eType == eItemHint)
 	{
 		switch(g_iItemAnnounceType)
 		{
@@ -1423,7 +1205,7 @@ void NotifyMessage(int client, const char[] sItemName, EHintType eType)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
+						CPrintToChat(i, "%T", "Announce_Vocalize_ITEM (C)", i, client, sItemName);
 					}
 				}
 			}
@@ -1432,64 +1214,22 @@ void NotifyMessage(int client, const char[] sItemName, EHintType eType)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 2, sItemName);
+						PrintHintText(i, "%T", "Announce_Vocalize_ITEM", i, client, sItemName);
 					}
 				}
 			}
-			case 4: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			/**************************************************/
 			case 3: {
 				for (int i=1; i <= MaxClients; i++)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-					}
-				}
-			}
-			case 5: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			case 6: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			case 7: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
+						PrintCenterText(i, "%T", "Announce_Vocalize_ITEM", i, client, sItemName);
 					}
 				}
 			}
 		}
 	}
-	else if (eType == view_as<EHintType>(eInfectedMaker))
+	else if (eType == eInfectedMaker)
 	{
 		switch(g_iInfectedMarkAnnounceType)
 		{
@@ -1499,7 +1239,7 @@ void NotifyMessage(int client, const char[] sItemName, EHintType eType)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
+						CPrintToChat(i, "%T", "Announce_Vocalize_INFECTED (C)", i, client, sItemName);
 					}
 				}
 			}
@@ -1508,72 +1248,54 @@ void NotifyMessage(int client, const char[] sItemName, EHintType eType)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 2, sItemName);
+						PrintHintText(i, "%T", "Announce_Vocalize_INFECTED", i, client, sItemName);
 					}
 				}
 			}
-			case 4: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			/**************************************************/
 			case 3: {
 				for (int i=1; i <= MaxClients; i++)
 				{
 					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
 					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-					}
-				}
-			}
-			case 5: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			case 6: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
-					}
-				}
-			}
-			case 7: {
-				for (int i=1; i <= MaxClients; i++)
-				{
-					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
-					{
-						SwitchItemAnnounceType(i, client, 1, sItemName);
-						SwitchItemAnnounceType(i, client, 2, sItemName);
-						SwitchItemAnnounceType(i, client, 4, sItemName);
+						PrintCenterText(i, "%T", "Announce_Vocalize_INFECTED", i, client, sItemName);
 					}
 				}
 			}
 		}
 	}
-}
-
-public void SwitchItemAnnounceType(int player, int client, int select, const char[] sItemName)
-{
-	switch(select)
+	else if (eType == eSpotMarker)
 	{
-		case 1:CPrintToChat(player, "{blue}%N{default}：我发现了〈%s〉。", client, sItemName);
-		case 2:PrintHintText(player, "%N 发现了 %s", client, sItemName);
-		case 4:PrintCenterText(player, " %N 发现了 %s", client, sItemName);
+		switch(g_iSpotMarkAnnounceType)
+		{
+			case 0: {/*nothing*/}
+			case 1: {
+				for (int i=1; i <= MaxClients; i++)
+				{
+					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
+					{
+						CPrintToChat(i, "%T", "Announce_Spot_Marker (C)", i, client);
+					}
+				}
+			}
+			case 2: {
+				for (int i=1; i <= MaxClients; i++)
+				{
+					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
+					{
+						PrintHintText(i, "%T", "Announce_Spot_Marker", i, client);
+					}
+				}
+			}
+			case 3: {
+				for (int i=1; i <= MaxClients; i++)
+				{
+					if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) != TEAM_INFECTED)
+					{
+						PrintCenterText(i, "%T", "Announce_Spot_Marker", i, client);
+					}
+				}
+			}
+		}
 	}
 }
 
@@ -1666,35 +1388,22 @@ void CreateInstructorHint(int client, const float vOrigin[3], const char[] sItem
 
 	switch(type)
 	{
-		case view_as<EHintType>(eItemHint):
+		case eItemHint:
 		{
 			if( Create_info_target(iEntity, vOrigin, sTargetName, g_fItemGlowTimer) )
 			{
 				FormatEx(sCaption, sizeof sCaption, "%s", sItemName);
-				Create_env_instructor_hint(iEntity, view_as<EHintType>(eItemHint), vOrigin, sTargetName, g_sItemInstructorIcon, sCaption, g_sItemInstructorColor, g_fItemGlowTimer, float(g_iItemGlowRange));
+				Create_env_instructor_hint(iEntity, eItemHint, vOrigin, sTargetName, g_sItemInstructorIcon, sCaption, g_sItemInstructorColor, g_fItemGlowTimer, float(g_iItemGlowRange));
 			}
 		}
-		case view_as<EHintType>(eSpotMarker):
+		case eSpotMarker:
 		{
 			if( Create_info_target(iEntity, vOrigin, sTargetName, g_fSpotMarkGlowTimer) )
 			{
-				if(g_iAllNumberTimes>0)
-				{
-					switch(g_iAllResAnnType)
-					{
-						case 1:SwitchAllResAnnType(client,1);
-						case 2:SwitchAllResAnnType(client,2);
-						case 4:SwitchAllResAnnType(client,4);
-						
-						case 3:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,2);}
-						case 5:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,4);}
-						case 6:{SwitchAllResAnnType(client,2);SwitchAllResAnnType(client,4);}
-						case 7:{SwitchAllResAnnType(client,1);SwitchAllResAnnType(client,2);SwitchAllResAnnType(client,4);}
-					}
-				}
-				
-				FormatEx(sCaption, sizeof sCaption, "%N 标记了此处", client);
-				Create_env_instructor_hint(iEntity, view_as<EHintType>(eSpotMarker), vOrigin, sTargetName, g_sSpotMarkInstructorIcon, sCaption, g_sSpotMarkInstructorColor, g_fSpotMarkGlowTimer, g_fSpotMarkUseRange);
+				FormatEx(sCaption, sizeof sCaption, "%T", "Spot_Maker", LANG_SERVER, client);
+				Create_env_instructor_hint(iEntity, eSpotMarker, vOrigin, sTargetName, g_sSpotMarkInstructorIcon, sCaption, g_sSpotMarkInstructorColor, g_fSpotMarkGlowTimer, g_fSpotMarkUseRange);
+			
+				NotifyMessage(client, "", eSpotMarker);
 			}
 		}
 	}
@@ -1725,8 +1434,8 @@ bool Create_info_target(int iEntity, const float vOrigin[3], const char[] sTarge
 	}
 	else
 	{
-		char szBuffer[36];
-		Format(szBuffer, sizeof szBuffer, "OnUser1 !self:Kill::%f:-1", duration);
+		static char szBuffer[36];
+		FormatEx(szBuffer, sizeof szBuffer, "OnUser1 !self:Kill::%f:-1", duration);
 
 		SetVariantString(szBuffer);
 		AcceptEntityInput(entity, "AddOutput");
@@ -1776,8 +1485,8 @@ void Create_env_instructor_hint(int iEntity, EHintType eType, const float vOrigi
 	}
 	else
 	{
-		char szBuffer[36];
-		Format(szBuffer, sizeof szBuffer, "OnUser1 !self:Kill::%f:-1", duration);
+		static char szBuffer[36];
+		FormatEx(szBuffer, sizeof szBuffer, "OnUser1 !self:Kill::%f:-1", duration);
 
 		SetVariantString(szBuffer);
 		AcceptEntityInput(entity, "AddOutput");
@@ -1858,3 +1567,119 @@ bool TRDontHitSelf(int entity, int mask, any data) {
         return false;
     return true;
 }
+
+void PlayerMarkHint(int client)
+{
+	bool bIsAimInfeced = false, bIsAimWitch = false, bIsVaildItem = false;
+	static char sItemName[64], sEntModelName[PLATFORM_MAX_PATH];
+
+	// marker priority (infected maker > item hint > spot marker)
+
+	if (g_iInfectedMarkCvarColor != 0)
+	{
+		int clientAim = GetClientViewClient(client); //ignore glow model
+
+		if (1 <= clientAim <= MaxClients && IsClientInGame(clientAim) && GetClientTeam(clientAim) == TEAM_INFECTED && IsPlayerAlive(clientAim) && !IsPlayerGhost(clientAim))
+		{
+			bIsAimInfeced = true;
+			//PrintToChatAll("look at %N", clientAim);
+			
+			if( CreateInfectedMarker(client, clientAim) == true )
+				return;
+		}
+		else if ( IsWitch(clientAim) )
+		{
+			bIsAimWitch = true;
+
+			if( CreateInfectedMarker(client, clientAim, true) == true )
+				return;
+		}
+	}
+
+	static int iEntity;
+	iEntity = GetUseEntity(client, g_fItemUseHintRange);
+	//PrintToChatAll("%N is looking at %d", client, iEntity);
+	if ( !bIsAimInfeced && !bIsAimWitch && IsValidEntityIndex(iEntity) && IsValidEntity(iEntity) && HasParentClient(iEntity) == false )
+	{
+		static char targetname[128];
+		GetEntPropString(iEntity, Prop_Data, "m_iName", targetname, sizeof(targetname));
+		if (strcmp(targetname, "harry_marked_item") == 0) //custom model
+		{
+			iEntity = GetEntPropEnt(iEntity, Prop_Data, "m_pParent");
+		}
+
+		if (HasEntProp(iEntity, Prop_Data, "m_ModelName"))
+		{
+			if (GetEntPropString(iEntity, Prop_Data, "m_ModelName", sEntModelName, sizeof(sEntModelName)) > 1)
+			{
+				//PrintToChatAll("Model - %s", sEntModelName);
+				StringToLowerCase(sEntModelName);
+				float fHeight = 10.0;
+				if (g_smModelToName.GetString(sEntModelName, sItemName, sizeof(sItemName)))
+				{
+					g_smModelHeight.GetValue(sEntModelName, fHeight);
+					bIsVaildItem = true;
+				}
+				else if (StrContains(sEntModelName, "/melee/") != -1) // entity is not in the listb(custom melee weapon model)
+				{
+					FormatEx(sItemName, sizeof sItemName, "%s", "Melee!");
+					fHeight = 5.0;
+
+					bIsVaildItem = true;
+				}
+				else if (StrContains(sEntModelName, "/weapons/") != -1) // entity is not in the list (custom weapom model)
+				{
+					FormatEx(sItemName, sizeof sItemName, "%s", "Weapons!");
+					fHeight = 10.0;
+
+					bIsVaildItem = true;
+				}
+				else // entity is not in the list (other entity model on the map)
+				{
+					bIsVaildItem = false;
+				}
+
+				if(bIsVaildItem)
+				{
+					if(GetEngineTime() > g_fItemHintCoolDownTime[client])
+					{
+						NotifyMessage(client, sItemName, eItemHint);
+
+						if (strlen(g_sItemUseSound) > 0)
+						{
+							for (int target = 1; target <= MaxClients; target++)
+							{
+								if (!IsClientInGame(target))
+									continue;
+
+								if (IsFakeClient(target))
+									continue;
+
+								if (GetClientTeam(target) == TEAM_INFECTED)
+									continue;
+
+								EmitSoundToClient(target, g_sItemUseSound, client);
+							}
+						}
+
+						g_fItemHintCoolDownTime[client] = GetEngineTime() + g_fItemHintCoolDown;
+						CreateEntityModelGlow(iEntity, sEntModelName);
+
+						if(g_bItemInstructorHint)
+						{
+							float vEndPos[3];
+							GetEntPropVector(iEntity, Prop_Send, "m_vecOrigin", vEndPos);
+							vEndPos[2] = vEndPos[2] + fHeight;
+							CreateInstructorHint(client, vEndPos, sItemName, iEntity, view_as<EHintType>(eItemHint));
+						}
+					}
+
+					return;
+				}
+			}
+		}
+	}
+
+	// client / world / witch
+	CreateSpotMarker(client, bIsAimInfeced);
+} 
