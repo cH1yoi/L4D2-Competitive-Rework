@@ -151,6 +151,14 @@
 		{
 			"name" "ZoneMod 6v6"
 		}
+		"zonemod8v8"
+		{
+			"name" "ZoneMod 8v8"
+		}
+		"advanced8v8"
+		{
+			"name" "Advanced 8v8(进阶包)"
+		}
 		"hideseek"
 		{
 			"name" "躲猫猫捏"
@@ -163,9 +171,5 @@
 		{
 			"name" "幽灵模式"
 		}
-	    "zonemod8v8(测试)"
-		{
-			"name" "ZoneMod 8v8"
-		}
-    }
+	}
 }
