@@ -1,5 +1,6 @@
 #include <sourcemod>
 #include <sdktools>
+#include <readyup>
 
 #pragma semicolon 1; // Force strict semicolon mode.
 #pragma newdecls required; 
@@ -233,7 +234,7 @@ public void OnPluginStart()
 	RespawnJoin = CreateConVar("l4d_respawn_on_join", "1" , "Respawn alive when joining as an extra survivor? 0: No, 1: Yes (first time only)", CVAR_FLAGS, true, 0.0, true, 1.0);
 	MoreSiBotsVersus =  CreateConVar("l4d_versus_si_more", "1" , "If less infected players than l4d_infected_limit in versus/scavenge, spawn SI bots?", CVAR_FLAGS, true, 0.0, true, 1.0);
 	AfkMode =  CreateConVar("l4d_versus_afk", "1" , "If player is afk on versus, 0: Do nothing, 1: Become idle, 2: Become spectator, 3: Kicked", CVAR_FLAGS, true, 0.0, true, 3.0);
-	AutoJoin = CreateConVar("l4d_autojoin", "2" , "Once a player connects, 3: Put them in Spectate. 2: In Co-op will put them on Survivor team, In Versus, will put them on a random team. 1: Show teammenu, 0: Do nothing", CVAR_FLAGS, true, 0.0, true, 3.0);
+	AutoJoin = CreateConVar("l4d_autojoin", "0" , "Once a player connects, 3: Put them in Spectate. 2: In Co-op will put them on Survivor team, In Versus, will put them on a random team. 1: Show teammenu, 0: Do nothing", CVAR_FLAGS, true, 0.0, true, 3.0);
 	Management = CreateConVar("l4d_management", "3", "3: Enable teammenu & commands, 2: commands only, 1: !infected,!survivor,!join only, 0: Nothing", CVAR_FLAGS, true, 0.0, true, 4.0);
 	
 	AutoDifficulty = CreateConVar("director_auto_difficulty", "1", "Change Difficulty", CVAR_FLAGS, true, 0.0, true, 1.0);
@@ -1070,12 +1071,13 @@ public Action Timer_KickFakeBot(Handle timer, any Bot)
 
 public Action TeamMenu(int client, int args)
 {
-	if (Management.IntValue < 3) return Plugin_Continue;
-
-	if(TeamPanelTimer[client] == null)
-	{
-		DisplayTeamMenu(client);
+	if (Management.IntValue < 3){
+		return Plugin_Continue;
 	}
+	// 直接显示菜单
+
+	DisplayTeamMenu(client);
+
 	return Plugin_Handled;
 }
 
@@ -1346,6 +1348,9 @@ bool AnySurvivorLeftSafeArea()
 
 void DisplayTeamMenu(int client)
 {
+	// 隐藏ready面板
+	ToggleReadyPanel(false, client);
+
 	Handle TeamPanel = CreatePanel();
 
 	SetPanelTitle(TeamPanel, "SuperVersus Team Panel");
@@ -1354,7 +1359,7 @@ void DisplayTeamMenu(int client)
 	Format(title_spectator, sizeof(title_spectator), "Spectator (%d)", GetTeamPlayers(TEAM_SPECTATOR, false));
 	DrawPanelItem(TeamPanel, title_spectator);
 		
-	// Draw Spectator Group
+	// 绘制观察者组
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i) && GetClientTeam(i) == TEAM_SPECTATOR)
@@ -1373,7 +1378,7 @@ void DisplayTeamMenu(int client)
 	Format(title_survivor, sizeof(title_survivor), "Survivors (%d/%d) - %d Bot(s)", GetTeamPlayers(TEAM_SURVIVOR, false), SurvivorLimit.IntValue, CountAvailableBots(TEAM_SURVIVOR));
 	DrawPanelItem(TeamPanel, title_survivor);
 	
-	// Draw Survivor Group
+	// 绘制生还者组
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i) && GetClientTeam(i) == TEAM_SURVIVOR)
@@ -1431,7 +1436,7 @@ void DisplayTeamMenu(int client)
 	
 	DrawPanelItem(TeamPanel, title_infected);
 		
-	// Draw Infected Group
+	// 绘制感染者组
 	for(int i = 1; i <= MaxClients; i++)
 	{
 		if(IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED)
@@ -1478,6 +1483,7 @@ void DisplayTeamMenu(int client)
 		
 	SendPanelToClient(TeamPanel, client, TeamMenuHandler, 30);
 	CloseHandle(TeamPanel);
+
 	TeamPanelTimer[client] = CreateTimer(1.0, Timer_TeamMenuHandler, client);
 }
 
@@ -1497,6 +1503,8 @@ public int TeamMenuHandler(Handle UpgradePanel, MenuAction action, int client, i
 		}
 		else if (param2 == 4) {
 			delete TeamPanelTimer[client];
+			// 显示准备面板
+			ToggleReadyPanel(true, client);
 		}
 	}
 	else if (action == MenuAction_Cancel) {
@@ -1506,7 +1514,9 @@ public int TeamMenuHandler(Handle UpgradePanel, MenuAction action, int client, i
 
 public Action Timer_TeamMenuHandler(Handle hTimer, int client)
 {
-	DisplayTeamMenu(client);
+    DisplayTeamMenu(client);
+	ToggleReadyPanel(false, client);
+    return Plugin_Handled;
 }
 
 int GetClientRealHealth(int client)
