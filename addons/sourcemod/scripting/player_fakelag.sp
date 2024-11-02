@@ -1,3 +1,9 @@
+/*
+	他喵这个插件,同步ping逻辑是反的
+	寻思同步都减ping了 还得初始化lowteamplayers
+	2024/11/03 02:21 HANA留
+	折磨坏咧修这个
+*/
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -6,8 +12,6 @@
 #include <colors>
 #include <builtinvotes>
 
-#define PLUGIN_VERSION			"1.3"
-#define PLUGIN_NAME			    "player_fakelag"
 #define ABS(%0) (((%0) < 0) ? -(%0) : (%0))
 
 #define FAKELAG_BOTTOM	0
@@ -15,10 +19,10 @@
 
 public Plugin myinfo = 
 {
-	name = PLUGIN_NAME,
-	author = "ProdigySim, Bred",
+	name = "player_fakelag",
+	author = "ProdigySim, Bred, Hana",
 	description = "Set a custom fake latency per player",
-	version = PLUGIN_VERSION,
+	version = "1.4",
 	url = "https://github.com/ProdigySim/custom_fakelag"
 };
 
@@ -129,8 +133,8 @@ bool StartEFakeLagVote(int client)
 {
 	if (!CheckPlayers())
 	{
-		CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
-		return false;
+	 	CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
+	  	return false;
 	}
 	
 	if (!IsBuiltinVoteInProgress())
@@ -204,16 +208,21 @@ public void EqualizeFakelag()
 {
 	if (!CheckPlayers())
 	{
-		CPrintToChatAll("%t", "not_enough_player", survivor_limit.IntValue * 2);
-		return;
+	 	PrintToChatAll("%t", "not_enough_player", survivor_limit.IntValue * 2);
+	 	return;
 	}
 	
 	ClearAllPlayersFakelag();
+
+	// 初始化一下
+	lowteamplayers = CreateArray();
 	
 	int surpings = SumPings(2);
 	int infpings = SumPings(3);
+	
 	int lowteam;
 	int avgbuffer;
+
 	ClearArray(lowteamplayers);
 	
 	if (surpings > infpings)
@@ -226,33 +235,37 @@ public void EqualizeFakelag()
 		lowteam = 2;
 		avgbuffer = infpings / survivor_limit.IntValue;
 	}
-	
+
 	int sumdiff = 0;
 	int diff;
-	
-	for(int i = 1; i < MaxClients; i++)
+
+	for(int i = 1; i <= MaxClients; i++)
 	{
-		if (IsHuman(i) && GetClientTeam(i) == lowteam)
+    	if (IsHuman(i) && GetClientTeam(i) == lowteam)
+    	{
+        	diff = avgbuffer - GetClientAvgPing(i); // 修正计算方向，确保增加低延迟团队的延迟
+        	if (diff > 0) // 仅对低延迟的玩家增加延迟
+        	{
+            	PushArrayCell(lowteamplayers, i);
+            	sumdiff += diff;
+        	}
+    	}
+	}
+
+	int teamdiff = ABS(surpings - infpings);
+
+	for (int i = 0; i < GetArraySize(lowteamplayers); i++)
+	{
+    	int client = GetArrayCell(lowteamplayers, i);
+    	int lagAmount = (avgbuffer - GetClientAvgPing(client)) * teamdiff / sumdiff;
+		// 设置增加的延迟，确保其为正值
+    	if (lagAmount > 0)
 		{
-			diff = GetClientAvgPing(i) - avgbuffer;
-			if ( diff < 0)
-			{
-				PushArrayCell(lowteamplayers, i);
-				sumdiff += diff;
-			}
+			CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
+			CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
 		}
 	}
-	
-	int teamdiff = ABS(surpings - infpings);
-	
-	for(int i = 0; i < GetArraySize(lowteamplayers); i++)
-	{
-		int client = GetArrayCell(lowteamplayers, i);
-		int lagAmount = (avgbuffer - GetClientAvgPing(client)) / sumdiff * teamdiff;
-		CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
-		CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
-	}
-	
+
 	CPrintToChatAll("%t", "equalize_finish", sumdiff);
 }
 
