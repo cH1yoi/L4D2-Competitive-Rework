@@ -3,6 +3,9 @@
 	寻思同步都减ping了 还得初始化lowteamplayers
 	2024/11/03 02:21 HANA留
 	折磨坏咧修这个
+
+	2024/11/03 16:15 HANA留
+	赫赫,小b
 */
 #pragma semicolon 1
 #pragma newdecls required
@@ -22,13 +25,13 @@ public Plugin myinfo =
 	name = "player_fakelag",
 	author = "ProdigySim, Bred, Hana",
 	description = "Set a custom fake latency per player",
-	version = "1.4",
+	version = "1.5",
 	url = "https://github.com/ProdigySim/custom_fakelag"
 };
 
 ConVar survivor_limit;
 
-ArrayList lowteamplayers;
+//ArrayList lowteamplayers;
 
 Handle hVoteEFakelag = null;
 
@@ -131,10 +134,11 @@ public Action EFakeLagVoteCmd(int client, int args)
 
 bool StartEFakeLagVote(int client)
 {
+	// 人数检查
 	if (!CheckPlayers())
 	{
-	 	CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
-	  	return false;
+		CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
+	 	return false;
 	}
 	
 	if (!IsBuiltinVoteInProgress())
@@ -211,62 +215,51 @@ public void EqualizeFakelag()
 	 	PrintToChatAll("%t", "not_enough_player", survivor_limit.IntValue * 2);
 	 	return;
 	}
-	
-	ClearAllPlayersFakelag();
 
-	// 初始化一下
-	lowteamplayers = CreateArray();
-	
-	int surpings = SumPings(2);
-	int infpings = SumPings(3);
-	
-	int lowteam;
-	int avgbuffer;
+	ClearAllPlayersFakelag();	// 清理所有玩家的假延迟
+	CPrintToChatAll("%t","wait_10s");
 
-	ClearArray(lowteamplayers);
-	
-	if (surpings > infpings)
+ 	CreateTimer(10.0, Timer_EqualizeFakelag, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+public Action Timer_EqualizeFakelag(Handle timer)
+{
+	// 计算当前所有玩家延迟确认最高值
+	int highestPing = 0;
+	int[] playerPing = new int[MaxClients];
+
+	for (int i = 1; i <= MaxClients; i++)
 	{
-		lowteam = 3;
-		avgbuffer = surpings / survivor_limit.IntValue;
-	}
-	else
-	{
-		lowteam = 2;
-		avgbuffer = infpings / survivor_limit.IntValue;
-	}
-
-	int sumdiff = 0;
-	int diff;
-
-	for(int i = 1; i <= MaxClients; i++)
-	{
-    	if (IsHuman(i) && GetClientTeam(i) == lowteam)
-    	{
-        	diff = avgbuffer - GetClientAvgPing(i); // 修正计算方向，确保增加低延迟团队的延迟
-        	if (diff > 0) // 仅对低延迟的玩家增加延迟
-        	{
-            	PushArrayCell(lowteamplayers, i);
-            	sumdiff += diff;
-        	}
-    	}
-	}
-
-	int teamdiff = ABS(surpings - infpings);
-
-	for (int i = 0; i < GetArraySize(lowteamplayers); i++)
-	{
-    	int client = GetArrayCell(lowteamplayers, i);
-    	int lagAmount = (avgbuffer - GetClientAvgPing(client)) * teamdiff / sumdiff;
-		// 设置增加的延迟，确保其为正值
-    	if (lagAmount > 0)
+		if(IsSurvivor(i) || IsInfected(i))
 		{
-			CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
-			CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
+			int ping = GetClientAvgPing(i);
+			playerPing[i] = ping;
+			if (ping > highestPing)
+			{
+				highestPing = ping;
+			}
 		}
 	}
+	// 目标延迟设置为最高延迟90%
+	int targetPing = RoundToNearest(highestPing * 0.90);
 
-	CPrintToChatAll("%t", "equalize_finish", sumdiff);
+	// 增加低延迟玩家延迟,接近目标值延迟
+	for (int i = 1; i <= MaxClients; i++)
+	{
+		if (IsSurvivor(i) || IsInfected(i))
+		{
+			int currentPing = playerPing[i];
+			int lagAmount = targetPing - currentPing;
+			// 仅对低延迟玩家增加延迟
+			if (lagAmount > 0)
+			{
+				CFakeLag_SetPlayerLatency(i, lagAmount * 1.0);
+				CPrintToChat(i, "%t", "eping_notice_player", lagAmount);
+			}
+		}
+	}
+	CPrintToChatAll("%t", "equalize_finish", targetPing);
+	return Plugin_Handled;
 }
 
 // DEBUG: See the value of s_FakeLag
@@ -341,3 +334,61 @@ stock bool IsHuman(int client)
 {
 	return IsClientInGame(client) && !IsFakeClient(client);
 }
+
+
+/*	团队差值,感觉这个不合适,如果谁喜欢这可以丢上去try try ~
+
+	// 初始化一下
+	lowteamplayers = CreateArray();
+	
+	int surpings = SumPings(2);
+	int infpings = SumPings(3);
+	
+	int lowteam;
+	int avgbuffer;
+
+	ClearArray(lowteamplayers);
+	
+	if (surpings > infpings)
+	{
+		lowteam = 3;
+		avgbuffer = surpings / survivor_limit.IntValue;
+	}
+	else
+	{
+		lowteam = 2;
+		avgbuffer = infpings / survivor_limit.IntValue;
+	}
+
+	int sumdiff = 0;
+	int diff;
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+    	if (IsHuman(i) && GetClientTeam(i) == lowteam)
+    	{
+        	diff = avgbuffer - GetClientAvgPing(i); // 修正计算方向，确保增加低延迟团队的延迟
+        	if (diff > 0) // 仅对低延迟的玩家增加延迟
+        	{
+            	PushArrayCell(lowteamplayers, i);
+            	sumdiff += diff;
+        	}
+    	}
+	}
+
+	int teamdiff = ABS(surpings - infpings);
+
+	for (int i = 0; i < GetArraySize(lowteamplayers); i++)
+	{
+    	int client = GetArrayCell(lowteamplayers, i);
+    	int lagAmount = (avgbuffer - GetClientAvgPing(client)) * teamdiff / sumdiff;
+		// 设置增加的延迟，确保其为正值
+    	if (lagAmount > 0)
+		{
+			CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
+			CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
+		}
+	}
+
+	CPrintToChatAll("%t", "equalize_finish", sumdiff);
+	*/

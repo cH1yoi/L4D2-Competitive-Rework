@@ -70,4 +70,8 @@
 	{
 		"en"		"{teamcolor}%N: {default}%.1fms ( %.1fms + {orange}%.1fms {default})"
 	}
+	"wait_10s"
+	{
+		"en"		"{olive}<FakeLag>{default}Please wait{orange} 10 seconds{default} for equalize ping"
+	}
 }
