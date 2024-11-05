@@ -19,15 +19,10 @@ void InitPanel()
 	if (cmdFooter == null)
 	{
 		cmdFooter = new Footer();
-		cmdFooter.Add("!ready|!r / !unready|!nr ");
-		cmdFooter.Add("!slots #");
 		cmdFooter.Add("!voteboss <tank> <witch>");
-		cmdFooter.Add("!match / !rmatch");
-		cmdFooter.Add("!show / !hide");
-		cmdFooter.Add("!setscores <survs> <inf>");
-		cmdFooter.Add("!lerps");
-		cmdFooter.Add("!secondary");
 		cmdFooter.Add("!mix / !mixmap");
+		cmdFooter.Add("!efl / !tefl / !cfl");
+		cmdFooter.Add("❀ GOOD LUCK HAVE FUN");
 	}
 	
 	curCmd = 0;
@@ -85,14 +80,14 @@ void UpdatePanel()
 	g_cvServerNamer.GetString(ServerName, sizeof(ServerName));
 	
 	l4d_ready_cfg_name.GetString(cfgName, sizeof(cfgName));
-	Format(ServerBuffer, sizeof(ServerBuffer), "▸ 服务器: %s \n▸ 人   数: %d/%d\n▸ 配   置: %s", ServerName, GetSeriousClientCount(), FindConVar("sv_maxplayers").IntValue, cfgName);
+	Format(ServerBuffer, sizeof(ServerBuffer), "<「%s [%d/%d]」>\n<  %s  >", ServerName, GetSeriousClientCount(), FindConVar("sv_maxplayers").IntValue, cfgName);
 	menuPanel.DrawText(ServerBuffer);
 	
-	FormatTime(ServerBuffer, sizeof(ServerBuffer), "▸ %m/%d/%Y - %I:%M%p");
+	FormatTime(ServerBuffer, sizeof(ServerBuffer), "<  %m/%d/%Y - %I:%M%p  >");
 	Format(ServerBuffer, sizeof(ServerBuffer), "%s (%02d:%02d)", ServerBuffer, iPassTime / 60, iPassTime % 60);
 	menuPanel.DrawText(ServerBuffer);
 	
-    if (nativeFooter.Length)
+	if (nativeFooter.Length)
 	{
 		menuPanel.DrawText(" ");
 		for (int i = 0; i < nativeFooter.Length; i++)
@@ -162,7 +157,7 @@ void UpdatePanel()
 	{
 		survivorBuffer[bufLen] = '\0';
 		ReplaceString(survivorBuffer, sizeof(survivorBuffer), "#", "_");
-		Format(nameBuf, sizeof(nameBuf), "->%d. 生还者%s  -  %d", ++textCount, isTeamReadyMode ? teamReadySymbol[survivorReady] : "", L4D2Direct_GetVSCampaignScore(GameRules_GetProp("m_bAreTeamsFlipped")));
+		Format(nameBuf, sizeof(nameBuf), "->%d. 生还者%s [%d]", ++textCount, isTeamReadyMode ? teamReadySymbol[survivorReady] : "", L4D2Direct_GetVSCampaignScore(GameRules_GetProp("m_bAreTeamsFlipped")));
 		menuPanel.DrawText(nameBuf);
 		menuPanel.DrawText(survivorBuffer);
 	}
@@ -172,7 +167,7 @@ void UpdatePanel()
 	{
 		infectedBuffer[bufLen] = '\0';
 		ReplaceString(infectedBuffer, sizeof(infectedBuffer), "#", "_");
-		Format(nameBuf, sizeof(nameBuf), "->%d. 感染者%s  -  %d", ++textCount, isTeamReadyMode ? teamReadySymbol[infectedReady] : "", L4D2Direct_GetVSCampaignScore(!GameRules_GetProp("m_bAreTeamsFlipped")));
+		Format(nameBuf, sizeof(nameBuf), "->%d. 感染者%s [%d]", ++textCount, isTeamReadyMode ? teamReadySymbol[infectedReady] : "", L4D2Direct_GetVSCampaignScore(!GameRules_GetProp("m_bAreTeamsFlipped")));
 		menuPanel.DrawText(nameBuf);
 		menuPanel.DrawText(infectedBuffer);
 	}
@@ -185,7 +180,7 @@ void UpdatePanel()
 		if (bufLen != 0)
 		{
 			casterBuffer[bufLen] = '\0';
-			Format(nameBuf, sizeof(nameBuf), "->%d. 解说%s", ++textCount, casterCount > 1 ? "s" : "");
+			Format(nameBuf, sizeof(nameBuf), "->%d. 解说", ++textCount);
 			menuPanel.DrawText(nameBuf);
 			ReplaceString(casterBuffer, sizeof(casterBuffer), "#", "_", true);
 			menuPanel.DrawText(casterBuffer);
@@ -196,7 +191,7 @@ void UpdatePanel()
 	if (bufLen != 0)
 	{
 		specBuffer[bufLen] = '\0';
-		Format(nameBuf, sizeof(nameBuf), "->%d. 旁观者%s", ++textCount, specCount > 1 ? "s" : "");
+		Format(nameBuf, sizeof(nameBuf), "->%d. 旁观者", ++textCount);
 		menuPanel.DrawText(nameBuf);
 		ReplaceString(specBuffer, sizeof(specBuffer), "#", "_");
 		if (playerCount > l4d_ready_max_players.IntValue && specCount - casterCount > 1)
@@ -205,7 +200,7 @@ void UpdatePanel()
 	}
 
 	menuPanel.DrawText(" ");
-	menuPanel.DrawText("▸ 指  令:");
+	menuPanel.DrawText("<  Command  >");
 	menuPanel.DrawText(FooterGet(cmdFooter, curCmd));
 
 	for (int client = 1; client <= MaxClients; client++)
