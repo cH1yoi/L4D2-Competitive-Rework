@@ -1,11 +1,15 @@
 /*
-	他喵这个插件,同步ping逻辑是反的
-	寻思同步都减ping了 还得初始化lowteamplayers
-	2024/11/03 02:21 HANA留
+	2024/11/03
 	折磨坏咧修这个
 
-	2024/11/03 16:15 HANA留
+	2024/11/03
 	赫赫,小b
+
+	2024/11/05
+	完善了下功能,
+	把原先的团队差值塞进来了
+	加入了个投票恢复ping
+	管理员强制平衡和恢复
 */
 #pragma semicolon 1
 #pragma newdecls required
@@ -25,13 +29,13 @@ public Plugin myinfo =
 	name = "player_fakelag",
 	author = "ProdigySim, Bred, Hana",
 	description = "Set a custom fake latency per player",
-	version = "1.5",
+	version = "1.6",
 	url = "https://github.com/ProdigySim/custom_fakelag"
 };
 
 ConVar survivor_limit;
 
-//ArrayList lowteamplayers;
+ArrayList lowteamplayers;
 
 Handle hVoteEFakelag = null;
 
@@ -42,20 +46,36 @@ public void OnPluginStart()
 	
 	survivor_limit = FindConVar("survivor_limit");
 	
-	RegAdminCmd("sm_fakelag", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player");
-	RegAdminCmd("sm_fl", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player");
+	RegAdminCmd("sm_fakelag", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player(为指定玩家设置fakelag)");
+	RegAdminCmd("sm_fl", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player(为指定玩家设置fakelag)");
+	RegAdminCmd("sm_forceeping", ForceEqualizeFakelagCmd, ADMFLAG_GENERIC, "Force equalize fakelag for all players(管理员强制执行平衡ping)");
+	RegAdminCmd("sm_forcecping", CancelEqualizeFakelagCmd, ADMFLAG_GENERIC, "Cancel equalized fakelag for all players(管理员强制取消平衡ping)");
+	RegAdminCmd("sm_feping", ForceEqualizeFakelagCmd, ADMFLAG_GENERIC, "Force equalize fakelag for all players(管理员强制执行平衡ping)");
+	RegAdminCmd("sm_fcping", CancelEqualizeFakelagCmd, ADMFLAG_GENERIC, "Cancel equalized fakelag for all players(管理员强制取消平衡ping)");
+	RegAdminCmd("sm_fefl", ForceEqualizeFakelagCmd, ADMFLAG_GENERIC, "Force equalize fakelag for all players(管理员强制执行平衡ping)");
+	RegAdminCmd("sm_fcfl", CancelEqualizeFakelagCmd, ADMFLAG_GENERIC, "Cancel equalized fakelag for all players(管理员强制取消平衡ping)");
 	
-	RegConsoleCmd("sm_printlag", PrintLagCmd,  "Print Current FakeLag");
-	RegConsoleCmd("sm_ping", PrintLagCmd,  "Print Current FakeLag");
-	RegConsoleCmd("sm_pings", PrintLagCmd,  "Print Current FakeLag");
+	RegConsoleCmd("sm_printlag", PrintLagCmd,  "Print Current FakeLag(输出当前在线玩家ping值)");
+	RegConsoleCmd("sm_ping", PrintLagCmd,  "Print Current FakeLag(输出当前在线玩家ping值)");
+	RegConsoleCmd("sm_pings", PrintLagCmd,  "Print Current FakeLag(输出当前在线玩家ping值)");
 	
-	RegConsoleCmd("sm_myfakelag", MyFakeLagCmd, "Set fake lag for yourself");
-	RegConsoleCmd("sm_myfl", MyFakeLagCmd, "Set fake lag for yourself");
+	RegConsoleCmd("sm_myfakelag", MyFakeLagCmd, "Set fake lag for yourself(设置自己的fakelag值0-400)");
+	RegConsoleCmd("sm_myfl", MyFakeLagCmd, "Set fake lag for yourself(设置自己的fakelag值0-400)");
 	
-	RegConsoleCmd("sm_equalizefakelag", EFakeLagVoteCmd, "Equalize fakelags of all player");
-	RegConsoleCmd("sm_efl", EFakeLagVoteCmd, "Equalize fakelags of all player");
-	RegConsoleCmd("sm_epings", EFakeLagVoteCmd, "Equalize fakelags of all player");
-	RegConsoleCmd("sm_eping", EFakeLagVoteCmd, "Equalize fakelags of all player");
+	RegConsoleCmd("sm_equalizefakelag", EFakeLagVoteCmd, "Equalize fakelags of all player(平衡所有玩家延迟[非旁观])");
+	RegConsoleCmd("sm_efl", EFakeLagVoteCmd, "Equalize fakelags of all player(平衡所有玩家延迟[非旁观])");
+	RegConsoleCmd("sm_epings", EFakeLagVoteCmd, "Equalize fakelags of all player(平衡所有玩家延迟[非旁观])");
+	RegConsoleCmd("sm_eping", EFakeLagVoteCmd, "Equalize fakelags of all player(平衡所有玩家延迟[非旁观])");
+
+	RegConsoleCmd("sm_cancelefakelag", CancelEFakeLagVoteCmd, "Cancel equalized fakelags(取消平衡延迟,恢复原本延迟)");
+	RegConsoleCmd("sm_cfl", CancelEFakeLagVoteCmd, "Cancel equalized fakelags(取消平衡延迟,恢复原本延迟)");
+	RegConsoleCmd("sm_cpings", CancelEFakeLagVoteCmd, "Cancel equalized fakelags(取消平衡延迟,恢复原本延迟)");
+	RegConsoleCmd("sm_cping", CancelEFakeLagVoteCmd, "Cancel equalized fakelags(取消平衡延迟,恢复原本延迟)");
+
+	RegConsoleCmd("sm_teamequalizefakelag", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
+	RegConsoleCmd("sm_tefl", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
+	RegConsoleCmd("sm_tepings", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
+	RegConsoleCmd("sm_teping", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
 }
 
 public Action FakeLagCmd(int client, int args) 
@@ -98,6 +118,30 @@ public Action FakeLagCmd(int client, int args)
 	return Plugin_Handled;
 }
 
+public Action ForceEqualizeFakelagCmd(int client, int args)
+{
+    if (!CheckPlayers())
+    {
+        CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
+        return Plugin_Handled;
+    }
+
+    CPrintToChatAll("%t", "force_equalize_start", client);
+    
+    ClearAllPlayersFakelag();
+
+    CreateTimer(10.0, Timer_EqualizeFakelag);
+    return Plugin_Handled;
+}
+
+public Action CancelEqualizeFakelagCmd(int client, int args)
+{
+    ClearAllPlayersFakelag();
+    CPrintToChatAll("%t", "force_equalize_cancel", client);
+
+    return Plugin_Handled;
+}
+
 public Action MyFakeLagCmd(int client, int args) 
 {
 	if(args != 1) 
@@ -117,6 +161,88 @@ public Action MyFakeLagCmd(int client, int args)
 	
 	CPrintToChat(client, "%t", "InValid_Fakelag", FAKELAG_BOTTOM, FAKELAG_TOP);
 	return Plugin_Handled;
+}
+
+//--------------------- equalize pings vote -----------------------------
+
+public Action CancelEFakeLagVoteCmd(int client, int args)
+{
+	if (StartCancelEFakeLagVote(client))
+	{
+		CPrintToChatAllEx(client, "%t", "vote_to_cancel", client);
+		FakeClientCommand(client, "Vote Yes");
+	}
+
+	return Plugin_Handled;
+}
+
+bool StartCancelEFakeLagVote(int client)
+{
+	if (!IsBuiltinVoteInProgress())
+	{
+		int iNumPlayers;
+		int[] iPlayers = new int[MaxClients];
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsHuman(i) || (GetClientTeam(i) <= 1))
+			{
+				continue;
+			}
+			iPlayers[iNumPlayers++] = i;
+		}
+			
+		char cVoteTitle[32];
+		Format(cVoteTitle, sizeof(cVoteTitle), "%T", "Cancel_Vote_Title", LANG_SERVER);
+
+		hVoteEFakelag = CreateBuiltinVote(VoteCancelEFakelagActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
+
+		SetBuiltinVoteArgument(hVoteEFakelag, cVoteTitle);
+		SetBuiltinVoteInitiator(hVoteEFakelag, client);
+		SetBuiltinVoteResultCallback(hVoteEFakelag, VoteCancelEFakelagResultHandler);
+		DisplayBuiltinVote(hVoteEFakelag, iPlayers, iNumPlayers, 20);
+		
+		return true;
+	}
+	
+	CPrintToChat(client, "%t", "already_vote");
+	return false;
+}
+
+public void VoteCancelEFakelagActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
+{
+	switch (action) 
+	{
+		case BuiltinVoteAction_End: 
+		{
+			delete vote;
+			hVoteEFakelag = null;
+		}
+		case BuiltinVoteAction_Cancel: 
+		{
+			DisplayBuiltinVoteFail(vote, view_as<BuiltinVoteFailReason>(param1));
+		}
+	}
+}
+
+public void VoteCancelEFakelagResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
+{
+	for (int i = 0; i < num_items; i++) {
+		if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES) 
+		{
+			if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_votes / 2))
+			{
+				char tVotePass[32];
+				Format(tVotePass, sizeof(tVotePass), "%T", "Cancel_Vote_Pass_Title", LANG_SERVER);
+				
+				DisplayBuiltinVotePass(vote, tVotePass);
+				
+				ClearAllPlayersFakelag();
+				return;
+			}
+		}
+	}
+
+	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
 }
 
 //--------------------- equalize pings vote -----------------------------
@@ -216,10 +342,10 @@ public void EqualizeFakelag()
 	 	return;
 	}
 
-	ClearAllPlayersFakelag();	// 清理所有玩家的假延迟
+	ClearAllPlayersFakelag();
 	CPrintToChatAll("%t","wait_10s");
 
- 	CreateTimer(10.0, Timer_EqualizeFakelag, _, TIMER_FLAG_NO_MAPCHANGE);
+ 	CreateTimer(10.0, Timer_EqualizeFakelag);
 }
 
 public Action Timer_EqualizeFakelag(Handle timer)
@@ -261,6 +387,169 @@ public Action Timer_EqualizeFakelag(Handle timer)
 	CPrintToChatAll("%t", "equalize_finish", targetPing);
 	return Plugin_Handled;
 }
+
+//--------------------- team equalize pings vote -----------------------------
+
+public Action TeamEFakeLagVoteCmd(int client, int args)
+{
+	if (StartTeamEFakeLagVote(client))
+	{
+		CPrintToChatAllEx(client, "%t", "vote_to_team", client);
+		FakeClientCommand(client, "Vote Yes");
+    } 
+
+	return Plugin_Handled;
+}
+
+bool StartTeamEFakeLagVote(int client)
+{
+	// 人数检查
+	if (!CheckPlayers())
+	{
+		CPrintToChat(client, "%t", "not_enough_player", survivor_limit.IntValue * 2);
+	 	return false;
+	}
+	
+	if (!IsBuiltinVoteInProgress())
+	{
+		int iNumPlayers;
+		int[] iPlayers = new int[MaxClients];
+		for (int i = 1; i <= MaxClients; i++)
+		{
+			if (!IsHuman(i) || (GetClientTeam(i) <= 1))
+			{
+				continue;
+			}
+			iPlayers[iNumPlayers++] = i;
+		}
+			
+		char cVoteTitle[32];
+		Format(cVoteTitle, sizeof(cVoteTitle), "%T", "Vote_team", LANG_SERVER);
+
+		hVoteEFakelag = CreateBuiltinVote(VoteTeamEFakelagActionHandler, BuiltinVoteType_Custom_YesNo, BuiltinVoteAction_Cancel | BuiltinVoteAction_VoteEnd | BuiltinVoteAction_End);
+
+		SetBuiltinVoteArgument(hVoteEFakelag, cVoteTitle);
+		SetBuiltinVoteInitiator(hVoteEFakelag, client);
+		SetBuiltinVoteResultCallback(hVoteEFakelag, VoteTeamEFakelagResultHandler);
+		DisplayBuiltinVote(hVoteEFakelag, iPlayers, iNumPlayers, 20);
+		
+		return true;
+	}
+	
+	CPrintToChat(client, "%t", "already_vote");
+	return false;
+}
+
+public void VoteTeamEFakelagActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
+{
+	switch (action) 
+	{
+		case BuiltinVoteAction_End: 
+		{
+			delete vote;
+			hVoteEFakelag = null;
+		}
+		case BuiltinVoteAction_Cancel: 
+		{
+			DisplayBuiltinVoteFail(vote, view_as<BuiltinVoteFailReason>(param1));
+		}
+	}
+}
+
+public void VoteTeamEFakelagResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
+{
+	for (int i = 0; i < num_items; i++) {
+		if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES) 
+		{
+			if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_votes / 2))
+			{
+				char tVotePass[32];
+				Format(tVotePass, sizeof(tVotePass), "%T", "Vote_Pass_team", LANG_SERVER);
+				
+				DisplayBuiltinVotePass(vote, tVotePass);
+				
+				TeamEqualizeFakelag();
+				return;
+			}
+		}
+	}
+
+	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
+}
+
+public void TeamEqualizeFakelag()
+{
+	if (!CheckPlayers())
+	{
+	 	PrintToChatAll("%t", "not_enough_player", survivor_limit.IntValue * 2);
+	 	return;
+	}
+
+	ClearAllPlayersFakelag();
+	CPrintToChatAll("%t","wait_10s");
+
+ 	CreateTimer(10.0, Timer_TeamEqualizeFakelag);
+}
+
+public Action Timer_TeamEqualizeFakelag(Handle timer)
+{
+	// 初始化一下
+	lowteamplayers = CreateArray();
+	
+	int surpings = SumPings(2);
+	int infpings = SumPings(3);
+	
+	int lowteam;
+	int avgbuffer;
+
+	ClearArray(lowteamplayers);
+	
+	if (surpings > infpings)
+	{
+		lowteam = 3;
+		avgbuffer = surpings / survivor_limit.IntValue;
+	}
+	else
+	{
+		lowteam = 2;
+		avgbuffer = infpings / survivor_limit.IntValue;
+	}
+
+	int sumdiff = 0;
+	int diff;
+
+	for(int i = 1; i <= MaxClients; i++)
+	{
+    	if (IsHuman(i) && GetClientTeam(i) == lowteam)
+    	{
+        	diff = avgbuffer - GetClientAvgPing(i); // 修正计算方向，确保增加低延迟团队的延迟
+        	if (diff > 0) // 仅对低延迟的玩家增加延迟
+        	{
+            	PushArrayCell(lowteamplayers, i);
+            	sumdiff += diff;
+        	}
+    	}
+	}
+
+	int teamdiff = ABS(surpings - infpings);
+
+	for (int i = 0; i < GetArraySize(lowteamplayers); i++)
+	{
+    	int client = GetArrayCell(lowteamplayers, i);
+    	int lagAmount = (avgbuffer - GetClientAvgPing(client)) * teamdiff / sumdiff;
+		// 设置增加的延迟，确保其为正值
+    	if (lagAmount > 0)
+		{
+			CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
+			CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
+		}
+	}
+
+	CPrintToChatAll("%t", "equalize_finish", sumdiff);
+	
+	return Plugin_Handled;
+}
+
 
 // DEBUG: See the value of s_FakeLag
 public Action PrintLagCmd(int client, int args) 
@@ -334,61 +623,3 @@ stock bool IsHuman(int client)
 {
 	return IsClientInGame(client) && !IsFakeClient(client);
 }
-
-
-/*	团队差值,感觉这个不合适,如果谁喜欢这可以丢上去try try ~
-
-	// 初始化一下
-	lowteamplayers = CreateArray();
-	
-	int surpings = SumPings(2);
-	int infpings = SumPings(3);
-	
-	int lowteam;
-	int avgbuffer;
-
-	ClearArray(lowteamplayers);
-	
-	if (surpings > infpings)
-	{
-		lowteam = 3;
-		avgbuffer = surpings / survivor_limit.IntValue;
-	}
-	else
-	{
-		lowteam = 2;
-		avgbuffer = infpings / survivor_limit.IntValue;
-	}
-
-	int sumdiff = 0;
-	int diff;
-
-	for(int i = 1; i <= MaxClients; i++)
-	{
-    	if (IsHuman(i) && GetClientTeam(i) == lowteam)
-    	{
-        	diff = avgbuffer - GetClientAvgPing(i); // 修正计算方向，确保增加低延迟团队的延迟
-        	if (diff > 0) // 仅对低延迟的玩家增加延迟
-        	{
-            	PushArrayCell(lowteamplayers, i);
-            	sumdiff += diff;
-        	}
-    	}
-	}
-
-	int teamdiff = ABS(surpings - infpings);
-
-	for (int i = 0; i < GetArraySize(lowteamplayers); i++)
-	{
-    	int client = GetArrayCell(lowteamplayers, i);
-    	int lagAmount = (avgbuffer - GetClientAvgPing(client)) * teamdiff / sumdiff;
-		// 设置增加的延迟，确保其为正值
-    	if (lagAmount > 0)
-		{
-			CFakeLag_SetPlayerLatency(client, lagAmount * 1.0);
-			CPrintToChat(client, "%t", "eping_notice_player", lagAmount);
-		}
-	}
-
-	CPrintToChatAll("%t", "equalize_finish", sumdiff);
-	*/

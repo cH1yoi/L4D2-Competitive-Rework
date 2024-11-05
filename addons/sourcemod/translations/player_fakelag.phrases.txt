@@ -74,4 +74,36 @@
 	{
 		"en"		"{olive}<FakeLag>{default}Please wait{orange} 10 seconds{default} for equalize ping"
 	}
+	"Cancel_Vote_Title"
+	{
+		"en"		"Cancel Equalize pings ?"
+	}
+	"Cancel_Vote_Pass_Title"
+	{
+		"en"		"Cancel Equalize pings"
+	}
+	"vote_to_cancel"
+	{
+		"en"		"{olive}<FakeLag> {teamcolor}%N {default}initiate a vote for cancel equalize pings."
+	}
+	"force_equalize_start"
+	{
+		"en"		"{olive}<FakeLag> {orange}%N {default} has forced the equalization of ping. Please wait for 10 seconds."
+	}
+	"force_equalize_cancel"
+	{
+		"en"		"{olive}<FakeLag> {orange}%N {default} has canceled the ping equalization and restored the default latency."
+	}
+	"vote_to_team"
+	{
+    	"en"        "{olive}<FakeLag> {teamcolor}%N {default} initiated a vote to equalize team pings."
+	}
+	"Vote_team"
+	{
+    	"en"        "Do you want to equalize team pings?"
+	}
+	"Vote_Pass_team"
+	{
+    	"en"        "Equalizing team pings..."
+	}
 }

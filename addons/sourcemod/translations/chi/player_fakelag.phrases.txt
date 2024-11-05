@@ -44,7 +44,7 @@
 	}
 	"Vote_Tittle"
 	{
-		"chi"		"是否平衡双方ping值？"
+		"chi"		"是否平衡双方ping值?"
 	}
 	"already_vote"
 	{
@@ -73,5 +73,37 @@
 	"wait_10s"
 	{
 		"chi"		"{olive}<FakeLag>{default}请等待{orange}10秒{default}后平衡延迟"
+	}
+	"Cancel_Vote_Title"
+	{
+		"chi"		"是否取消延迟平衡?"
+	}
+	"Cancel_Vote_Pass_Title"
+	{
+		"chi"		"正在取消延迟平衡"
+	}
+	"vote_to_cancel"
+	{
+		"chi"		"{olive}<FakeLag> {teamcolor}%N {default}发起一个投票（取消延迟平衡）。"
+	}
+	"force_equalize_start"
+	{
+		"chi"		"{olive}<FakeLag> {orange}%N {default}强制开始延迟平衡,请等待10秒"
+	}
+	"force_equalize_cancel"
+	{
+		"chi"		"{olive}<FakeLag> {orange}%N {default}已取消延迟平衡,恢复默认延迟"
+	}
+	"vote_to_team"
+	{
+		"chi"		"{olive}<FakeLag> {teamcolor}%N {default}发起一个投票（平衡团队ping值）。"
+	}
+	"Vote_team"
+	{
+		"chi"		"是否平衡团队ping值?"
+	}
+	"Vote_Pass_team"
+	{
+		"chi"		"正在平衡团队ping值"
 	}
 }
