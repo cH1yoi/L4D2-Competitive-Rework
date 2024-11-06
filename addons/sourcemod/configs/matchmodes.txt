@@ -20,12 +20,8 @@
 		}
 		"hyzmtf"
 		{
-			"name" "ZoneMod 2.8.1(克局ONLY)"
+			"name" "ZoneMod TankFight(克局Only)"
 		}
-        "advanced"
-        {
-            "name" "Advanced 进阶包抗"
-        }
 		"zonehunters"
 		{
 			"name" "ZoneHunters 2.8.9"
@@ -145,7 +141,7 @@
 			"name" "1v1 EQ"
 		}
 	}
-	"娱乐 Configs"
+	"Other Configs"
 	{
 		"zonemod6v6"
 		{
@@ -159,6 +155,10 @@
 		{
 			"name" "Advanced 8v8(进阶包)"
 		}
+		"advanced"
+        {
+            "name" "Advanced 进阶包抗"
+        }
 		"hideseek"
 		{
 			"name" "躲猫猫捏"
