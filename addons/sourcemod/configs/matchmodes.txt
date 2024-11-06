@@ -156,9 +156,9 @@
 			"name" "Advanced 8v8(进阶包)"
 		}
 		"advanced"
-        {
-            "name" "Advanced 进阶包抗"
-        }
+		{
+			"name" "Advanced 进阶包抗"
+		}
 		"hideseek"
 		{
 			"name" "躲猫猫捏"
