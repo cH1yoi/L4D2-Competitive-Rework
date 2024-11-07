@@ -217,7 +217,7 @@
 			"Before ferry (bugged spawn)"
 			{
 				"min"		"45"
-				"max"		"62"
+				"max"		"100"
 			}
 		}
 	}
@@ -632,7 +632,7 @@
 			"Before elevator (bugged spawn)"
 			{
 				"min"		"42"
-				"max"		"81"
+				"max"		"100"
 			}
 		}
 	}
