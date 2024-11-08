@@ -25,12 +25,12 @@
 	"TeamSkeeted"
 	{
        "#format"	"{1:N},{2:N},{3:d},{4:d},{5:s},{6:s}" // 1:attacker 2:victim 3:damage 4:shots 5:shots == 1 ? "" : "s" 6:assister_string
-		"chi"    	"{olive}{1}{default} 以 {blue}{4}{default} 发{5}造成了 {blue}{3} 点伤害{default}团队空爆了 {olive}{2}{default}. 协助者: {olive}{6}{default}"
+		"chi"    	"{olive}{1}{default} 以 {blue}{4}{default} 发造成了 {blue}{3} 点伤害{default}团队空爆了 {olive}{2}{default}. 协助者: {olive}{6}{default}"
 	}
 	"Skeeted"
 	{
        "#format"	"{1:N},{2:N},{3:d},{4:s}" // 1:attacker 2:victim 3:shots 4:shots == 1 ? "" : "s"
-		"chi"    	"{olive}{1}{default} 以 {blue}{3}{default} 发子弹{4}空爆了 {olive}{2}{default}"
+		"chi"    	"{olive}{1}{default} 以 {blue}{3}{default} 发子弹空爆了 {olive}{2}{default}"
 	}
 	"ShutBoomer"
 	{

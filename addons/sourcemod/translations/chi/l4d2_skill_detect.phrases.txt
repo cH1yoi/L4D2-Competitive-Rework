@@ -229,7 +229,7 @@
 	"BunnyHop"
 	{ 
         "#format"   "{1:i},{2:s},{3:.1f}" // 1:streak 2:(streak > 1) ? "s" : "" 3:maxVelocity
-		"chi"		"{olive}你{default}一次性连跳了{2}{blue}{1}{default} 下 ({blue}最高速度{default}: {olive}{3}{default})"
+		"chi"		"{olive}你{default}一次性连跳了{blue}{1}{default} 下 ({blue}最高速度{default}: {olive}{3}{default})"
 	}
 	"PluralCount"
 	{
