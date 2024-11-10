@@ -6,21 +6,30 @@
 #pragma semicolon 1
 #pragma newdecls required
 
-
 #define CMD_LENGTH 128
 
-// 颜色定义
-#define COLOR_PREFIX     "\x01[\x04Aim Monitor\x01]"
-#define COLOR_DEFAULT    "\x01"
-#define COLOR_HIGHLIGHT  "\x04"
-#define COLOR_PLAYER     "\x03"
-#define COLOR_WARNING    "\x02"
+enum struct KillData {
+    int client;
+    int victim;
+    bool headshot;
+    char weapon[32];
+    float distance;
+    int attackTicks;
+    float delta;
+    float total_delta;
+    float killPos[3];
+    float victimPos[3];
+    char targetInfo[64];
+    float latency;
+    float packetLoss;
+    char shotType[32];
+}
 
 public Plugin myinfo = {
     name = "Aim Monitor",
     author = "Hana",
     description = "Monitor player aim data",
-    version = "1.3",
+    version = "1.4",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -30,7 +39,6 @@ int g_PlayerButtons[MAXPLAYERS + 1][CMD_LENGTH];
 int g_PlayerIndex[MAXPLAYERS + 1];
 bool g_IsMonitored[MAXPLAYERS + 1];
 int g_MonitoringAdmin[MAXPLAYERS + 1];
-char g_LogPath[PLATFORM_MAX_PATH];
 
 public void OnPluginStart() {
     RegAdminCmd("sm_monitor", Command_Monitor, ADMFLAG_GENERIC, "开始监控指定玩家");
@@ -38,9 +46,34 @@ public void OnPluginStart() {
     RegAdminCmd("sm_unmonitor", Command_Unmonitor, ADMFLAG_GENERIC, "停止监控指定玩家");
     RegAdminCmd("sm_unmt", Command_Unmonitor, ADMFLAG_GENERIC, "停止监控指定玩家");
     
-    HookEvent("player_death", Event_PlayerDeath);
+    HookEvent("player_death", Event_PlayerDeath);   // 监听玩家死亡事件
+}
+
+public void OnMapStart() {
+    for(int i = 1; i <= MaxClients; i++) {
+        if(g_IsMonitored[i] && IsValidClient(g_MonitoringAdmin[i])) {
+            PrintToChat(g_MonitoringAdmin[i], "\x01[\x04Aim Monitor\x01] \x01由于更换地图，停止监控玩家 \x03%N", i);
+        }
+        g_IsMonitored[i] = false;
+        g_MonitoringAdmin[i] = 0;
+        g_PlayerIndex[i] = 0;
+    }
+}
+
+public void OnClientDisconnect(int client) {
+    if(g_IsMonitored[client] && IsValidClient(g_MonitoringAdmin[client])) {
+        PrintToChat(g_MonitoringAdmin[client], "\x01[\x04Aim Monitor\x01] \x01玩家 \x03%N \x01断开连接，停止监控", client);
+    }
+    g_IsMonitored[client] = false;
+    g_MonitoringAdmin[client] = 0;
+    g_PlayerIndex[client] = 0;
     
-    BuildPath(Path_SM, g_LogPath, sizeof(g_LogPath), "logs/aim_monitor.log");
+    for(int i = 1; i <= MaxClients; i++) {
+        if(g_MonitoringAdmin[i] == client) {
+            g_IsMonitored[i] = false;
+            g_MonitoringAdmin[i] = 0;
+        }
+    }
 }
 
 public void OnClientPutInServer(int client) {
@@ -51,7 +84,7 @@ public void OnClientPutInServer(int client) {
 
 public Action Command_Monitor(int client, int args) {
     if(args < 1) {
-        PrintToChat(client, "%s %s用法: /monitor \"玩家\"", COLOR_PREFIX, COLOR_WARNING);
+        PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x02用法: /monitor \"玩家\"");
         return Plugin_Handled;
     }
     
@@ -63,15 +96,14 @@ public Action Command_Monitor(int client, int args) {
         return Plugin_Handled;
         
     if(g_IsMonitored[target]) {
-        PrintToChat(client, "%s %s玩家 %s%N %s已经在被监控中", COLOR_PREFIX, COLOR_DEFAULT, COLOR_PLAYER, target, COLOR_DEFAULT);
+        PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x01玩家 \x03%N \x01已经在被监控中", target);
         return Plugin_Handled;
     }
     
-    // 添加团队检查
     if(IsValidClient(target)) {
         int team = GetClientTeam(target);
-        if(team != 2) { // 2 = 生还者团队
-            PrintToChat(client, "%s %s只能监控生还者团队的玩家", COLOR_PREFIX, COLOR_WARNING);
+        if(team != 2) {
+            PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x02只能监控生还者团队的玩家");
             return Plugin_Handled;
         }
     }
@@ -79,15 +111,14 @@ public Action Command_Monitor(int client, int args) {
     g_IsMonitored[target] = true;
     g_MonitoringAdmin[target] = client;
     
-    PrintToChat(client, "%s %s开始监控玩家 %s%N", COLOR_PREFIX, COLOR_DEFAULT, COLOR_PLAYER, target);
-    LogToFile(g_LogPath, "[监控开始] 管理员 %N 开始监控玩家 %N", client, target);
+    PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x01开始监控玩家 \x03%N", target);
     
     return Plugin_Handled;
 }
 
 public Action Command_Unmonitor(int client, int args) {
     if(args < 1) {
-        PrintToChat(client, "%s %s用法: /unmonitor \"玩家\"", COLOR_PREFIX, COLOR_WARNING);
+        PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x02用法: /unmonitor \"玩家\"");
         return Plugin_Handled;
     }
     
@@ -99,15 +130,14 @@ public Action Command_Unmonitor(int client, int args) {
         return Plugin_Handled;
         
     if(!g_IsMonitored[target]) {
-        PrintToChat(client, "%s %s玩家 %s%N %s未被监控", COLOR_PREFIX, COLOR_DEFAULT, COLOR_PLAYER, target, COLOR_DEFAULT);
+        PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x01玩家 \x03%N \x01未被监控", target);
         return Plugin_Handled;
     }
     
     g_IsMonitored[target] = false;
     g_MonitoringAdmin[target] = 0;
     
-    PrintToChat(client, "%s %s停止监控玩家 %s%N", COLOR_PREFIX, COLOR_DEFAULT, COLOR_PLAYER, target);
-    LogToFile(g_LogPath, "[监控结束] 管理员 %N 停止监控玩家 %N", client, target);
+    PrintToChat(client, "\x01[\x04Aim Monitor\x01] \x01停止监控玩家 \x03%N", target);
     
     return Plugin_Handled;
 }
@@ -160,6 +190,61 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 }
 
 void ProcessKill(int client, int victim, bool headshot, const char[] weapon) {
+    // 忽略自杀和world击杀
+    if (StrEqual(weapon, "world", false) || client == victim) {
+        return;
+    }
+    
+    // 记录击杀位置
+    float killpos[3], victimpos[3];
+    GetClientEyePosition(client, killpos);
+    GetClientEyePosition(victim, victimpos);
+
+    DataPack pack = new DataPack();
+    pack.WriteCell(GetClientUserId(client));
+    pack.WriteCell(GetClientUserId(victim));
+    pack.WriteCell(headshot);
+    pack.WriteString(weapon);
+    pack.WriteCell(g_PlayerIndex[client]); // 记录当前index作为fallback
+    
+    // 记录位置信息
+    pack.WriteFloat(killpos[0]);
+    pack.WriteFloat(killpos[1]);
+    pack.WriteFloat(killpos[2]);
+    pack.WriteFloat(victimpos[0]);
+    pack.WriteFloat(victimpos[1]);
+    pack.WriteFloat(victimpos[2]);
+    
+    CreateTimer(0.1, Timer_ProcessKill, pack);
+}
+
+public Action Timer_ProcessKill(Handle timer, DataPack pack) {
+    pack.Reset();
+    
+    int client = GetClientOfUserId(pack.ReadCell());
+    int victim = GetClientOfUserId(pack.ReadCell());
+    bool headshot = pack.ReadCell();
+    
+    char weapon[32];
+    pack.ReadString(weapon, sizeof(weapon));
+    
+    int fallback_index = pack.ReadCell();
+    
+    float killpos[3], victimpos[3];
+    killpos[0] = pack.ReadFloat();
+    killpos[1] = pack.ReadFloat();
+    killpos[2] = pack.ReadFloat();
+    victimpos[0] = pack.ReadFloat();
+    victimpos[1] = pack.ReadFloat();
+    victimpos[2] = pack.ReadFloat();
+    
+    delete pack;
+
+    // 有效性检查
+    if(!IsValidClient(client) || !IsValidClient(victim)) {
+        return Plugin_Stop;
+    }
+    
     float delta = 0.0, total_delta = 0.0;
     int ind, shotindex = -1;
     bool foundShot = false;
@@ -167,28 +252,25 @@ void ProcessKill(int client, int victim, bool headshot, const char[] weapon) {
     
     // 获取目标信息
     char targetInfo[64];
-    if(IsValidClient(victim)) {
-        int zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
-        if(zombieClass >= 1 && zombieClass <= 6) { // 只处理特感
-            char className[32];
-            GetZombieClassName(zombieClass, className, sizeof(className));
-            Format(targetInfo, sizeof(targetInfo), "%N(%s)", victim, className);
-        } else {
-            return; // 不是特感就返回
-        }
-    } else {
-        return; // 不是玩家就返回
+    int zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
+    if(zombieClass < 1 || zombieClass > 6) {
+        return Plugin_Stop;
     }
     
+    char className[32];
+    GetZombieClassName(zombieClass, className, sizeof(className));
+    Format(targetInfo, sizeof(targetInfo), "%N(%s)", victim, className);
+    
     // 计算实际距离
-    float clientPos[3], victimPos[3];
-    GetClientAbsOrigin(client, clientPos);
-    GetClientAbsOrigin(victim, victimPos);
-    float distance = GetVectorDistance(clientPos, victimPos);
+    float distance = GetVectorDistance(killpos, victimpos);
+    
+    // 使用实际tick rate
+    float tickInterval = GetTickInterval();
+    int ticksPerSecond = RoundToCeil(1.0 / tickInterval);
     
     // 计算射击tick和角度变化
     ind = g_PlayerIndex[client];
-    for(int i = 0; i < time_to_ticks(1.0); i++) {
+    for(int i = 0; i < ticksPerSecond; i++) {
         if(--ind < 0)
             ind = CMD_LENGTH - 1;
             
@@ -207,41 +289,87 @@ void ProcessKill(int client, int victim, bool headshot, const char[] weapon) {
         }
         
         if(i > 0 && shotindex != -1) {
-            float tdelta = GetAngleDelta(g_PlayerAngles[client][ind], g_PlayerAngles[client][ind+1]);
+            int nextInd = (ind + 1) % CMD_LENGTH;
+            float tdelta = GetAngleDelta(g_PlayerAngles[client][ind], g_PlayerAngles[client][nextInd]);
             if(tdelta > delta)
                 delta = tdelta;
             total_delta += tdelta;
         }
     }
     
+    // 如果没找到射击记录,使用fallback index
+    if(shotindex == -1) {
+        shotindex = fallback_index;
+    }
+
+    KillData data;
+    data.client = client;
+    data.victim = victim;
+    data.headshot = headshot;
+    strcopy(data.weapon, sizeof(data.weapon), weapon);
+    data.distance = distance;
+    data.attackTicks = attackTicks;
+    data.delta = delta;
+    data.total_delta = total_delta;
+    data.killPos = killpos;
+    data.victimPos = victimpos;
+    strcopy(data.targetInfo, sizeof(data.targetInfo), targetInfo);
+    data.latency = GetClientLatency(client, NetFlow_Both);
+    data.packetLoss = GetClientAvgLoss(client, NetFlow_Both);
+
+     // 设置shotType
+    if(attackTicks <= 1)
+        Format(data.shotType, sizeof(data.shotType), "[1shot]%s", headshot ? "[爆头]" : "");
+    else
+        Format(data.shotType, sizeof(data.shotType), "%s", headshot ? "[爆头]" : "");
+
+    // 输出聊天信息
     int admin = g_MonitoringAdmin[client];
     if(!IsValidClient(admin))
-        return;
+        return Plugin_Stop;
         
-    char shotType[32];
-    if(attackTicks <= 1)
-        Format(shotType, sizeof(shotType), "[1shot]%s", headshot ? "[爆头]" : "");
-    else
-        Format(shotType, sizeof(shotType), "%s", headshot ? "[爆头]" : "");
-        
-    // 只输出特感击杀信息到聊天
-    PrintToChat(admin, "%s %s分析结果:", COLOR_PREFIX, COLOR_DEFAULT);
-    PrintToChat(admin, "%s- 击杀目标: %s%s", COLOR_DEFAULT, COLOR_HIGHLIGHT, targetInfo);
-    PrintToChat(admin, "%s- 使用武器: %s%s%s", COLOR_DEFAULT, COLOR_HIGHLIGHT, weapon, shotType);
-    PrintToChat(admin, "%s- 击杀距离: %s%.1f 单位", COLOR_DEFAULT, COLOR_HIGHLIGHT, distance);
-    PrintToChat(admin, "%s- 射击Tick: %s%d", COLOR_DEFAULT, COLOR_HIGHLIGHT, attackTicks);
-    PrintToChat(admin, "%s- 最大角度: %s%.1f 度", COLOR_DEFAULT, COLOR_HIGHLIGHT, delta);
-    PrintToChat(admin, "%s- 总角度变化: %s%.1f 度", COLOR_DEFAULT, COLOR_HIGHLIGHT, total_delta);
-    PrintToChat(admin, "%s- 网络状态: %s%dms / %.1f%%丢包", COLOR_DEFAULT, COLOR_HIGHLIGHT,
-        RoundToNearest(GetClientLatency(client, NetFlow_Both) * 1000.0),
-        GetClientAvgLoss(client, NetFlow_Both) * 100.0);
+    PrintToChat(admin, "\x01[\x04Aim Monitor\x01] \x01分析结果:");
+    PrintToChat(admin, "\x01- 击杀目标: \x04%s", data.targetInfo);
+    PrintToChat(admin, "\x01- 使用武器: \x04%s%s", data.weapon, data.shotType);
+    PrintToChat(admin, "\x01- 击杀距离: \x04%.1f \x01单位", data.distance);
+    PrintToChat(admin, "\x01- 射击Tick: \x04%d", data.attackTicks);
+    PrintToChat(admin, "\x01- 最大角度: \x04%.1f \x01度", data.delta);
+    PrintToChat(admin, "\x01- 总角度变化: \x04%.1f \x01度", data.total_delta);
+    PrintToChat(admin, "\x01- 网络状态: \x04%dms \x01/ \x04%.1f%%\x01丢包",
+        RoundToNearest(data.latency * 1000.0),
+        data.packetLoss);
     
-    // 记录所有击杀信息到日志
-    LogToFile(g_LogPath, 
-        "[瞄准分析]玩家:%N |目标:%s |武器:%s%s |距离:%.1f单位|射击Tick:%d |最大角度:%.1f度|总角度:%.1f度|延迟:%dms |丢包:%.1f%%",
-        client, targetInfo, weapon, shotType, distance, attackTicks, delta, total_delta,
-        RoundToNearest(GetClientLatency(client, NetFlow_Both) * 1000.0),
-        GetClientAvgLoss(client, NetFlow_Both) * 100.0);
+    LogKillData(data);
+    
+    return Plugin_Stop;
+}
+
+void LogKillData(KillData data) {
+    char logFile[PLATFORM_MAX_PATH];
+    BuildPath(Path_SM, logFile, sizeof(logFile), "logs/aim_monitor.log");
+    
+    File file = OpenFile(logFile, "a");
+    if (file != null) {
+        char timeStamp[32];
+        FormatTime(timeStamp, sizeof(timeStamp), "%Y/%m/%d - %H:%M:%S", GetTime());
+        
+        file.WriteLine("< [%s] [%N] 击杀数据 >", timeStamp, data.client);
+        file.WriteLine("击杀玩家: %N", data.client);
+        file.WriteLine("击杀目标: %s", data.targetInfo);
+        file.WriteLine("使用武器: %s%s", data.weapon, data.shotType);
+        file.WriteLine("击杀距离: %.1f 单位", data.distance);
+        file.WriteLine("射击Tick: %d", data.attackTicks);
+        file.WriteLine("最大角度: %.1f 度", data.delta);
+        file.WriteLine("总角度变化: %.1f 度", data.total_delta);
+        file.WriteLine("击杀位置: (%.1f, %.1f, %.1f)", 
+            data.killPos[0], data.killPos[1], data.killPos[2]);
+        file.WriteLine("目标位置: (%.1f, %.1f, %.1f)", 
+            data.victimPos[0], data.victimPos[1], data.victimPos[2]);
+        file.WriteLine("网络状态: %dms / %.1f%%丢包", 
+            RoundToNearest(data.latency * 1000.0), data.packetLoss);
+        file.WriteLine("===========================================");
+        delete file;
+    }
 }
 
 void GetZombieClassName(int zombieClass, char[] buffer, int maxlen) {
@@ -282,32 +410,4 @@ float GetAngleDelta(float angles1[3], float angles2[3]) {
 
 bool IsValidClient(int client) {
     return (client > 0 && client <= MaxClients && IsClientInGame(client));
-}
-
-int time_to_ticks(float time) {
-    return RoundToNearest(time * (1.0 / GetTickInterval()));
-}
-
-public void OnMapStart() {
-    // 地图开始时重置所有监控状态
-    for(int i = 1; i <= MaxClients; i++) {
-        g_IsMonitored[i] = false;
-        g_MonitoringAdmin[i] = 0;
-        g_PlayerIndex[i] = 0;
-    }
-}
-
-public void OnClientDisconnect(int client) {
-    // 玩家断开连接时清理监控状态
-    g_IsMonitored[client] = false;
-    g_MonitoringAdmin[client] = 0;
-    g_PlayerIndex[client] = 0;
-    
-    // 如果这个玩家是管理员，清理所有被他监控的玩家
-    for(int i = 1; i <= MaxClients; i++) {
-        if(g_MonitoringAdmin[i] == client) {
-            g_IsMonitored[i] = false;
-            g_MonitoringAdmin[i] = 0;
-        }
-    }
 }
