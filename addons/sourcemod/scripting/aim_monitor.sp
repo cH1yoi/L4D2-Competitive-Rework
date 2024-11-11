@@ -42,20 +42,21 @@ enum struct DamageData {
 }
 
 // 全局变量
-Logger log;                                            // 日志记录器
+Logger log;
 float g_PlayerAngles[MAXPLAYERS + 1][CMD_LENGTH][3];  // 玩家角度历史记录
 float g_PlayerTimes[MAXPLAYERS + 1][CMD_LENGTH];      // 玩家时间历史记录
 int g_PlayerButtons[MAXPLAYERS + 1][CMD_LENGTH];      // 玩家按键历史记录
 int g_PlayerIndex[MAXPLAYERS + 1];                    // 玩家历史记录索引
 bool g_IsMonitored[MAXPLAYERS + 1];                   // 玩家是否被监控
 int g_MonitoringAdmin[MAXPLAYERS + 1];                // 监控该玩家的管理员
+float g_LastShotgunTime[MAXPLAYERS + 1];
 
 // 插件信息
 public Plugin myinfo = {
     name = "Aim Monitor",
     author = "Hana",
     description = "Monitor player aim data",
-    version = "1.6",
+    version = "1.7",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -78,6 +79,7 @@ public void OnMapStart() {
         g_IsMonitored[i] = false;
         g_MonitoringAdmin[i] = 0;
         g_PlayerIndex[i] = 0;
+        g_LastShotgunTime[i] = 0.0;
         SDKUnhook(i, SDKHook_PostThinkPost, OnPlayerPostThinkPost);
     }
 }
@@ -87,6 +89,7 @@ public void OnClientDisconnect(int client) {
     g_IsMonitored[client] = false;
     g_MonitoringAdmin[client] = 0;
     g_PlayerIndex[client] = 0;
+    g_LastShotgunTime[client] = 0.0;
     SDKUnhook(client, SDKHook_PostThinkPost, OnPlayerPostThinkPost);
 }
 
@@ -156,6 +159,7 @@ public Action Command_Unmonitor(int client, int args) {
 
     char adminName[MAX_NAME_LENGTH];
     GetClientName(client, adminName, sizeof(adminName));
+
     char targetName[MAX_NAME_LENGTH];
     GetClientName(target, targetName, sizeof(targetName));
     
@@ -229,9 +233,29 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
         return;
     }
     
+    // 检查是否是Tank
+    int zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
+    if(zombieClass == 8) {
+        return;
+    }
+    
     // 获取基础数据
     char weapon[32];
     event.GetString("weapon", weapon, sizeof(weapon));
+    
+    // 检查是否是散弹枪并处理
+    if (StrEqual(weapon, "shotgun_chrome", false) || 
+        StrEqual(weapon, "pumpshotgun", false) || 
+        StrEqual(weapon, "autoshotgun", false) || 
+        StrEqual(weapon, "shotgun_spas", false)) {
+        float currentTime = GetGameTime();
+        // 如果距离上次伤害小于0.05秒，跳过这次记录
+        if (currentTime - g_LastShotgunTime[attacker] < 0.05) {
+            return;
+        }
+        g_LastShotgunTime[attacker] = currentTime;
+    }
+    
     bool headshot = event.GetInt("hitgroup") == 1;
     
     float attackerPos[3], victimPos[3];
@@ -245,20 +269,19 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     int startTick = currentTick;
     float currentTime = GetGameTime();
     int attackTicks = 0;
-    
-    // 往前追溯200ms(约10tick)的数据
-    for(int i = 0; i < CMD_LENGTH; i++) {
+
+    int lookbackTicks = time_to_ticks(0.2); 
+    for(int i = 0; i < lookbackTicks; i++) {
         if(--startTick < 0) 
             startTick = CMD_LENGTH - 1;
-            
-        // 只分析200ms内的数据
+        
         if(currentTime - g_PlayerTimes[attacker][startTick] > 0.2)
             break;
-            
+        
         // 统计射击次数
         if(g_PlayerButtons[attacker][startTick] & IN_ATTACK)
             attackTicks++;
-            
+        
         if(i > 0) {
             int nextTick = (startTick + 1) % CMD_LENGTH;
             float tdelta = GetAngleDelta(g_PlayerAngles[attacker][startTick], g_PlayerAngles[attacker][nextTick]);
@@ -270,7 +293,6 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     
     // 构建数据并输出
     char targetInfo[64];
-    int zombieClass = GetEntProp(victim, Prop_Send, "m_zombieClass");
     char className[32];
     GetZombieClassName(zombieClass, className, sizeof(className));
     Format(targetInfo, sizeof(targetInfo), "%N(%s)", victim, className);
@@ -352,12 +374,9 @@ public Action Timer_ProcessKill(Handle timer, DataPack pack) {
     GetZombieClassName(zombieClass, className, sizeof(className));
     Format(targetInfo, sizeof(targetInfo), "%N(%s)", victim, className);
     
-    float tickInterval = GetTickInterval();
-    int ticksPerSecond = RoundToCeil(1.0 / tickInterval);
-    
     // 分析玩家的瞄准数据
     ind = g_PlayerIndex[client];
-    for(int i = 0; i < ticksPerSecond; i++) {
+    for(int i = 0; i < time_to_ticks(1.0); i++) {
         if(--ind < 0)
             ind = CMD_LENGTH - 1;
             
@@ -433,7 +452,7 @@ void LogDamageData(DamageData data) {
     }
     
     log.info(
-        "[%N]伤害数据 目标:%s 武器:<%s%s> 伤害:%.1f 距离:%.1f 射击Tick:%d 2帧角度:%.1f 总角度:%.1f 延迟:%dms/%.1f%%",
+        "[%N] 伤害数据 目标:%s 武器:<%s%s> 伤害:%.1f 距离:%.1f 射击Tick:%d 2帧角度:%.1f 总角度:%.1f 延迟:%dms/%.1f%%",
         data.client,
         data.targetInfo,
         data.weapon,
@@ -447,7 +466,6 @@ void LogDamageData(DamageData data) {
         data.packetLoss);
 }
 
-// 向管理员显示击杀数据
 void PrintKillData(int admin, KillData data) {
     char clientName[MAX_NAME_LENGTH];
     if(IsValidClient(data.client)) {
@@ -456,7 +474,10 @@ void PrintKillData(int admin, KillData data) {
         strcopy(clientName, sizeof(clientName), "未知");
     }
 
-    PrintToChat(admin, "\x01[\x04Aim Info\x01] \x03%s\x01 击杀 \x04%s\x01 | 射击Tick:\x04%d\x01 2帧角度:\x04%.1f\x01 总角度:\x04%.1f\x01",
+    float score = CalculateAimScore(data.weapon, data.delta, data.distance, data.attackTicks, data.headshot);
+
+    PrintToChat(admin, "\x01[\x04Aim Info\x01] \x01[\x04评分:%.1f\x01] \x03%s\x01 击杀 \x04%s\x01 | 射击Tick:\x04%d\x01 2帧角度:\x04%.1f\x01 总角度:\x04%.1f\x01",
+        score,
         clientName,
         data.targetInfo,
         data.attackTicks,
@@ -470,8 +491,15 @@ void LogKillData(KillData data) {
         return;
     }
     
+    char timeStr[32];
+    FormatTime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", GetTime());
+    
+    float score = CalculateAimScore(data.weapon, data.delta, data.distance, data.attackTicks, data.headshot);
+    
     log.info(
-        "[%N] 击杀数据 目标:%s 武器:<%s%s> 距离:%.1f 射击Tick:%d 2帧角度:%.1f 总角度:%.1f 延迟:%dms/%.1f%%",
+        "[%s] [评分:%.1f] [%N] 击杀数据 目标:%s 武器:<%s%s> 距离:%.1f 射击Tick:%d 2帧角度:%.1f 总角度:%.1f 延迟:%dms/%.1f%%",
+        timeStr,
+        score,
         data.client,
         data.targetInfo,
         data.weapon,
@@ -499,13 +527,21 @@ void GetZombieClassName(int zombieClass, char[] buffer, int maxlen) {
     }
 }
 
+int time_to_ticks(float time)
+{
+	if (time > 0.0)
+		return RoundToNearest(time / GetTickInterval());
+
+	return 0;
+}
+
 // 计算角度变化
 float GetAngleDelta(float angles1[3], float angles2[3]) {
     float p1[3], p2[3], delta;
     
-    p1[0] = angles1[0];
+    p1[0] = angles1[0]; // pitch
+    p1[1] = angles1[1]; // yaw
     p2[0] = angles2[0];
-    p1[1] = angles1[1];
     p2[1] = angles2[1];
     
     p1[2] = 0.0;
@@ -514,12 +550,89 @@ float GetAngleDelta(float angles1[3], float angles2[3]) {
     delta = GetVectorDistance(p1, p2);
     
     int normal = 5;
-    while(delta > 180.0 && normal > 0) {
+    while (delta > 180.0 && normal > 0) {
         normal--;
         delta = FloatAbs(delta - 360.0);
     }
     
     return delta;
+}
+
+float CalculateAimScore(const char[] weapon, float delta, float distance, int attackTicks, bool headshot) {
+    float score = 0.0;
+    
+    if (delta > 0.1) {
+        score = delta * 2.5;
+    }
+    
+    if (StrContains(weapon, "shotgun", false) != -1) {
+
+        if (distance < 150.0) {
+            score *= 0.5;
+        } else if (distance < 300.0) {
+            score *= 0.8;
+        } else {
+            score *= 1.5;
+        }
+        
+        if (attackTicks <= 3) {
+            score *= 1.4;
+        }
+    }
+    else if (StrEqual(weapon, "sniper", false) || StrEqual(weapon, "hunting_rifle", false)) {
+ 
+        if (distance < 200.0) {
+            score *= 1.3;
+        } else if (distance < 500.0) {
+            score *= 1.0;
+        } else {
+            score *= 0.7;
+        }
+        
+        if (attackTicks <= 2) {
+            score *= 1.8;
+        }
+    }
+    else if (StrContains(weapon, "pistol", false) != -1 || StrContains(weapon, "magnum", false) != -1) {
+
+        if (distance < 200.0) {
+            score *= 0.7;
+        } else if (distance < 400.0) {
+            score *= 1.0;
+        } else {
+            score *= 1.3;
+        }
+        
+        if (attackTicks <= 2) {
+            score *= 1.2;
+        }
+    }
+    else {
+        if (distance < 150.0) {
+            score *= 0.6;
+        } else if (distance < 400.0) {
+            score *= 1.0;
+        } else if (distance < 800.0) {
+            score *= 1.3;
+        } else {
+            score *= 1.5;
+        }
+        
+        if (attackTicks <= 2 && delta > 2.0) {
+            score *= 1.4;
+        }
+    }
+    
+    if (headshot) {
+        float headshotMultiplier = 1.0 + (distance / 500.0);
+        score *= headshotMultiplier;
+    }
+    
+    if (delta > 3.0) {
+        score *= 1.0 + (delta - 3.0) * 0.1;
+    }
+    
+    return score;
 }
 
 // 检查客户端是否有效
