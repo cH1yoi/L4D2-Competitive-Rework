@@ -4,17 +4,52 @@
 #include <colors>
 #include <l4d2util_constants>
 #include <exp_interface>
+
+#undef REQUIRE_PLUGIN
 #include <readyup>
+#define REQUIRE_PLUGIN
+
+bool g_bReadyUpAvailable = false;
 
 public void OnPluginStart()
 {
     RegConsoleCmd("sm_exp", CMD_Exp);
 }
 
-// 加个牛马计数器
+public void OnAllPluginsLoaded()
+{
+    g_bReadyUpAvailable = LibraryExists("readyup");
+}
+
+public void OnLibraryAdded(const char[] name)
+{
+    if (StrEqual(name, "readyup"))
+    {
+        g_bReadyUpAvailable = true;
+    }
+}
+
+public void OnLibraryRemoved(const char[] name)
+{
+    if (StrEqual(name, "readyup"))
+    {
+        g_bReadyUpAvailable = false;
+    }
+}
+
+#if !defined REQUIRE_PLUGIN
+public void __pl_readyup_SetNTVOptional()
+{
+    MarkNativeAsOptional("OnRoundIsLive");
+}
+#endif
+
 public void OnRoundIsLive()
 {
-    CreateTimer(3.0, Timer_DelayedRoundIsLive);
+    if (g_bReadyUpAvailable)
+    {
+        CreateTimer(3.0, Timer_DelayedRoundIsLive);
+    }
 }
 
 public Action Timer_DelayedRoundIsLive(Handle timer){
