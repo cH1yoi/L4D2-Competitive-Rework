@@ -7,13 +7,11 @@
 #include <l4d2util>
 #include <left4dhooks>
 #include <colors>
-#include <nextmap>
 #undef REQUIRE_PLUGIN
 #include <l4d2_playstats>
 #undef REQUIRE_PLUGIN
 #include <sdkhooks>
-#include <l4d2util_stocks>
-#include <readyup>
+//#include <readyup>
 
 #define SECTION_NAME "CTerrorGameRules::SetCampaignScores"
 #define LEFT4FRAMEWORK_GAMEDATA "left4dhooks.l4d2"
@@ -21,10 +19,10 @@
 public Plugin myinfo =
 {
 	name = "l4d2_mixmap",
-	author = "Stabby, Bred",
-	description = "随机抽取5张地图进行对抗，增加趣味性，借鉴CMT-https://github.com/Stabbath/L4D2-Stuff",
-	version = "2.3",
-	url = "https://gitee.com/honghl5/open-source-plug-in"
+	author = "Bred",
+	description = "Randomly select five maps for versus. Adding for fun and reference from CMT",
+	version = "2.5",
+	url = "https://gitee.com/honghl5/open-source-plug-in/tree/main/l4d2_mixmap"
 };
 
 #define DIR_CFGS 			"mixmap/"
@@ -41,6 +39,10 @@ public Plugin myinfo =
 #define	CFG_DOUNOF			"disorderunofficial"
 #define	CFG_DOUNOF_ST		"douof"
 #define BUF_SZ   			64
+
+ConVar 	g_cvNextMapPrint,
+		g_cvMaxMapsNum,
+		g_cvFinaleEndStart;
 
 const TEAM_SPECTATOR = 1;
 const TEAM_SURVIVOR = 2;
@@ -68,7 +70,8 @@ int
 
 //bool bLeftStartArea;
 //bool bReadyUpAvailable;
-bool g_bCMapTransitioned = false;
+bool 	g_bCMapTransitioned = false,
+		g_bServerForceStart = false;
 
 Handle g_hForwardStart;
 Handle g_hForwardNext;
@@ -92,7 +95,6 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 
 	MarkNativeAsOptional("PLAYSTATS_BroadcastRoundStats");
 	MarkNativeAsOptional("PLAYSTATS_BroadcastGameStats");
-	MarkNativeAsOptional("IsInReady");
 
 	return APLRes_Success;
 }
@@ -100,21 +102,26 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public void OnPluginStart() 
 {
 	LoadSDK();
+	
+	g_cvNextMapPrint	= CreateConVar("l4d2mm_nextmap_print",		"1",	"Determine whether to show what the next map will be", _, true, 0.0, true, 1.0);
+	g_cvMaxMapsNum		= CreateConVar("l4d2mm_max_maps_num",		"2",	"Determine how many maps of one campaign can be selected; 0 = no limits;", _, true, 0.0, true, 5.0);
+	g_cvFinaleEndStart	= CreateConVar("l4d2mm_finale_end_start",	"1",	"Determine whether to remixmap in the end of finale; 0 = disable;1 = enable", _, true, 0.0, true, 1.0);
 
-	//服务器指令（用于cfg文件）
+	//Servercmd 服务器指令（用于cfg文件）
 	RegServerCmd( "sm_addmap", AddMap);
 	RegServerCmd( "sm_tagrank", TagRank);
 
-	//启用/中止指令
-	RegAdminCmd( "sm_manualmixmap", ManualMixmap, ADMFLAG_ROOT, "启用mixmap加载特定地图顺序的地图组");
-	RegAdminCmd( "sm_fmixmap", ForceMixmap, ADMFLAG_ROOT, "强制启用mixmap（随机官方地图）");
-	RegConsoleCmd( "sm_mixmap", Mixmap_Cmd, "通过投票启用Mixmap，并可加载特定的地图池；无参数则启用官图顺序随机");
-	RegConsoleCmd( "sm_stopmixmap",	StopMixmap_Cmd, "中止mixmap，并初始化地图列表");
-	RegAdminCmd( "sm_fstopmixmap",	StopMixmap, ADMFLAG_ROOT, "强制中止mixmap，并初始化地图列表");
+	//Start/Stop 启用/中止指令
+	RegAdminCmd( "sm_manualmixmap", ManualMixmap, ADMFLAG_ROOT, "Start mixmap with specified maps 启用mixmap加载特定地图顺序的地图组");
+	RegAdminCmd( "sm_fmixmap", ForceMixmap, ADMFLAG_ROOT, "Force start mixmap (arg1 empty for 'default' maps pool) 强制启用mixmap（随机官方地图）");
+	RegConsoleCmd( "sm_mixmap", Mixmap_Cmd, "Vote to start a mixmap (arg1 empty for 'default' maps pool);通过投票启用Mixmap，并可加载特定的地图池；无参数则启用官图顺序随机");
+	RegConsoleCmd( "sm_stopmixmap",	StopMixmap_Cmd, "Stop a mixmap;中止mixmap，并初始化地图列表");
+	RegAdminCmd( "sm_fstopmixmap",	StopMixmap, ADMFLAG_ROOT, "Force stop a mixmap ;强制中止mixmap，并初始化地图列表");
 
-	//插件启用后可使用的指令
-	RegConsoleCmd( "sm_maplist", Maplist, "展示mixmap最终抽取出的地图列表");
-	RegAdminCmd( "sm_allmaps", ShowAllMaps, ADMFLAG_ROOT, "展示所有官方地图的地图代码");
+	//Midcommand 插件启用后可使用的指令
+	RegConsoleCmd( "sm_maplist", Maplist, "Show the map list; 展示mixmap最终抽取出的地图列表");
+	RegAdminCmd( "sm_allmap", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
+	RegAdminCmd( "sm_allmaps", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
 
 	// HookEvent("player_left_start_area", LeftStartArea_Event, EventHookMode_PostNoCopy);
 	// HookEvent("round_start", RoundStart_Event, EventHookMode_PostNoCopy);
@@ -122,7 +129,8 @@ public void OnPluginStart()
 
 	PluginStartInit();
 	LoadTranslations("l4d2_mixmap.phrases");
-
+	
+	AutoExecConfig(true, "l4d2_mixmap");
 }
 
 void PluginStartInit() 
@@ -273,6 +281,8 @@ stock Action PerformMapProgression()
 		GotoNextMap(false);
 		return Plugin_Handled;
 	}
+	else if (g_cvFinaleEndStart.IntValue)
+		CreateTimer(9.0, Timed_ContinueMixmap);
 
 	Call_StartForward(g_hForwardEnd);
 	Call_Finish();
@@ -301,12 +311,11 @@ void GotoMap(const char[] sMapName, bool force = false)
 
 public Action Timed_NextMapInfo(Handle timer)
 {
-	char sMapName_New[BUF_SZ];
-	char sMapName_Old[BUF_SZ];
+	char sMapName_New[BUF_SZ], sMapName_Old[BUF_SZ];
 	GetArrayString(g_hArrayMapOrder, g_iMapsPlayed, sMapName_New, BUF_SZ);
 	GetArrayString(g_hArrayMapOrder, g_iMapsPlayed - 1, sMapName_Old, BUF_SZ);
 	
-	CPrintToChatAll("%t", "Show_Next_Map", sMapName_New);
+	g_cvNextMapPrint.IntValue ? CPrintToChatAll("%t", "Show_Next_Map",  sMapName_New) : CPrintToChatAll("%t%t", "Show_Next_Map",  "", "Secret");
 	
 	if ((StrEqual(sMapName_Old, "c6m2_bedlam") && !StrEqual(sMapName_New, "c7m1_docks")) || (StrEqual(sMapName_Old, "c9m2_lots") && !StrEqual(sMapName_New, "c14m1_junkyard")))
 	{
@@ -334,6 +343,12 @@ public Action Timed_Gotomap(Handle timer)
 	GotoMap(sMapName_New, true);
 	return Plugin_Handled;
 }
+
+public Action Timed_ContinueMixmap(Handle timer)
+{
+	ServerCommand("sm_fmixmap %s", cfg_exec);
+	return Plugin_Handled;
+}
 	
 
 // ----------------------------------------------------------
@@ -343,12 +358,6 @@ public Action Timed_Gotomap(Handle timer)
 // Loads a specified set of maps
 public Action ForceMixmap(int client, any args) 
 {
-	if (g_bMapsetInitialized) 
-	{
-		CPrintToChat(client,"%t", "Already_Start_Admin");
-		return Plugin_Handled;
-	}
-	
 	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
 	
 	if (args >=1)
@@ -372,12 +381,14 @@ public Action ForceMixmap(int client, any args)
 				Format(cfg_exec, sizeof(cfg_exec), CFG_DOUNOF);
 			else
 			{
-				CPrintToChat(client, "%t", "Invalid_Cfg");
+				CReplyToCommand(client, "%t", "Invalid_Cfg");
 				return Plugin_Handled;
 			}
 		}
 	}
-	CPrintToChatAllEx(client, "%t", "Force_Start", client, cfg_exec);
+	if (client) CPrintToChatAllEx(client, "%t", "Force_Start", client, cfg_exec);
+	PluginStartInit();
+	if (client == 0) g_bServerForceStart = true;
 	ServerCommand("exec %s%s.cfg", DIR_CFGS, cfg_exec);
 	g_bMapsetInitialized = true;
 	CreateTimer(0.1, Timed_PostMapSet);
@@ -392,12 +403,8 @@ public Action ManualMixmap(int client, any args)
 	{
 		CPrintToChat(client, "%t", "Manualmixmap_Syntax");
 	}
-
-	if (g_bMapsetInitialized) 
-	{
-		CPrintToChat(client, "%t", "Already_Start");
-		return Plugin_Handled;
-	}
+	
+	PluginStartInit();
 
 	char map[BUF_SZ];
 	for (int i = 1; i <= args; i++) 
@@ -439,55 +446,49 @@ public Action ShowAllMaps(int client, any Args)
 
 /* public void RoundStart_Event(Event event, const char[] name, bool dontBroadcast)
 {
-    bLeftStartArea = false;
+	bLeftStartArea = false;
 }
 
 public void LeftStartArea_Event(Event event, const char[] name, bool dontBroadcast)
 {
-    bLeftStartArea = true;
+	bLeftStartArea = true;
 } */
 
 public Action Mixmap_Cmd(int client, any args) 
 {
-	if (g_bMapsetInitialized) 
-	{
-		CPrintToChat(client, "%t", "Already_Start");
-		return Plugin_Handled;
-	}
-	
-	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
-	
-	if (args >=1)
-	{
-		char sbuffer[BUF_SZ];
-		char arg[BUF_SZ];
-		GetCmdArg(1, arg, BUF_SZ);
-		Format(sbuffer, sizeof(sbuffer), "cfg/%s%s.cfg", DIR_CFGS, arg);
-		if (FileExists(sbuffer)) Format(cfg_exec, sizeof(cfg_exec), arg);
-		else
-		{
-			if (StrEqual(arg,CFG_DODEFAULT_ST))
-				Format(cfg_exec, sizeof(cfg_exec), CFG_DODEFAULT);
-			else if (StrEqual(arg, CFG_ALLOF_ST))
-				Format(cfg_exec, sizeof(cfg_exec), CFG_ALLOF);
-			else if (StrEqual(arg, CFG_DOALLOF_ST))
-				Format(cfg_exec, sizeof(cfg_exec), CFG_DOALLOF);
-			else if (StrEqual(arg, CFG_UNOF_ST))
-					Format(cfg_exec, sizeof(cfg_exec), CFG_UNOF);
-			else if (StrEqual(arg, CFG_DOUNOF_ST))
-				Format(cfg_exec, sizeof(cfg_exec), CFG_DOUNOF);
-			else
-			{
-				CPrintToChat(client, "%t", "Invalid_Cfg");
-				return Plugin_Handled;
-			}
-		}
-	}
-	
 	if (IsClientAndInGame(client))
-    {
-        if (!IsBuiltinVoteInProgress())
-        {
+	{
+		if (!IsBuiltinVoteInProgress())
+		{
+			Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
+	
+			if (args >=1)
+			{
+				char sbuffer[BUF_SZ];
+				char arg[BUF_SZ];
+				GetCmdArg(1, arg, BUF_SZ);
+				Format(sbuffer, sizeof(sbuffer), "cfg/%s%s.cfg", DIR_CFGS, arg);
+				if (FileExists(sbuffer)) Format(cfg_exec, sizeof(cfg_exec), arg);
+				else
+				{
+					if (StrEqual(arg,CFG_DODEFAULT_ST))
+						Format(cfg_exec, sizeof(cfg_exec), CFG_DODEFAULT);
+					else if (StrEqual(arg, CFG_ALLOF_ST))
+						Format(cfg_exec, sizeof(cfg_exec), CFG_ALLOF);
+					else if (StrEqual(arg, CFG_DOALLOF_ST))
+						Format(cfg_exec, sizeof(cfg_exec), CFG_DOALLOF);
+					else if (StrEqual(arg, CFG_UNOF_ST))
+							Format(cfg_exec, sizeof(cfg_exec), CFG_UNOF);
+					else if (StrEqual(arg, CFG_DOUNOF_ST))
+						Format(cfg_exec, sizeof(cfg_exec), CFG_DOUNOF);
+					else
+					{
+						CPrintToChat(client, "%t", "Invalid_Cfg");
+						return Plugin_Handled;
+					}
+				}
+			}
+			
 			int iNumPlayers;
 			int[] iPlayers = new int[MaxClients];
 			for (int i = 1; i <= MaxClients; i++)
@@ -511,59 +512,66 @@ public Action Mixmap_Cmd(int client, any args)
 
 			CPrintToChatAllEx(client, "%t", "Start_Mixmap", client, cfg_exec);
 			FakeClientCommand(client, "Vote Yes");
-        }
+		}
 		else
 		{
 			PrintToChat(client, "%t", "Vote_Progress");
 		}
 
-        return Plugin_Handled;
-    }
+		return Plugin_Handled;
+	}
 
 	return Plugin_Continue;
 }
 
 public void VoteMixmapActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
 {
-    switch (action)
-    {
-        case BuiltinVoteAction_End:
-        {
-            hVoteMixmap = null;
-            CloseHandle(vote);
-        }
-        case BuiltinVoteAction_Cancel:
-        {
+	switch (action)
+	{
+		case BuiltinVoteAction_End:
+		{
+			hVoteMixmap = null;
+			CloseHandle(vote);
+		}
+		case BuiltinVoteAction_Cancel:
+		{
 			DisplayBuiltinVoteFail(vote, view_as<BuiltinVoteFailReason>(param1));
-        }
-        case BuiltinVoteAction_Select:
-        {
-            char cItemVal[64];
-            char cItemName[64];
-            GetBuiltinVoteItem(vote, param2, cItemVal, sizeof(cItemVal), cItemName, sizeof(cItemName));
-        }
-    }
+		}
+/* 		case BuiltinVoteAction_Select:
+		{
+			char cItemVal[64];
+			char cItemName[64];
+			GetBuiltinVoteItem(vote, param2, cItemVal, sizeof(cItemVal), cItemName, sizeof(cItemName));
+		} */
+	}
 }
 
 public void VoteMixmapResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
 {
-    for (int i = 0; i < num_items; i++)
-    {
-        if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES)
-        {
-            if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_clients / 2))
-            {
-                if (vote == hVoteMixmap)
-                {
+	for (int i = 0; i < num_items; i++)
+	{
+		if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES)
+		{
+			if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_clients / 2))
+			{
+				if (vote == hVoteMixmap)
+				{
 					char cExecTitle[32];
 					Format(cExecTitle, sizeof(cExecTitle), "%T", "Cexec_Title", LANG_SERVER);
 					DisplayBuiltinVotePass(vote, cExecTitle);
-					CreateTimer(5.0, StartVoteMixmap_Timer);
+					if (g_hCountDownTimer) {
+						// interrupt any upcoming transitions
+						KillTimer(g_hCountDownTimer);
+					}
+					PluginStartInit();
+					CreateTimer(3.0, StartVoteMixmap_Timer);
 					return;
-                }
-            }
-        }
-    }
+				}
+			}
+		}
+	}
+	
+	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
 }
 
 public Action StartVoteMixmap_Timer(Handle timer)
@@ -597,58 +605,30 @@ public Action Maplist(int client, any args)
 	char buffer[BUF_SZ];
 
 	CPrintToChat(client, "%t", "Maplist_Title");
-
-	// Final Maplist
-	if (g_bMaplistFinalized) 
+	
+	for (int i = 0; i < GetArraySize(g_hArrayMapOrder); i++) 
 	{
-		for (int i = 0; i < GetArraySize(g_hArrayMapOrder); i++) 
+		GetArrayString(g_hArrayMapOrder, i, buffer, BUF_SZ);
+		if (g_iMapsPlayed == i)
+			FormatEx(output, BUF_SZ, "\x04 %d - %s", i + 1, buffer);
+		else if (!g_cvNextMapPrint.IntValue && g_iMapsPlayed < i)
 		{
-			GetArrayString(g_hArrayMapOrder, i, buffer, BUF_SZ);
-			FormatEx(output, BUF_SZ, "\x05 %d - %s", i + 1, buffer);
-
-			if (GetPrettyName(buffer)) 
-			{
-				if (g_iMapsPlayed == i) 
-				{
-					FormatEx(output, BUF_SZ, "\x04%d - %s", i + 1, buffer);
-				}
-				else
-				{
-					FormatEx(output, BUF_SZ, "%d - %s ", i + 1, buffer);
-				}
-			}
+			FormatEx(output, BUF_SZ, "\x01 %d - %T", i + 1, "Secret", client);
 			CPrintToChat(client, "%s", output);
+			continue;
 		}
-		CPrintToChat(client, "%t", "Show_Maplist_Cmd");
-		return Plugin_Handled;
-	}
+		else FormatEx(output, BUF_SZ, "\x01 %d - %s", i + 1, buffer);
 
-	Handle hArrayMapPool;
-	char tag[BUF_SZ];
-	int j;
-
-	for (int i = 0; i < GetArraySize(g_hArrayTags); i++) 
-	{
-		GetArrayString(g_hArrayTags, i, tag, BUF_SZ);
-
-		output = "";
-		for (j = 0; j < GetArraySize(g_hArrayTagOrder); j++) 
+		if (GetPrettyName(buffer)) 
 		{
-			GetArrayString(g_hArrayTagOrder, j, buffer, BUF_SZ);
-			if (StrEqual(tag, buffer, false)) Format(output, BUF_SZ, "%s%s %d", output, output[0] == '\0' ? "" : ",", j + 1);
+			if (g_iMapsPlayed == i) 
+				FormatEx(output, BUF_SZ, "\x04%d - %s", i + 1, buffer);
+			else
+				FormatEx(output, BUF_SZ, "%d - %s ", i + 1, buffer);
 		}
-		PrintToChat(client, "%s - %s", output, tag);
-
-		GetTrieValue(g_hTriePools, tag, hArrayMapPool);
-		for (j = 0; j < GetArraySize(hArrayMapPool); j++) 
-		{
-			GetArrayString(hArrayMapPool, j, buffer, BUF_SZ);
-
-			FormatEx(output, BUF_SZ, "\t%s", buffer);
-			if (GetPrettyName(buffer)) Format(output, BUF_SZ, "\x05%s \x01(%s)", output, buffer);
-			PrintToChat(client, "%s", output);
-		}
+		CPrintToChat(client, "%s", output);
 	}
+	CPrintToChat(client, "%t", "Show_Maplist_Cmd");
 
 	return Plugin_Handled;
 }
@@ -662,9 +642,9 @@ public Action StopMixmap_Cmd(int client, any args)
 		return Plugin_Handled;
 	}
 	if (IsClientAndInGame(client))
-    {
-        if (!IsBuiltinVoteInProgress())
-        {
+	{
+		if (!IsBuiltinVoteInProgress())
+		{
 			int iNumPlayers;
 			int[] iPlayers = new int[MaxClients];
 			for (int i = 1; i <= MaxClients; i++)
@@ -688,57 +668,59 @@ public Action StopMixmap_Cmd(int client, any args)
 
 			CPrintToChatAllEx(client, "%t", "Vote_Stop", client);
 			FakeClientCommand(client, "Vote Yes");
-        }
+		}
 		else
 		{
 			PrintToChat(client, "%t", "Vote_Progress");
 		}
 
-        return Plugin_Handled;
-    }
+		return Plugin_Handled;
+	}
 
 	return Plugin_Continue;
 }
 
 public void VoteStopMixmapActionHandler(Handle vote, BuiltinVoteAction action, int param1, int param2)
 {
-    switch (action)
-    {
-        case BuiltinVoteAction_End:
-        {
-            hVoteStopMixmap = null;
-            CloseHandle(vote);
-        }
-        case BuiltinVoteAction_Cancel:
-        {
+	switch (action)
+	{
+		case BuiltinVoteAction_End:
+		{
+			hVoteStopMixmap = null;
+			CloseHandle(vote);
+		}
+		case BuiltinVoteAction_Cancel:
+		{
 			DisplayBuiltinVoteFail(vote, view_as<BuiltinVoteFailReason>(param1));
-        }
-        case BuiltinVoteAction_Select:
-        {
-            char cItemVal[64];
-            char cItemName[64];
-            GetBuiltinVoteItem(vote, param2, cItemVal, sizeof(cItemVal), cItemName, sizeof(cItemName));
-        }
-    }
+		}
+/* 		case BuiltinVoteAction_Select:
+		{
+			char cItemVal[64];
+			char cItemName[64];
+			GetBuiltinVoteItem(vote, param2, cItemVal, sizeof(cItemVal), cItemName, sizeof(cItemName));
+		} */
+	}
 }
 
 public void VoteStopMixmapResultHandler(Handle vote, int num_votes, int num_clients, const int[][] client_info, int num_items, const int[][] item_info)
 {
-    for (int i = 0; i < num_items; i++)
-    {
-        if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES)
-        {
-            if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_clients / 2))
-            {
-                if (vote == hVoteStopMixmap)
-                {
+	for (int i = 0; i < num_items; i++)
+	{
+		if (item_info[i][BUILTINVOTEINFO_ITEM_INDEX] == BUILTINVOTES_VOTE_YES)
+		{
+			if (item_info[i][BUILTINVOTEINFO_ITEM_VOTES] > (num_clients / 2))
+			{
+				if (vote == hVoteStopMixmap)
+				{
 					DisplayBuiltinVotePass(vote, "stop Mixmap……");
 					CreateTimer(1.0, StartVoteStopMixmap_Timer);
 					return;
-                }
-            }
-        }
-    }
+				}
+			}
+		}
+	}
+	
+	DisplayBuiltinVoteFail(vote, BuiltinVoteFail_Loses);
 }
 
 public Action StartVoteStopMixmap_Timer(Handle timer)
@@ -746,7 +728,7 @@ public Action StartVoteStopMixmap_Timer(Handle timer)
 	if (g_hCountDownTimer) 
 	{
 		// interrupt any upcoming transitions
-		KillTimer(g_hCountDownTimer, true);
+		KillTimer(g_hCountDownTimer);
 	}
 	PluginStartInit();
 	
@@ -765,7 +747,7 @@ public Action StopMixmap(int client, any args)
 	if (g_hCountDownTimer) 
 	{
 		// interrupt any upcoming transitions
-		KillTimer(g_hCountDownTimer, true);
+		KillTimer(g_hCountDownTimer);
 	}
 
 	PluginStartInit();
@@ -829,36 +811,47 @@ stock Handle GetPoolThatContainsMap(char[] map, int index, char[] tag)
 stock void SelectRandomMap() 
 {
 	g_bMaplistFinalized = true;
-	//int test = view_as<int>(GetEngineTime());	//test
 	SetRandomSeed(view_as<int>(GetEngineTime()));
-	//CPrintToChatAll("种子：%d", test);
-	//CPrintToChatAll("设种后第一次随机：%d", GetRandomInt(0,11));
 
-	int i, mapIndex;
-	Handle hArrayPool;
-	char tag[BUF_SZ];
-	char map[BUF_SZ];
+	int i, mapIndex, mapsmax = g_cvMaxMapsNum.IntValue;
+	ArrayList hArrayPool;
+	char tag[BUF_SZ], map[BUF_SZ];
 
 	// Select 1 random map for each rank out of the remaining ones
 	for (i = 0; i < GetArraySize(g_hArrayTagOrder); i++) 
 	{
 		GetArrayString(g_hArrayTagOrder, i, tag, BUF_SZ);
 		GetTrieValue(g_hTriePools, tag, hArrayPool);
+		SortADTArray(hArrayPool, Sort_Random, Sort_String);	//randomlize the array
 		mapIndex = GetRandomInt(0, GetArraySize(hArrayPool) - 1);
-		//CPrintToChatAll("选图随机数%d：%d", i + 1, mapIndex);
 
 		GetArrayString(hArrayPool, mapIndex, map, BUF_SZ);
 		RemoveFromArray(hArrayPool, mapIndex);
+		if (mapsmax)	//if limit the number of missions in one campaign, check the number.
+		{
+			if (CheckSameCampaignNum(map) >= mapsmax)
+			{
+				while (GetArraySize(hArrayPool) > 0)	// Reselect if the number will exceed the limit 
+				{
+					mapIndex = GetRandomInt(0, GetArraySize(hArrayPool) - 1);
+					GetArrayString(hArrayPool, mapIndex, map, BUF_SZ);
+					RemoveFromArray(hArrayPool, mapIndex);
+					if (CheckSameCampaignNum(map) < mapsmax) break;
+				}
+				if (CheckSameCampaignNum(map) >= mapsmax)	//Reselect some missions (like only 1 mission4, the mission4 can't select)
+				{
+					GetTrieValue(g_hTriePools, tag, hArrayPool);
+					SortADTArray(hArrayPool, Sort_Random, Sort_String);
+					mapIndex = GetRandomInt(0, GetArraySize(hArrayPool) - 1);
+					hArrayPool.GetString(mapIndex, map, BUF_SZ);
+					ReSelectMapOrder(map);
+				}
+			}
+		}
 		PushArrayString(g_hArrayMapOrder, map);
 	}
 
 	// Clear things because we only need the finalised map order in memory
-	for (i = 0; i < GetArraySize(g_hArrayTagOrder); i++) 
-	{
-		GetArrayString(g_hArrayTagOrder, i, tag, BUF_SZ);
-		GetTrieValue(g_hTriePools, tag, hArrayPool);
-		ClearArray(hArrayPool);
-	}
 	ClearTrie(g_hTriePools);
 	ClearArray(g_hArrayTagOrder);
 
@@ -871,12 +864,19 @@ stock void SelectRandomMap()
 		}
 	}
 
-	CPrintToChatAll("%t", "Change_Map_First");
-	g_hCountDownTimer = CreateTimer(15.0, Timed_GiveThemTimeToReadTheMapList);
+	CPrintToChatAll("%t", "Change_Map_First", g_bServerForceStart ? 5 : 15);	//Alternative for remixmap
+	g_hCountDownTimer = CreateTimer(g_bServerForceStart ? 5.0 : 15.0, Timed_GiveThemTimeToReadTheMapList);	//Alternative for remixmap
 }
 
 public Action Timed_GiveThemTimeToReadTheMapList(Handle timer) 
 {
+	if (IsBuiltinVoteInProgress() && !g_bServerForceStart)
+	{
+		CPrintToChatAll("%t", "Vote_Progress_delay");
+		g_hCountDownTimer = CreateTimer(20.0, Timed_GiveThemTimeToReadTheMapList);
+		return Plugin_Handled;
+	}
+	if (g_bServerForceStart) g_bServerForceStart = false;
 	g_hCountDownTimer = null;
 
 	// call starting forward
@@ -963,8 +963,8 @@ public Action AddMap(any args)
 	return Plugin_Handled;
 }
 
-// Return 0 if pretty name not found, 1 otherwise
-stock int GetPrettyName(char[] map) 
+// Return false if pretty name not found, ture otherwise
+stock bool GetPrettyName(char[] map) 
 {
 	static Handle hKvMapNames = INVALID_HANDLE;
 	if (hKvMapNames == INVALID_HANDLE) 
@@ -974,18 +974,19 @@ stock int GetPrettyName(char[] map)
 		{
 			LogMessage("Couldn't create KV for map names.");
 			hKvMapNames = INVALID_HANDLE;
-			return 0;
+			return false;
 		}
 	}
-
+	
 	char buffer[BUF_SZ];
 	KvGetString(hKvMapNames, map, buffer, BUF_SZ, "no");
+		
 	if (! StrEqual(buffer, "no")) 
 	{
 		strcopy(map, BUF_SZ, buffer);
-		return 1;
+		return true;
 	}
-	return 0;
+	return false;
 }
 
 // ----------------------------------------------------------
@@ -995,4 +996,60 @@ stock int GetPrettyName(char[] map)
 stock bool IsClientAndInGame(int index) 
 {
 	return (index > 0 && index <= MaxClients && IsClientInGame(index) && IsClientConnected(index) && !IsFakeClient(index) && GetClientTeam(index) != 1);
+}
+
+stock int CheckSameCampaignNum(char[] map)
+{
+	int count = 0;
+	char buffer[BUF_SZ];
+	
+	for (int i = 0; i < GetArraySize(g_hArrayMapOrder); i++)
+	{
+		GetArrayString(g_hArrayMapOrder, i, buffer, sizeof(buffer));
+		if (IsSameCampaign(map, buffer))
+			count ++;
+	}
+	
+	return count;
+}
+
+stock bool IsSameCampaign(char[] map1, char[] map2)
+{
+	char buffer1[BUF_SZ], buffer2[BUF_SZ];
+	
+	strcopy(buffer1, BUF_SZ, map1);
+	strcopy(buffer2, BUF_SZ, map2);
+	
+	if (GetPrettyName(buffer1)) SplitString(buffer1, "_", buffer1, sizeof(buffer1));
+	if (GetPrettyName(buffer2)) SplitString(buffer2, "_", buffer2, sizeof(buffer2));
+	
+	if (StrEqual(buffer1, buffer2)) return true;
+	return false;
+}
+
+stock void ReSelectMapOrder(char[] confirm)	//hope this will work
+{
+	char buffer[BUF_SZ];
+	ArrayList hArrayPool;
+	int mapindex;
+	
+	for (int i = GetArraySize(g_hArrayMapOrder) - 1; i >= 0; i--) {
+		GetArrayString(g_hArrayMapOrder, i, buffer, BUF_SZ);
+		if (IsSameCampaign(confirm, buffer)) {
+			GetArrayString(g_hArrayTagOrder, i, buffer, BUF_SZ);
+			GetTrieValue(g_hTriePools, buffer, hArrayPool);
+			RemoveFromArray(hArrayPool, FindStringInArray(hArrayPool, confirm));
+			for (int j = 0; j <= i; j++) {
+				SortADTArray(hArrayPool, Sort_Random, Sort_String);	//randomlize the array
+				mapindex = GetRandomInt(0, GetArraySize(hArrayPool) - 1);
+				GetArrayString(hArrayPool, mapindex, buffer, BUF_SZ);
+				hArrayPool.Erase(mapindex);
+				if (CheckSameCampaignNum(buffer) < g_cvMaxMapsNum.IntValue) {
+					SetArrayString(g_hArrayMapOrder, i, buffer);
+					break;
+				}
+			}
+			return;
+		}
+	}
 }
