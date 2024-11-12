@@ -53,7 +53,7 @@ TopMenuObject config_menu;
 // Other stuff
 char change_zombie_model_to[128] = "";
 Handle refresh_timer = null;
-bool automatic_placement = true;
+bool automatic_placement = false;
 bool g_bSpawnWitchBride;
 
 // Global variables to hold menu position
@@ -118,7 +118,7 @@ public void OnPluginStart() {
 	director_panic_forever = FindConVar("director_panic_forever");
 	
 	notify_players = CreateConVar("a4d_notify_players", "1", "Whether or not we announce changes in game.", FCVAR_NOTIFY);	
-	AutoExecConfig(true, "all4dead2");	
+	//AutoExecConfig(true, "all4dead2");	
 
 	RegAdminCmd("a4d_spawn_infected", Command_SpawnInfected, ADMFLAG_ROOT);
 	RegAdminCmd("a4d_spawn_uinfected", Command_SpawnUInfected, ADMFLAG_ROOT);
