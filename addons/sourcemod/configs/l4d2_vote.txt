@@ -1,0 +1,213 @@
+"VoteItems"
+{
+	"服务器选项(server setting)"
+	{
+		"sm_killlobbyres;sv_allow_lobby_connect_only 0;sv_force_unreserved 1"
+		{
+			"message" "移除大厅(kill lobbyres)"
+		}
+		"sm_hp"
+		{
+			"message" "投票回血(votehp)"
+		}
+		"sm_cvar sm_max_lerp 0.1"
+		{
+			"message" "解除Lerps限制"
+		}
+	}
+
+	"更改全体语音（alltalk）"
+	{
+		"sm_cvar sv_alltalk 1"
+		{
+			"message" "打开全体语音（turn on）"
+		}
+		"sm_cvar sv_alltalk 0"
+		{
+			"message" "关闭全体语音（turn off）"
+		}
+	}
+
+	"投票踢人&旁观（votekick & spec）"
+	{
+		"sm_votekick"
+		{
+			"message" "投票踢人（votekick）"
+		}
+		"sm_votespec"
+		{
+			"message" "投票旁观（votespec）"
+		}
+	}
+
+	"官方地图（official maps）"
+	{
+	    "changelevel c1m1_hotel"
+		{
+			"message" "C1-死亡中心"
+		}
+		"changelevel c2m1_highway"
+		{
+			"message" "C2-黑色狂欢节"
+		}
+		"changelevel c3m1_plankcountry"
+		{
+			"message" "C3-沼泽激战"
+		}
+		"changelevel c4m1_milltown_a"
+		{
+			"message" "C4-暴风骤雨"
+		}
+		"changelevel c5m1_waterfront"
+		{
+			"message" "C5-教区"
+		}
+		"changelevel c6m1_riverbank"
+		{
+			"message" "C6-消逝"
+		}
+		"changelevel c7m1_docks"
+		{
+			"message" "C7-牺牲"
+		}
+		"changelevel c8m1_apartment"
+		{
+			"message" "C8-毫不留情"
+		}
+		"changelevel c9m1_alleys"
+		{
+			"message" "C9-坠机险途"
+		}
+		"changelevel c10m1_caves"
+		{
+			"message" "C10-死亡丧钟"
+		}
+		"changelevel c11m1_greenhouse"
+		{
+			"message" "C11-静寂时分"
+		}
+		"changelevel c12m1_hilltop"
+		{
+			"message" "C12-血腥收获"
+		}
+		"changelevel c13m1_alpinecreek"
+		{
+			"message" "C13-刺骨寒溪"
+		}
+		"changelevel c14m1_junkyard"
+		{
+			"message" "C14-临死一搏"
+		}
+	}
+	"自定义地图(Custom Maps)"
+	{
+		"changelevel dkr_m1_motel"
+		{
+			"message" "黑色嘉年华Remix(C2改)"
+		}
+		"changelevel dprm1_milltown_a"
+		{
+			"message" "暴风骤雨Downpour(C4改)"
+		}
+		"changelevel pr1_waterfront_f"
+		{
+			"message" "教区:蔓延(C5改)"
+		}
+		"changelevel l4d_dbd2dc_anna_is_gone"
+		{
+			"message" "活死人黎明"
+		}
+		"changelevel l4d2_diescraper1_apartment_361"
+		{
+			"message" "喋血蜃楼"
+		}
+		"changelevel cdta_01detour"
+		{
+			"message" "迂回前进"
+		}
+		"changelevel l4d2_stadium1_apartment"
+		{
+			"message" "闪电突袭2"
+		}
+		"changelevel cwm1_intro"
+		{
+			"message" "绝境逢生"
+		}
+		"changelevel l4d2_city17_01"
+		{
+			"message" "城市17"
+		}
+		"changelevel l4d2_ff01_woods"
+		{
+			"message" "致命货运站"
+		}
+		"changelevel l4d2_daybreak01_hotel"
+		{
+			"message" "黎明(v3)"
+		}
+		"changelevel hf01_theforest"
+		{
+			"message" "颤栗森林"
+		}
+		"changelevel l4d_ihm01_forest"
+		{
+			"message" "我恨山2"
+		}
+		"changelevel nmrm1_apartment"
+		{
+			"message" "毫不留情Rehab(C8改)"
+		}
+		"changelevel x1m1_cliffs"
+		{
+			"message" "绝命公路"
+		}
+		"changelevel outline_m1"
+		{
+			"message" "跨越边境"
+		}
+		"changelevel uf1_boulevard"
+		{
+			"message" "城市航班"
+		}
+		"changelevel dcr_m1_hotel"
+		{
+			"message" "黑死亡中心(C1改黑)"
+		}
+		"changelevel dcr1_meetup_f"
+		{
+			"message" "白死亡中心(C1改白)"
+		}
+	}
+
+	"娱乐三方(Other Maps)"
+	{
+		"changelevel deepp_m1"
+		{
+			"message" "深邃恐惧症"
+		}
+		"changelevel pt2_m1"
+		{
+			"message" "传送门"
+		}
+		"changelevel pt2_overgrown_m1"
+		{
+			"message" "传送门2杂草丛生"
+		}
+		"changelevel dsr_m1"
+		{
+			"message" "死刑改"
+		}
+		"changelevel bwm1_climb"
+		{
+			"message" "大佛寺"
+		}
+		"changelevel zc_m1"
+		{
+			"message" "广州增城"
+		}
+		"changelevel srocchurch"
+		{
+			"message" "巴塞罗那"
+		}
+	}
+}
