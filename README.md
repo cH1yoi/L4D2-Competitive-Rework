@@ -1,51 +1,10 @@
 # 花のうた
 
-| 4V4 Config               |
-| ------------------------ |
-| ZoneMod v2.8.9/1.9.3     |
-| ZoneMod v2.8.1(克局ONLY) |
-| ZoneMod Retro v2.8.9     |
-| ZoneMod Quad(4控)        |
-| ZoneHunters v2.8.9       |
-| NeoMod Tourney 0.4a      |
-| NextMod v1.0.5           |
-| Promod Elite v1.1        |
-| Deadman v5.0.3           |
-| Acemod RV v1.3           |
-| Equilibrium v3.0c        |
-| Apex v1.1.2              |
+小花服的插件包,内含大量私有设置,请修改各项配置
 
-| 3V3 Configs     |
-| --------------- |
-| 3v3 ZoneMod     |
-| 3v3 NextMod     |
-| 3v3 Acemod RV   |
-| 3v3 EQ          |
-| 3v3 ZoneHunters |
+仅支持Liunx~
 
-| 2V2 Configs     |
-| --------------- |
-| 2v2 ZoneMod     |
-| 2v2 NextMod     |
-| 2v2 Acemod RV   |
-| 2v2 EQ          |
-| 2v2 ZoneHunters |
-
-| 1V1 Configs     |
-| --------------- |
-| 1v1 NextMod     |
-| 1v1 ZoneHunters |
-| 1v1 ZoneMod     |
-| 1v1 Acemod RV   |
-| 1v1 EQ          |
-
-| 娱乐 Configs |
-| :----------: |
-| ZoneMod 6V6 |
-|    躲猫猫    |
-|   幽灵模式   |
-
-本库大部分插件来源于Sir.P
+感谢Sir.P提供大量插件,我的超人!
 
 介个地方: [PencilMario/L4D2-Competitive-Rework: 0721服务器的Zonemod插件配置 (github.com)](https://github.com/PencilMario/L4D2-Competitive-Rework)
 
