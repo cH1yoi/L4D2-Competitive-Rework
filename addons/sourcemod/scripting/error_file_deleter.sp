@@ -16,9 +16,8 @@ public Plugin myinfo =
 	url 			= ""
 }
 
-static char logPath[PLATFORM_MAX_PATH], pluginLogPath[PLATFORM_MAX_PATH], fileName[PLATFORM_MAX_PATH];
+static char logPath[PLATFORM_MAX_PATH], pluginLogPath[PLATFORM_MAX_PATH];
 static DirectoryListing listing;
-static FileType fileType;
 static File pluginLogFile;
 static int monthDay[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 
@@ -74,54 +73,113 @@ public void OnConfigsExecuted()
 
 int prepareDeleteFile()
 {
-	// 建立日志文件
-	char cvarStr[64] = {'\0'};
-	g_hDeleteLogPath.GetString(cvarStr, sizeof(cvarStr));
-	BuildPath(Path_SM, pluginLogPath, sizeof(pluginLogPath), cvarStr);
-	if (!FileExists(pluginLogPath))
-	{
-		LogMessage("[错误文件删除]：%s 文件不存在，即将创建新日志文件", pluginLogPath);
-		pluginLogFile = OpenFile(pluginLogPath, "wt");
-	}
-	else { pluginLogFile = OpenFile(pluginLogPath, "at"); }
-	// 列出 logs 文件夹下所有文件
-	int deleteCount = 0;
-	listing = OpenDirectory(logPath, false, NULL_STRING);
-	while (listing.GetNext(fileName, sizeof(fileName), fileType))
-	{
-		// 是文件，查询文件名
-		if (!(fileType & FileType_File)) { continue; }
-		TrimString(fileName);
-		char timeStr[32] = {'\0'}, nowTimeStr[32] = {'\0'};
-		FormatTime(nowTimeStr, sizeof(nowTimeStr), "%m%d");
-		if (fileName[0] == 'e' && strcmp(fileName[16], "log") == 0) { strcopy(timeStr, sizeof(timeStr), subString(fileName, 12, 4)); }
-		else if (fileName[0] == 'L' && strcmp(fileName[10], "log") == 0) { strcopy(timeStr, sizeof(timeStr), subString(fileName, 6, 4)); }
-        else if (fileName[0] == 'P' && strcmp(fileName[13], "log") == 0) { strcopy(timeStr, sizeof(timeStr), subString(fileName, 9, 4)); }
-        else if (fileName[0] == '2' && strcmp(fileName[17], "log") == 0) { strcopy(timeStr, sizeof(timeStr), subString(fileName, 5, 4)); }
-		else { continue; }
-		int year = getYear(timeStr), month = getMonth(timeStr), day = getDay(timeStr), sumYearDay = sumDay(month, day);
-		int nowYear = getYear(nowTimeStr), nowMonth = getMonth(nowTimeStr), nowDay = getDay(nowTimeStr), sumNowYearDay = sumDay(nowMonth, nowDay), yearInterval = yearDayDiff(year, nowYear);
-		if (isLeapYear(year) && month >= 3) { sumYearDay += 1; }
-		if (isLeapYear(nowYear) && nowMonth >= 3) { sumNowYearDay += 1; }
-		if (sumNowYearDay - sumYearDay + yearInterval > g_hDeleteTimeDiff.IntValue)
-		{
-			// 记录日志，删除文件
-			char msg[PLATFORM_MAX_PATH] = {'\0'};
-			if (g_hAllowLog.BoolValue && pluginLogFile != null)
-			{
-				FormatEx(msg, sizeof(msg), "[错误文件删除]：已删除文件：%s 【%s】", fileName, getCurrentDate(true));
-				WriteFileLine(pluginLogFile, msg);
-			}
-			FormatEx(msg, sizeof(msg), "%s\\%s", logPath, fileName);
-			DeleteFile(msg);
-			deleteCount++;
-		}
-	}
-	if (deleteCount > 0) { WriteFileLine(pluginLogFile, "[错误文件删除]：本次共删除：%d 个超过：%d 天的错误日志文件\n", deleteCount, g_hDeleteTimeDiff.IntValue); }
-	delete listing;
-	// 关闭日志文件句柄
-	delete pluginLogFile;
-	return deleteCount;
+    // 建立日志文件
+    char cvarStr[64] = {'\0'};
+    g_hDeleteLogPath.GetString(cvarStr, sizeof(cvarStr));
+    BuildPath(Path_SM, pluginLogPath, sizeof(pluginLogPath), cvarStr);
+    if (!FileExists(pluginLogPath))
+    {
+        LogMessage("[错误文件删除]：%s 文件不存在，即将创建新日志文件", pluginLogPath);
+        pluginLogFile = OpenFile(pluginLogPath, "wt");
+    }
+    else { pluginLogFile = OpenFile(pluginLogPath, "at"); }
+
+    // 列出 logs 文件夹下所有文件
+    int deleteCount = 0;
+    listing = OpenDirectory(logPath, false, NULL_STRING);
+    
+    // 检查 confoglcompmod 子文件夹
+    char confoglPath[PLATFORM_MAX_PATH];
+    FormatEx(confoglPath, sizeof(confoglPath), "%s/confoglcompmod", logPath);
+    DirectoryListing confoglListing = null;
+    if (DirExists(confoglPath))
+    {
+        confoglListing = OpenDirectory(confoglPath, false, NULL_STRING);
+        deleteCount += ProcessDirectory(confoglListing, confoglPath);
+        delete confoglListing;
+    }
+
+    // 处理主 logs 目录
+    deleteCount += ProcessDirectory(listing, logPath);
+
+    if (deleteCount > 0) 
+    { 
+        WriteFileLine(pluginLogFile, "[错误文件删除]：本次共删除：%d 个超过：%d 天的错误日志文件\n", 
+            deleteCount, g_hDeleteTimeDiff.IntValue); 
+    }
+    
+    delete listing;
+    // 关闭日志文件句柄
+    delete pluginLogFile;
+    return deleteCount;
+}
+
+int ProcessDirectory(DirectoryListing dirListing, const char[] currentPath)
+{
+    if (dirListing == null)
+        return 0;
+
+    int deleteCount = 0;
+    char fileName[PLATFORM_MAX_PATH];
+    FileType fileType;
+
+    while (dirListing.GetNext(fileName, sizeof(fileName), fileType))
+    {
+        // 是文件，查询文件名
+        if (!(fileType & FileType_File)) { continue; }
+        TrimString(fileName);
+        char timeStr[32] = {'\0'}, nowTimeStr[32] = {'\0'};
+        FormatTime(nowTimeStr, sizeof(nowTimeStr), "%m%d");
+
+        // 检查各种日志文件格式
+        if (fileName[0] == 'e' && strcmp(fileName[16], "log") == 0) 
+        { 
+            strcopy(timeStr, sizeof(timeStr), subString(fileName, 12, 4)); 
+        }
+        else if (fileName[0] == 'L' && strcmp(fileName[10], "log") == 0) 
+        { 
+            strcopy(timeStr, sizeof(timeStr), subString(fileName, 6, 4)); 
+        }
+        else if (fileName[0] == 'P' && strcmp(fileName[13], "log") == 0) 
+        { 
+            strcopy(timeStr, sizeof(timeStr), subString(fileName, 9, 4)); 
+        }
+        else if (fileName[0] == 'C' && strcmp(fileName[11], "log") == 0) 
+        { 
+            strcopy(timeStr, sizeof(timeStr), subString(fileName, 7, 4)); 
+        }
+        else if (strncmp(fileName, "errors_", 7) == 0 && strcmp(fileName[15], "log") == 0) 
+        {
+            strcopy(timeStr, sizeof(timeStr), subString(fileName, 11, 4));
+        }
+        else { continue; }
+
+        int year = getYear(timeStr), month = getMonth(timeStr), day = getDay(timeStr), sumYearDay = sumDay(month, day);
+        int nowYear = getYear(nowTimeStr), nowMonth = getMonth(nowTimeStr), nowDay = getDay(nowTimeStr);
+        int sumNowYearDay = sumDay(nowMonth, nowDay), yearInterval = yearDayDiff(year, nowYear);
+        
+        if (isLeapYear(year) && month >= 3) { sumYearDay += 1; }
+        if (isLeapYear(nowYear) && nowMonth >= 3) { sumNowYearDay += 1; }
+        
+        if (sumNowYearDay - sumYearDay + yearInterval > g_hDeleteTimeDiff.IntValue)
+        {
+            // 记录日志，删除文件
+            char fullPath[PLATFORM_MAX_PATH] = {'\0'};
+            char msg[PLATFORM_MAX_PATH] = {'\0'};
+            
+            if (g_hAllowLog.BoolValue && pluginLogFile != null)
+            {
+                FormatEx(msg, sizeof(msg), "[错误文件删除]：已删除文件：%s ", fileName);
+                WriteFileLine(pluginLogFile, msg);
+            }
+            
+            FormatEx(fullPath, sizeof(fullPath), "%s/%s", currentPath, fileName);
+            DeleteFile(fullPath);
+            deleteCount++;
+        }
+    }
+    
+    return deleteCount;
 }
 
 char[] subString(const char[] str, int start, int end)
@@ -163,12 +221,4 @@ int sumDay(int month, int day)
 bool isLeapYear(int year)
 {
 	return ((year % 4 == 0) && (year % 100 != 0) || (year % 400 == 0));
-}
-
-char[] getCurrentDate(bool time = false)
-{
-	char current_date[32] = {'\0'};
-	if (time) { FormatTime(current_date, sizeof(current_date), "%Y-%m-%d(%Hh%Mmin%Ss%p)", -1); }
-	else { FormatTime(current_date, sizeof(current_date), "%Y-%m-%d", -1); }
-	return current_date;
 }
