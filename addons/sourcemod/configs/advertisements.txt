@@ -40,6 +40,6 @@
     }
     "6"
     {
-        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /maps投票更换喵,有想玩的地图请联系HANA"
+        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /vote投票更换喵,有想玩的地图请联系HANA"
     }
 }
