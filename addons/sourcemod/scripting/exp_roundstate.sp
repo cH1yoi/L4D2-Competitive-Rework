@@ -56,6 +56,7 @@ public Action Timer_DelayedRoundIsLive(Handle timer){
     int surs, infs;
     int surc, infc;
     int suravg2, infavg2;
+    
     for (int i = 1; i <= MaxClients; i++){
         if (!IsClientInGame(i)) continue;
         switch (GetClientTeam(i)){
@@ -68,33 +69,37 @@ public Action Timer_DelayedRoundIsLive(Handle timer){
                 infc++;
             }
         }
+    }
+
+    if (surc > 0 && infc > 0) {
+        int suravg = surs/surc;
+        int infavg = infs/infc;
         
-    }        
-    int suravg = surs/surc;
-    int infavg = infs/infc;
-    for (int i = 1; i <= MaxClients; i++){
-        if (!IsClientInGame(i)) continue;
-        switch (GetClientTeam(i)){
-            case L4D2Team_Survivor:{
-                suravg2 += abs(suravg - L4D2_GetClientExp(i));
-            }
-            case L4D2Team_Infected:{
-                infavg2 += abs(infavg - L4D2_GetClientExp(i));
+        for (int i = 1; i <= MaxClients; i++){
+            if (!IsClientInGame(i)) continue;
+            switch (GetClientTeam(i)){
+                case L4D2Team_Survivor:{
+                    suravg2 += abs(suravg - L4D2_GetClientExp(i));
+                }
+                case L4D2Team_Infected:{
+                    infavg2 += abs(infavg - L4D2_GetClientExp(i));
+                }
             }
         }
+        
+        CPrintToChatAll("[{green}EXP{default}] {blue}生还者: %i{default} (平均 %i / 标准差 %i)", surs, surs/surc, suravg2);
+        CPrintToChatAll("[{green}EXP{default}] {red}感染者: %i{default} (平均 %i / 标准差 %i)", infs, infs/infc, infavg2);
+        CPrintToChatAll("{default}使用{green} !exp{default} 查看每个人的经验分");
     }
-    CPrintToChatAll("[{green}EXP{default}] {blue}生还者: %i{default} (平均 %i / 标准差 %i)", surs, surs/surc, suravg2);
-    CPrintToChatAll("[{green}EXP{default}] {red}感染者: %i{default} (平均 %i / 标准差 %i)", infs, infs/infc, infavg2);
-    CPrintToChatAll("{default}使用{green} !exp{default} 查看每个人的经验分");
     
     return Plugin_Handled;
-
 }
 
 public Action CMD_Exp(int client, int args){
     int surs, infs;
     int surc, infc;
     int suravg2, infavg2;
+    
     for (int i = 1; i <= MaxClients; i++){
         if (!IsClientInGame(i)) continue;
         switch (GetClientTeam(i)){
@@ -113,22 +118,31 @@ public Action CMD_Exp(int client, int args){
             }
         }
     }
-    int suravg = surs/surc;
-    int infavg = infs/infc;
-    for (int i = 1; i <= MaxClients; i++){
-        if (!IsClientInGame(i)) continue;
-        switch (GetClientTeam(i)){
-            case L4D2Team_Survivor:{
+
+    CPrintToChat(client,"============================");
+    
+    if (surc > 0) {
+        int suravg = surs/surc;
+        for (int i = 1; i <= MaxClients; i++){
+            if (!IsClientInGame(i)) continue;
+            if (GetClientTeam(i) == L4D2Team_Survivor){
                 suravg2 += abs(suravg - L4D2_GetClientExp(i));
             }
-            case L4D2Team_Infected:{
+        }
+        CPrintToChat(client,"[{green}EXP{default}] {blue}生还者: %i{default} (平均 %i / 标准差 %i)", surs, suravg, suravg2);
+    }
+    
+    if (infc > 0) {
+        int infavg = infs/infc;
+        for (int i = 1; i <= MaxClients; i++){
+            if (!IsClientInGame(i)) continue;
+            if (GetClientTeam(i) == L4D2Team_Infected){
                 infavg2 += abs(infavg - L4D2_GetClientExp(i));
             }
         }
+        CPrintToChat(client,"[{green}EXP{default}] {red}感染者: %i{default} (平均 %i / 标准差 %i)", infs, infavg, infavg2);
     }
-    CPrintToChat(client,"============================");
-    CPrintToChat(client,"[{green}EXP{default}] {blue}生还者: %i{default} (平均 %i / 标准差 %i)", surs, surs/surc, suravg2);
-    CPrintToChat(client,"[{green}EXP{default}] {red}感染者: %i{default} (平均 %i / 标准差 %i)", infs, infs/infc, infavg2);
+    
     return Plugin_Handled;
 }
 
