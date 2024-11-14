@@ -206,6 +206,13 @@ public Action OnPlayerPostThinkPost(int client) {
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
     int victim = GetClientOfUserId(event.GetInt("userid"));
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
+
+    if(!IsValidClient(attacker) || !IsValidClient(victim) || IsFakeClient(attacker))
+        return;
+
+    if(GetClientTeam(attacker) != 2)
+        return;
+
     bool headshot = event.GetBool("headshot");
     char weapon[32];
     event.GetString("weapon", weapon, sizeof(weapon));
@@ -222,6 +229,11 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast) {
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
     int victim = GetClientOfUserId(event.GetInt("userid"));
+
+    if(!IsValidClient(attacker) || !g_IsMonitored[attacker] || IsFakeClient(attacker)) {
+        return;
+    }
+    
     float damage = event.GetFloat("dmg_health");
     
     // 基础验证

@@ -1,3 +1,8 @@
+/*
+* 移除了对treeutil.sp的调用
+* 使用mvp命令不显示详细统计
+* 回合结算显示详细统计
+*/
 #pragma semicolon 1
 #pragma newdecls required
 
@@ -6,9 +11,27 @@
 #include <sdktools>
 #include <left4dhooks>
 #include <colors>
-#include "treeutil\treeutil.sp"
 
 #define CVAR_FLAG FCVAR_NOTIFY
+
+enum
+{
+    TEAM_SPECTATOR = 1,
+    TEAM_SURVIVOR,
+    TEAM_INFECTED
+}
+
+enum
+{
+    ZC_SMOKER = 1,
+    ZC_BOOMER,
+    ZC_HUNTER,
+    ZC_SPITTER,
+    ZC_JOCKEY,
+    ZC_CHARGER,
+    ZC_WITCH,
+    ZC_TANK
+}
 
 enum struct PlayerInfo
 {
@@ -21,7 +44,8 @@ enum struct PlayerInfo
 	void init() {
 		this.totalDamage = this.siCount = this.ciCount = this.ffCount = this.gotFFCount = this.headShotCount = 0;
 	}
-} 
+}
+
 PlayerInfo playerInfos[MAXPLAYERS + 1];
 
 static int
@@ -34,12 +58,14 @@ static bool
 static char
 	mapName[64];
 
+bool g_bHasPrintBasic;
+
 public Plugin myinfo = 
 {
 	name 			= "Survivor Mvp & Round Status",
-	author 			= "夜羽真白",
+	author 			= "夜羽真白, Hana",
 	description 	= "生还者 MVP 统计",
-	version 		= "2023-07-26",
+	version 		= "2024-11-24",
 	url 			= "https://steamcommunity.com/id/saku_ra/"
 }
 
@@ -107,7 +133,7 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	g_bHasPrint = g_bHasPrintDetails = false;
+	g_bHasPrint = g_bHasPrintDetails = g_bHasPrintBasic = false;
 	char nowMapName[64];
 	GetCurrentMap(nowMapName, sizeof(nowMapName));
 	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
@@ -119,33 +145,34 @@ public void OnMapStart()
 
 public Action showMvpHandler(int client, int args)
 {
-	if (!g_hAllowShowMvp.BoolValue)
-	{
-		ReplyToCommand(client, "[MVP]：当前生还者 MVP 统计数据已禁用");
-		return Plugin_Handled;
-	}
-	if (!IsValidClient(client)) {
-		return Plugin_Handled;
-	}
+    if (!g_hAllowShowMvp.BoolValue) {
+        ReplyToCommand(client, "[MVP]：当前生还者 MVP 统计数据已禁用");
+        return Plugin_Handled;
+    }
+    if (!IsValidClient(client)) {
+        return Plugin_Handled;
+    }
 
-	if (GetClientTeam(client) == TEAM_SPECTATOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 1)) {
-		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向旁观者显示");
-		return Plugin_Handled;
-	}
-	else if (GetClientTeam(client) == TEAM_SURVIVOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 2)) {
-		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向生还者显示");
-		return Plugin_Handled;
-	}
-	else if (GetClientTeam(client) == TEAM_INFECTED && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 3)) {
-		CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向感染者显示");
-		return Plugin_Handled;
-	}
-	printMvpStatus(client);
-	if (g_hAllowShowDetails.BoolValue) {
-		printParticularMvp(client);
-	}
+    // 检查团队显示权限
+    if (GetClientTeam(client) == TEAM_SPECTATOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 1)) {
+        CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向旁观者显示");
+        return Plugin_Handled;
+    }
+    else if (GetClientTeam(client) == TEAM_SURVIVOR && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 2)) {
+        CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向生还者显示");
+        return Plugin_Handled;
+    }
+    else if (GetClientTeam(client) == TEAM_INFECTED && (g_hWhichTeamToShow.IntValue != 0 && g_hWhichTeamToShow.IntValue != 3)) {
+        CPrintToChat(client, "{blue}[{default}MVP{blue}]: {default}当前生还者 MVP 统计数据不允许向感染者显示");
+        return Plugin_Handled;
+    }
 
-	return Plugin_Handled;
+    // 只显示详细统计
+    if (g_hAllowShowDetails.BoolValue) {
+        printParticularMvp(client);
+    }
+
+    return Plugin_Handled;
 }
 
 // 击杀特感
@@ -189,7 +216,7 @@ public void OnClientDisconnect(int client) {
 
 public void roundStartHandler(Event event, const char[] name, bool dontBroadcast)
 {
-	g_bHasPrint = g_bHasPrintDetails = false;
+	g_bHasPrint = g_bHasPrintDetails = g_bHasPrintBasic = false;
 	char nowMapName[64] = {'\0'};
 	GetCurrentMap(nowMapName, sizeof(nowMapName));
 	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
@@ -236,47 +263,43 @@ void clearStuff() {
 }
 
 void roundEndPrint() {
-	int i;
-	for (i = 1; i <= MaxClients; i++) {
-		if (!IsValidClient(i)) {
-			continue;
-		}
+    int i;
+    for (i = 1; i <= MaxClients; i++) {
+        if (!IsValidClient(i)) {
+            continue;
+        }
 
-		switch (g_hWhichTeamToShow.IntValue) {
-			case TEAM_SPECTATOR: {
-				if (GetClientTeam(i) != TEAM_SPECTATOR) {
-					continue;
-				}
-			} case TEAM_SURVIVOR: {
-				if (GetClientTeam(i) != TEAM_SURVIVOR) {
-					continue;
-				}
-			} case TEAM_INFECTED: {
-				if (GetClientTeam(i) != TEAM_INFECTED) {
-					continue;
-				}
-			} default: {
+        switch (g_hWhichTeamToShow.IntValue) {
+            case TEAM_SPECTATOR: {
+                if (GetClientTeam(i) != TEAM_SPECTATOR) {
+                    continue;
+                }
+            } case TEAM_SURVIVOR: {
+                if (GetClientTeam(i) != TEAM_SURVIVOR) {
+                    continue;
+                }
+            } case TEAM_INFECTED: {
+                if (GetClientTeam(i) != TEAM_INFECTED) {
+                    continue;
+                }
+            }
+        }
 
-			}
-		}
-
-		if (g_bHasPrint) {
-			break;
-		}
-		printMvpStatus(i);
-		
-		if (g_hAllowShowDetails.BoolValue) {
-			if (g_bHasPrintDetails) {
-				break;
-			}
-			printParticularMvp(i);
-		}
-	}
-
-	g_bHasPrint = true;
-	if (g_hAllowShowDetails.BoolValue) {
-		g_bHasPrintDetails = true;
-	}
+        // 只打印一次基础统计
+        if (!g_bHasPrintBasic) {
+            printMvpStatus(i);
+            g_bHasPrintBasic = true;
+        }
+        
+        // 只打印一次详细统计
+        if (g_hAllowShowDetails.BoolValue) {
+            if (g_bHasPrintDetails) {
+                break;
+            }
+            printParticularMvp(i);
+            g_bHasPrintDetails = true;
+        }
+    }
 }
 
 /**
@@ -417,7 +440,7 @@ void printParticularMvp(int client) {
 		// 被黑 MVP
 		FormatEx(buffer, sizeof(buffer), "{blue}[{default}MVP{blue}] FF Receive: ");
 		if (!IsValidClient(gotFFMvpClient) || gotFFTotal <= 0) {
-			StrCat(buffer, sizeof(buffer), "{olive}暂时没有倒霉蛋被黑得最惨");
+			StrCat(buffer, sizeof(buffer), "{olive}没有黑枪捏");
 		} else {
 
 			formatMvpClientName(gotFFMvpClient, clientName, sizeof(clientName));
@@ -679,4 +702,24 @@ void getSurvivorArray(int[] arr, int& size) {
 		arr[index++] = i;
 	}
 	size = index;
-} 
+}
+
+stock bool IsValidClient(int client)
+{
+    return client > 0 && client <= MaxClients && IsClientInGame(client);
+}
+
+stock bool IsValidSurvivor(int client)
+{
+    return IsValidClient(client) && GetClientTeam(client) == TEAM_SURVIVOR;
+}
+
+stock bool IsValidInfected(int client)
+{
+    return IsValidClient(client) && GetClientTeam(client) == TEAM_INFECTED;
+}
+
+stock int GetInfectedClass(int client)
+{
+    return IsValidInfected(client) ? GetEntProp(client, Prop_Send, "m_zombieClass") : -1;
+}
