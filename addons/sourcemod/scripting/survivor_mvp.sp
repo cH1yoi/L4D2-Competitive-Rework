@@ -345,7 +345,7 @@ void printMvpStatus(int client)
 			FormatEx(buffer, sizeof(buffer), "{lightgreen}爆头率{olive}%.0f%% ", accuracy * 100.0);
 			StrCat(toPrint, sizeof(toPrint), buffer);
 		}
-		FormatEx(buffer, sizeof(buffer), "{blue}%N", players[i]);
+		FormatEx(buffer, sizeof(buffer), "{lightgreen}%N", players[i]);
 		StrCat(toPrint, sizeof(toPrint), buffer);
 
 		// 打印一个玩家的 MVP 信息
