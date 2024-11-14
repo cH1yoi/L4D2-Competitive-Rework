@@ -13,26 +13,53 @@ ConVar mp_gamemode = null;
 ConVar sm_server_uid = null;
 
 ConVar sm_autorecord_enable = null;
-
 ConVar sm_autorecord_minplayers = null;
 ConVar sm_autorecord_minplayersdelay = null;
 ConVar sm_autorecord_ignorebots = null;
-
-//ConVar sm_autorecord_roundsplit = null;
 ConVar sm_autorecord_sizesplit = null;
 ConVar sm_autorecord_lengthsplit = null;
-
 ConVar sm_autorecord_allowoverwrites = null;
 ConVar sm_autorecord_pathfmt = null;
 
 float g_flLastMinPlayersTest = -1.0;
-
 char g_szDemoPath[PLATFORM_MAX_PATH];
 char g_szModFolder[PLATFORM_MAX_PATH];
 char g_szLevelName[PLATFORM_MAX_PATH];
 
 bool g_bHasStartedRecording = false;
 bool g_bReadyUpAvailable = false;
+int g_iRoundNumber = 1;
+
+stock int ExtractRandomNumber(const char[] filename)
+{
+    int number = 0;
+    int len = strlen(filename);
+    
+    for (int i = len - 1; i >= 0; i--)
+    {
+        if (filename[i] == '-')
+        {
+            number = StringToInt(filename[i + 1]);
+            break;
+        }
+    }
+    return number;
+}
+
+void NotifyRecordingInfo(const char[] path)
+{
+    char filename[PLATFORM_MAX_PATH];
+    Util_UnqualifiedFileName(filename, sizeof(filename), path);
+    
+    int randomNum = ExtractRandomNumber(filename);
+    CreateTimer(5.0, Timer_NotifyRecording, randomNum);
+}
+
+public Action Timer_NotifyRecording(Handle timer, any randomNum)
+{
+    PrintToChatAll("\x01[\x04Record\x01] 标识: \x05R%d-%d \x01由于上下半场分开录制标识不一致,请留意~", g_iRoundNumber, randomNum);
+    return Plugin_Stop;
+}
 
 bool HaveEnoughPlayers()
 {
@@ -51,36 +78,39 @@ int FormatPathString(char[] buffer, int maxlength, const char[] format)
         
         if (!expectSpecifier) {
             buffer[pos++] = format[i];
-            
             continue;
         }
         
         switch (format[i]) {
-            case 's': // Unix timestamp
+            case 's':
             {
                 pos += Format(buffer[pos], maxlength - pos, "%u", GetTime());
             }
-            case 'q': // Random number
+            case 'q':
             {
                 pos += Format(buffer[pos], maxlength - pos, "%u", GetURandomInt() % 100000);
             }
-            case 'f': // Mod folder
+            case 'f':
             {
                 pos += strcopy(buffer[pos], maxlength - pos, g_szModFolder);
             }
-            case 'l': // Level name
+            case 'l':
             {
                 pos += strcopy(buffer[pos], maxlength - pos, g_szLevelName);
             }
-            case 'i': // String value of sm_server_uid
+            case 'n':
+            {
+                pos += Format(buffer[pos], maxlength - pos, "R%d", g_iRoundNumber);
+            }
+            case 'i':
             {
                 pos += Util_ConVarGetStringValue(sm_server_uid, buffer[pos], maxlength - pos);
             }
-            case 'P': // String value of hostport
+            case 'P':
             {
                 pos += Util_ConVarGetStringValue(hostport, buffer[pos], maxlength - pos, "27015");
             }
-            case 'L': // String value of mp_gamemode
+            case 'L':
             {
                 pos += Util_ConVarGetStringValue(mp_gamemode, buffer[pos], maxlength - pos, "coop");
             }
@@ -102,7 +132,6 @@ int FormatPathString(char[] buffer, int maxlength, const char[] format)
     }
     
     buffer[pos] = '\0';
-    
     return pos;
 }
 
@@ -344,13 +373,22 @@ public void Event_round_start(Event event, const char[] name, bool dontBroadcast
     {
         SourceTV_StopRecording();
     }
+    
+    if(g_iRoundNumber == 2)
+    {
+        g_iRoundNumber = 1;
+    }
+    else 
+    {
+        g_iRoundNumber = 2;
+    }
 }
 
 // SourceTV Manager
 public int SourceTV_OnStartRecording(int instance, const char[] filename)
 {
     SourceTV_GetDemoFileName(g_szDemoPath, sizeof(g_szDemoPath));
-
+    NotifyRecordingInfo(g_szDemoPath);
     RequestFrame(Handler_Frame_CheckStopRecording);
 }
 
@@ -374,6 +412,8 @@ public void OnMapStart()
     char path[PLATFORM_MAX_PATH];
     GetCurrentMap(path, sizeof(path));
     Util_UnqualifiedFileName(g_szLevelName, sizeof(g_szLevelName), path);
+
+    g_iRoundNumber = 1;
     
     // RequestFrame would deal with server not processing frames
     RequestFrame(Handler_Frame_MapStart);
@@ -402,17 +442,17 @@ void Logic_Init()
     sm_autorecord_minplayersdelay = CreateConVar("sm_autorecord_minplayersdelay", "30.0", "Delay before stopping a demo, in seconds", FCVAR_NONE, true, 0.0, true, 300.0);
     sm_autorecord_ignorebots = CreateConVar("sm_autorecord_ignorebots", "1", "Ignore bots when counting players");
     
-    //sm_autorecord_roundsplit = CreateConVar("sm_autorecord_roundsplit", "1", "Restart recording on every round_start");
     sm_autorecord_sizesplit = CreateConVar("sm_autorecord_sizesplit", "0", "Restart recording if demo file has reached max size, in megabytes");
     sm_autorecord_lengthsplit = CreateConVar("sm_autorecord_lengthsplit", "0", "Restart recording after time of footage, in minutes");
     
     sm_autorecord_allowoverwrites = CreateConVar("sm_autorecord_allowoverwrites", "0", "Allow file overwrites, or append .i.dem to the end of path");
-    sm_autorecord_pathfmt = CreateConVar("sm_autorecord_pathfmt", "", "Format string specifying a path where to record demo files.\n"
+    sm_autorecord_pathfmt = CreateConVar("sm_autorecord_pathfmt", "demo/Hana-%Y%m%d-%H%M%S-%P-%l-%n-%q", "Format string specifying a path where to record demo files.\n"
         ... "	Available specifiers:\n"
         ... "	%s - unix timestamp of when recording has started\n"
         ... "	%q - randomly generated number in range [0-99999]\n"
         ... "	%f - game folder (e.g. left4dead2)\n"
         ... "	%l - level name without extension (e.g. c8m1_apartment)\n"
+        ... "	%n - round number (R1/R2)\n"
         ... "	%i - unique id (from convar sm_server_uid)\n"
         ... "	%P - server game port (from convar hostport)\n"
         ... "	%L - game mode (from convar mp_gamemode)\n"
