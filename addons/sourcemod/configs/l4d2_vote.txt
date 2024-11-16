@@ -197,9 +197,9 @@
 		{
 			"message" "死刑改"
 		}
-		"changelevel bwm1_climb"
+		"changelevel bigwat_d1"
 		{
-			"message" "大佛寺"
+			"message" "大佛寺万圣节版"
 		}
 		"changelevel zc_m1"
 		{
