@@ -10,18 +10,6 @@
 #include <autorecorder/logic>
 #include <autorecorder/console>
 
-public void OnAllPluginsLoaded()
-{
-    g_bReadyUpAvailable = LibraryExists("readyup");
-}
-
-public void OnLibraryAdded(const char[] name)
-{
-    if (StrEqual(name, "readyup"))
-    {
-        g_bReadyUpAvailable = true;
-    }
-}
 
 public void OnPluginStart()
 {
@@ -33,10 +21,6 @@ public void OnLibraryRemoved(const char[] name)
 {
     if (strcmp(name, "sourcetvsupport") == 0 && SourceTV_IsRecording()) {
         SourceTV_StopRecording();
-    }
-    if (StrEqual(name, "readyup"))
-    {
-        g_bReadyUpAvailable = false;
     }
 }
 
@@ -64,8 +48,8 @@ public void __pl_readyup_SetNTVOptional()
 public Plugin myinfo =
 {
     name = "[L4D/2] Automated Demo Recording",
-    author = "shqke",
+    author = "shqke,Hana",
     description = "Plugin takes control over demo recording process allowing to record only useful footage",
-    version = "1.2",
+    version = "1.3",
     url = "https://github.com/shqke/sp_public"
 };

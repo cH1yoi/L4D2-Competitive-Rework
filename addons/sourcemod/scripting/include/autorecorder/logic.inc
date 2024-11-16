@@ -13,15 +13,11 @@ ConVar mp_gamemode = null;
 ConVar sm_server_uid = null;
 
 ConVar sm_autorecord_enable = null;
-ConVar sm_autorecord_minplayers = null;
-ConVar sm_autorecord_minplayersdelay = null;
-ConVar sm_autorecord_ignorebots = null;
 ConVar sm_autorecord_sizesplit = null;
 ConVar sm_autorecord_lengthsplit = null;
 ConVar sm_autorecord_allowoverwrites = null;
 ConVar sm_autorecord_pathfmt = null;
 
-float g_flLastMinPlayersTest = -1.0;
 char g_szDemoPath[PLATFORM_MAX_PATH];
 char g_szModFolder[PLATFORM_MAX_PATH];
 char g_szLevelName[PLATFORM_MAX_PATH];
@@ -59,11 +55,6 @@ public Action Timer_NotifyRecording(Handle timer, any randomNum)
 {
     PrintToChatAll("\x01[\x04Record\x01] 标识: \x05R%d-%d \x01由于上下半场分开录制标识不一致,请留意~", g_iRoundNumber, randomNum);
     return Plugin_Stop;
-}
-
-bool HaveEnoughPlayers()
-{
-    return Util_ClientsConnected(!sm_autorecord_ignorebots.BoolValue) >= sm_autorecord_minplayers.IntValue;
 }
 
 int FormatPathString(char[] buffer, int maxlength, const char[] format)
@@ -251,10 +242,6 @@ void TryStartAutoRecording(const char[] reason)
     if (SourceTV_IsRecording()) {
         return;
     }
-
-    if (!HaveEnoughPlayers()) {
-        return;
-    }
     
     if (GetGameTime() == 1.0) {
         return;
@@ -269,7 +256,7 @@ void TryStartAutoRecording(const char[] reason)
     }
 }
 
-public void OnRoundIsLive()
+public void OnRoundLiveCountdownPre() 
 {
     if (!g_bHasStartedRecording)
     {
@@ -286,25 +273,6 @@ public void Handler_Frame_CheckStopRecording(any data)
     
     if (!SourceTV_IsRecording()) {
         return;
-    }
-    
-    if (g_flLastMinPlayersTest != -1.0 && g_flLastMinPlayersTest + sm_autorecord_minplayersdelay.FloatValue < GetEngineTime()) {
-        SourceTV_StopRecording();
-        
-        return;
-    }
-    
-    if (g_flLastMinPlayersTest == -1.0 && !HaveEnoughPlayers()) {
-        if (sm_autorecord_minplayersdelay.FloatValue <= 0.0) {
-            // Stop recording immediately
-            SourceTV_StopRecording();
-            
-            return;
-        }
-        else {
-            // Resolve delay later
-            g_flLastMinPlayersTest = GetEngineTime();
-        }
     }
     
     int maxsize = sm_autorecord_sizesplit.IntValue;
@@ -347,24 +315,6 @@ public Action RunThink(Handle timer)
     return Plugin_Continue;
 }
 
-public void OnClientPutInServer(int client)
-{
-    //TryStartAutoRecording("Client joined");
-}
-
-public void OnClientConnected(int client)
-{
-    if (g_flLastMinPlayersTest != -1.0 && HaveEnoughPlayers()) {
-        // Reset timer
-        g_flLastMinPlayersTest = -1.0;
-    }
-}
-
-public void OnClientDisconnect_Post(int client)
-{
-    RequestFrame(Handler_Frame_CheckStopRecording);
-}
-
 public void Event_round_start(Event event, const char[] name, bool dontBroadcast)
 {
     g_bHasStartedRecording = false;
@@ -392,21 +342,6 @@ public int SourceTV_OnStartRecording(int instance, const char[] filename)
     RequestFrame(Handler_Frame_CheckStopRecording);
 }
 
-public int SourceTV_OnStopRecording(int instance, const char[] filename, int recordingtick)
-{
-    g_flLastMinPlayersTest = -1.0;
-}
-
-public void OnConfigsExecuted()
-{
-    //TryStartAutoRecording("Config executed");
-}
-
-public void Handler_Frame_MapStart(any data)
-{
-    //TryStartAutoRecording("Map started");
-}
-
 public void OnMapStart()
 {
     char path[PLATFORM_MAX_PATH];
@@ -414,9 +349,6 @@ public void OnMapStart()
     Util_UnqualifiedFileName(g_szLevelName, sizeof(g_szLevelName), path);
 
     g_iRoundNumber = 1;
-    
-    // RequestFrame would deal with server not processing frames
-    RequestFrame(Handler_Frame_MapStart);
 }
 
 public void Handler_ConVar_Change(ConVar convar, const char[] oldValue, const char[] newValue)
@@ -424,9 +356,6 @@ public void Handler_ConVar_Change(ConVar convar, const char[] oldValue, const ch
     if (SourceTV_IsRecording()) {
         RequestFrame(Handler_Frame_CheckStopRecording);
     }
-    // else {
-    //     TryStartAutoRecording("ConVar change condition trigger");
-    // }
 }
 
 void Logic_Init()
@@ -435,33 +364,12 @@ void Logic_Init()
     mp_gamemode = FindConVar("mp_gamemode");
 
     sm_server_uid = CreateConVar("sm_server_uid", "", "Unique server ID string");
-
     sm_autorecord_enable = CreateConVar("sm_autorecord_enable", "1", "Enable autorecording features");
-    
-    sm_autorecord_minplayers = CreateConVar("sm_autorecord_minplayers", "1", "Minimum players required to allow demo recording");
-    sm_autorecord_minplayersdelay = CreateConVar("sm_autorecord_minplayersdelay", "30.0", "Delay before stopping a demo, in seconds", FCVAR_NONE, true, 0.0, true, 300.0);
-    sm_autorecord_ignorebots = CreateConVar("sm_autorecord_ignorebots", "1", "Ignore bots when counting players");
-    
     sm_autorecord_sizesplit = CreateConVar("sm_autorecord_sizesplit", "0", "Restart recording if demo file has reached max size, in megabytes");
     sm_autorecord_lengthsplit = CreateConVar("sm_autorecord_lengthsplit", "0", "Restart recording after time of footage, in minutes");
-    
     sm_autorecord_allowoverwrites = CreateConVar("sm_autorecord_allowoverwrites", "0", "Allow file overwrites, or append .i.dem to the end of path");
-    sm_autorecord_pathfmt = CreateConVar("sm_autorecord_pathfmt", "demo/Hana-%Y%m%d-%H%M%S-%P-%l-%n-%q", "Format string specifying a path where to record demo files.\n"
-        ... "	Available specifiers:\n"
-        ... "	%s - unix timestamp of when recording has started\n"
-        ... "	%q - randomly generated number in range [0-99999]\n"
-        ... "	%f - game folder (e.g. left4dead2)\n"
-        ... "	%l - level name without extension (e.g. c8m1_apartment)\n"
-        ... "	%n - round number (R1/R2)\n"
-        ... "	%i - unique id (from convar sm_server_uid)\n"
-        ... "	%P - server game port (from convar hostport)\n"
-        ... "	%L - game mode (from convar mp_gamemode)\n"
-        ... "	%% - a % sign\n"
-        ... "	Single character specifiers from https://www.cplusplus.com/reference/ctime/strftime/\n");
+    sm_autorecord_pathfmt = CreateConVar("sm_autorecord_pathfmt", "demo/Hana-%Y%m%d-%H%M%S-%P-%l-%n-%q", "Format string specifying a path where to record demo files...");
         
-    sm_autorecord_minplayers.AddChangeHook(Handler_ConVar_Change);
-    sm_autorecord_ignorebots.AddChangeHook(Handler_ConVar_Change);
-    sm_autorecord_minplayersdelay.AddChangeHook(Handler_ConVar_Change);
     sm_autorecord_sizesplit.AddChangeHook(Handler_ConVar_Change);
     sm_autorecord_lengthsplit.AddChangeHook(Handler_ConVar_Change);
     

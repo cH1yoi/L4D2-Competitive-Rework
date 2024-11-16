@@ -52,13 +52,11 @@ static int
 	failCount;
 
 static bool
-	g_bHasPrint, 
-	g_bHasPrintDetails;
+	g_bHasPrint;
 
 static char
 	mapName[64];
 
-bool g_bHasPrintBasic;
 
 public Plugin myinfo = 
 {
@@ -133,14 +131,14 @@ public void OnPluginStart()
 
 public void OnMapStart()
 {
-	g_bHasPrint = g_bHasPrintDetails = g_bHasPrintBasic = false;
-	char nowMapName[64];
-	GetCurrentMap(nowMapName, sizeof(nowMapName));
-	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
-		failCount = 0;
-		strcopy(mapName, sizeof(mapName), nowMapName);
-	}
-	clearStuff();
+    g_bHasPrint = false;
+    char nowMapName[64];
+    GetCurrentMap(nowMapName, sizeof(nowMapName));
+    if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
+        failCount = 0;
+        strcopy(mapName, sizeof(mapName), nowMapName);
+    }
+    clearStuff();
 }
 
 public Action showMvpHandler(int client, int args)
@@ -216,14 +214,14 @@ public void OnClientDisconnect(int client) {
 
 public void roundStartHandler(Event event, const char[] name, bool dontBroadcast)
 {
-	g_bHasPrint = g_bHasPrintDetails = g_bHasPrintBasic = false;
-	char nowMapName[64] = {'\0'};
-	GetCurrentMap(nowMapName, sizeof(nowMapName));
-	if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
-		failCount = 0;
-		strcopy(mapName, sizeof(mapName), nowMapName);
-	}
-	clearStuff();
+    g_bHasPrint = false;
+    char nowMapName[64] = {'\0'};
+    GetCurrentMap(nowMapName, sizeof(nowMapName));
+    if (strlen(mapName) < 1 || strcmp(mapName, nowMapName) != 0) {
+        failCount = 0;
+        strcopy(mapName, sizeof(mapName), nowMapName);
+    }
+    clearStuff();
 }
 
 /**
@@ -233,28 +231,24 @@ public void roundStartHandler(Event event, const char[] name, bool dontBroadcast
 **/
 public void missionLostHandler(Event event, const char[] name, bool dontBroadcast)
 {
-	if (g_hAllowShowFailCount.BoolValue) {
-		CPrintToChatAll("{blue}[{default}提示{blue}]: {default}这是你们第 {olive}%d {default}次团灭，请继续努力哦 (*･ω< )", ++failCount);
-	}
+    if (g_hAllowShowFailCount.BoolValue) {
+        CPrintToChatAll("{blue}[{default}提示{blue}]: {default}这是你们第 {olive}%d {default}次团灭，请继续努力哦 (*･ω< )", ++failCount);
+    }
 
-	if (!g_hAllowShowMvp.BoolValue || g_bHasPrint) {
-		return;
-	}
-	
-	roundEndPrint();
-
-	clearStuff();
+    if (!g_hAllowShowMvp.BoolValue || g_bHasPrint) {
+        return;
+    }
+    
+    roundEndPrint();
 }
 
 public void roundEndHandler(Event event, const char[] name, bool dontBroadcast)
 {
-	if (!g_hAllowShowMvp.BoolValue) {
-		return;
-	}
+    if (!g_hAllowShowMvp.BoolValue || g_bHasPrint) {
+        return;
+    }
 
-	roundEndPrint();
-
-	clearStuff();
+    roundEndPrint();
 }
 
 // 方法
@@ -263,43 +257,48 @@ void clearStuff() {
 }
 
 void roundEndPrint() {
-    int i;
-    for (i = 1; i <= MaxClients; i++) {
+    // 如果已经打印过了，就不再打印
+    if (g_bHasPrint) {
+        return;
+    }
+    g_bHasPrint = true;
+
+    // 遍历所有玩家，根据团队显示权限打印信息
+    for (int i = 1; i <= MaxClients; i++) {
         if (!IsValidClient(i)) {
             continue;
         }
 
+        // 检查团队显示权限
         switch (g_hWhichTeamToShow.IntValue) {
-            case TEAM_SPECTATOR: {
+            case 1: {
                 if (GetClientTeam(i) != TEAM_SPECTATOR) {
                     continue;
                 }
-            } case TEAM_SURVIVOR: {
+            }
+            case 2: {
                 if (GetClientTeam(i) != TEAM_SURVIVOR) {
                     continue;
                 }
-            } case TEAM_INFECTED: {
+            }
+            case 3: {
                 if (GetClientTeam(i) != TEAM_INFECTED) {
                     continue;
                 }
             }
         }
 
-        // 只打印一次基础统计
-        if (!g_bHasPrintBasic) {
-            printMvpStatus(i);
-            g_bHasPrintBasic = true;
-        }
+        // 打印基础统计
+        printMvpStatus(i);
         
-        // 只打印一次详细统计
+        // 如果允许显示详细统计，则打印详细信息
         if (g_hAllowShowDetails.BoolValue) {
-            if (g_bHasPrintDetails) {
-                break;
-            }
             printParticularMvp(i);
-            g_bHasPrintDetails = true;
         }
     }
+
+    // 清理数据
+    clearStuff();
 }
 
 /**
