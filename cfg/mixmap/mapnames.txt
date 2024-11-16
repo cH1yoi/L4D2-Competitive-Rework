@@ -190,11 +190,11 @@
 	"dsr_m4"			"死刑改m4"
 	"dsr_m5"			"死刑改m5"
 
-	"bwm1_climb"			"大佛寺m1"
-	"bwm2_city"			"大佛寺m2"
-	"bwm3_forest"			"大佛寺m3"
-	"bwm4_rooftops"			"大佛寺m4"
-	"bwm5_bridge"			"大佛寺m5"
+	"bigwat_d1"			"大佛寺m1"
+	"bigwat_d2"			"大佛寺m2"
+	"bigwat_d3"			"大佛寺m3"
+	"bigwat_d4"			"大佛寺m4"
+	"bigwat_d5"			"大佛寺m5"
 
 	"uf1_boulevard"			"城市航班m1"
 	"uf2_rooftops"			"城市航班m2"
