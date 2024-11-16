@@ -63,10 +63,10 @@
 	"l4d2_diescraper3_mid_361"			"喋血蜃楼m3"
 	"l4d2_diescraper4_top_361"			"喋血蜃楼m4"
 
-	"hf01_theforest"			"颤栗深林m1"
-	"hf02_thesteeple"			"颤栗深林m2"
-	"hf03_themansion"			"颤栗深林m3"
-	"hf04_escape"			"颤栗深林m4"
+	"hf01_theforest"			"颤栗森林m1"
+	"hf02_thesteeple"			"颤栗森林m2"
+	"hf03_themansion"			"颤栗森林m3"
+	"hf04_escape"			"颤栗森林m4"
 
 	"nmrm1_apartment"			"c8m1_remake"
 	"nmrm2_subway"			"c8m2_remake"
