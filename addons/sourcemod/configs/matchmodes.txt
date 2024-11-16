@@ -159,13 +159,5 @@
 		{
 			"name" "Advanced 进阶包抗"
 		}
-		"hideseek"
-		{
-			"name" "躲猫猫捏"
-		}
-		"c4s2ghost"
-		{
-			"name" "幽灵模式"
-		}
 	}
 }
