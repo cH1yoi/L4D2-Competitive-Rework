@@ -184,12 +184,6 @@
 	"zc_m4"			"广州增城m4"
 	"zc_m5"			"广州增城m5"
 
-	"dsr_m1"			"死刑改m1"
-	"dsr_m2"			"死刑改m2"
-	"dsr_m3"			"死刑改m3"
-	"dsr_m4"			"死刑改m4"
-	"dsr_m5"			"死刑改m5"
-
 	"bigwat_d1"			"大佛寺m1"
 	"bigwat_d2"			"大佛寺m2"
 	"bigwat_d3"			"大佛寺m3"
@@ -200,4 +194,11 @@
 	"uf2_rooftops"			"城市航班m2"
 	"uf3_harbor"			"城市航班m3"
 	"uf4_airfield"			"城市航班m4"
+
+	"l4d2_bts01_forest"		"返校M1"
+	"l4d2_bts02_station"	"返校M2"
+	"l4d2_bts03_town"		"返校M3"
+	"l4d2_bts04_cinema"		"返校M4"
+	"l4d2_bts05_church"		"返校M5"
+	"l4d2_bts06_school"		"返校M6"
 }

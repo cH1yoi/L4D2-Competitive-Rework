@@ -177,6 +177,10 @@
 		{
 			"message" "白死亡中心(C1改白)"
 		}
+		"changelevel c5m1_darkwaterfront"
+		{
+			"message" "黑暗教区"
+		}
 	}
 
 	"娱乐三方(Other Maps)"
@@ -189,17 +193,9 @@
 		{
 			"message" "传送门"
 		}
-		"changelevel pt2_overgrown_m1"
-		{
-			"message" "传送门2杂草丛生"
-		}
-		"changelevel dsr_m1"
-		{
-			"message" "死刑改"
-		}
 		"changelevel bigwat_d1"
 		{
-			"message" "大佛寺万圣节版"
+			"message" "大佛寺"
 		}
 		"changelevel zc_m1"
 		{
@@ -208,6 +204,10 @@
 		"changelevel srocchurch"
 		{
 			"message" "巴塞罗那"
+		}
+		"changelevel l4d2_bts01_forest"
+		{
+			"message" "返校(Back To School)"
 		}
 	}
 }
