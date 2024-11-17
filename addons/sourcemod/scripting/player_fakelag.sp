@@ -10,6 +10,9 @@
 	把原先的团队差值塞进来了
 	加入了个投票恢复ping
 	管理员强制平衡和恢复
+
+	2024/11/17
+	狗群友说喜欢Center的高延迟感觉
 */
 #pragma semicolon 1
 #pragma newdecls required
@@ -46,6 +49,7 @@ public void OnPluginStart()
 	
 	survivor_limit = FindConVar("survivor_limit");
 	
+	RegAdminCmd("sm_safl", SetAllFakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for all player(听说你喜欢center的感觉)");
 	RegAdminCmd("sm_fakelag", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player(为指定玩家设置fakelag)");
 	RegAdminCmd("sm_fl", FakeLagCmd, ADMFLAG_CONFIG, "Set fake lag for a player(为指定玩家设置fakelag)");
 	RegAdminCmd("sm_forceeping", ForceEqualizeFakelagCmd, ADMFLAG_GENERIC, "Force equalize fakelag for all players(管理员强制执行平衡ping)");
@@ -76,6 +80,57 @@ public void OnPluginStart()
 	RegConsoleCmd("sm_tefl", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
 	RegConsoleCmd("sm_tepings", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
 	RegConsoleCmd("sm_teping", TeamEFakeLagVoteCmd, "Equalize fakelags of team(平衡团队延迟[非旁观])");
+}
+
+public Action SetAllFakeLagCmd(int client, int args) 
+{
+    if(args != 1) 
+    {
+        CReplyToCommand(client, "%t", "Usage_Safl");
+        return Plugin_Handled;
+    }
+    
+    int targetPing = GetCmdArgInt(1);
+    
+    if (!(FAKELAG_BOTTOM <= targetPing <= FAKELAG_TOP))
+    {
+        CPrintToChat(client, "%t", "InValid_Fakelag", FAKELAG_BOTTOM, FAKELAG_TOP);
+        return Plugin_Handled;
+    }
+
+    ClearAllPlayersFakelag();
+    
+    DataPack dp = new DataPack();
+    dp.WriteCell(targetPing);
+    dp.WriteCell(client);
+    
+    CreateTimer(1.0, Timer_SetAllFakelag, dp);
+    
+    return Plugin_Handled;
+}
+
+public Action Timer_SetAllFakelag(Handle timer, DataPack dp)
+{
+    dp.Reset();
+    int targetPing = dp.ReadCell();
+    int client = dp.ReadCell();
+    delete dp;
+    
+    // 为每个玩家设置新的延迟
+    for(int i = 1; i <= MaxClients; i++) 
+    {
+        if(IsHuman(i) && (IsSurvivor(i) || IsInfected(i)))
+        {
+            int currentPing = GetClientAvgPing(i);
+            int lagAmount = targetPing - currentPing;
+            
+            CFakeLag_SetPlayerLatency(i, lagAmount * 1.0);
+            CPrintToChat(i, "%t", "eping_notice_player", lagAmount);
+        }
+    }
+    
+    CPrintToChatAll("%t", "set_all_fakelag", client, targetPing);
+    return Plugin_Handled;
 }
 
 public Action FakeLagCmd(int client, int args) 

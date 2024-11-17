@@ -106,4 +106,13 @@
 	{
 		"chi"		"正在平衡团队ping值"
 	}
+	"Usage_Safl"
+    {
+        "chi"       "用法: /safl <目标延迟值>"
+    }
+    "set_all_fakelag"
+    {
+        "#format"   "{1:N},{2:d}"
+        "chi"       "{olive}<FakeLag> {orange}%N{1} 已将所有玩家的延迟设置为 {2}"
+    }
 }
