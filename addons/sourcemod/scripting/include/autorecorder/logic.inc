@@ -48,12 +48,30 @@ void NotifyRecordingInfo(const char[] path)
     Util_UnqualifiedFileName(filename, sizeof(filename), path);
     
     int randomNum = ExtractRandomNumber(filename);
-    CreateTimer(5.0, Timer_NotifyRecording, randomNum);
+    char halfStr[16];
+    
+    Format(halfStr, sizeof(halfStr), "%s", (g_iRoundNumber == 1) ? "上半场" : "下半场");
+    
+    DataPack pack = new DataPack();
+    pack.WriteString(halfStr);
+    pack.WriteCell(randomNum);
+    
+    CreateTimer(5.0, Timer_NotifyRecording, pack);
 }
 
-public Action Timer_NotifyRecording(Handle timer, any randomNum)
+public Action Timer_NotifyRecording(Handle timer, DataPack pack)
 {
-    PrintToChatAll("\x01[\x04Record\x01] 标识: \x05R%d-%d \x01由于上下半场分开录制标识不一致,请留意~", g_iRoundNumber, randomNum);
+    char halfStr[16];
+    
+    pack.Reset();
+    pack.ReadString(halfStr, sizeof(halfStr));
+    int randomNum = pack.ReadCell();
+    
+    delete pack;
+    
+    PrintToChatAll("\x01[\x04录像系统\x01] 当前%s录像编号: \x05R%d-%d \x01", 
+        halfStr, g_iRoundNumber, randomNum);
+    
     return Plugin_Stop;
 }
 
