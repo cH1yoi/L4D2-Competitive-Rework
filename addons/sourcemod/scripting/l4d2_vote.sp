@@ -55,7 +55,7 @@ public void OnPluginStart()
     LoadTranslations("l4d2_vote.phrases");
 }
 
-public Action CommondVote(int client, any args)
+public Action CommondVote(int client, int args)
 {
     if (!IsClientInGame(client) || IsFakeClient(client)) return Plugin_Handled;
     if (GetClientTeam(client) == 1) 
