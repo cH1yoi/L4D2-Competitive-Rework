@@ -16,16 +16,16 @@
 #include <exp_interface>
 #include <colors>
 
-static char EXPRankNames[EXPRANK_SIZE][] = {
-	"活化石登",
-	"超级老登",
-	"老登",
-	"小老登",
-	"中登",
-	"小中登",
-	"小登",
-	"小小登",
-	"看不见登"
+static char g_sEXPRankNames[EXPRANK_SIZE][] = {
+    "活化石登",
+    "超级老登",
+    "老登",
+    "小老登",
+    "中登",
+    "小中登",
+    "小登",
+    "小小登",
+    "看不见登"
 };
 
 /*
@@ -231,6 +231,7 @@ public int MenuForceAdmHandler(Menu menu, MenuAction action, int admin, int para
             delete menu;
         }
     }
+    return 0;
 }
 
 public void AdminMenu_TakeTank(TopMenu topmenu, TopMenuAction action, TopMenuObject object_id, int param, char[] buffer, int maxlength)
@@ -277,6 +278,8 @@ public int MenuTakeAdmHandler(Menu menu, MenuAction action, int admin, int param
             delete menu;
         }
     }
+
+    return 0;
 }
 /*
 |--------------------------------------------------------------------------
@@ -320,7 +323,7 @@ void TankPassMenu(int client, int menuType = Menu_Pass)
     if (maxexpplayer)
     {
         char buffer[64], buffer2[3];
-        Format(buffer, sizeof(buffer), "最高经验分: %N(%s)", maxexpplayer, EXPRankNames[L4D2_GetClientExpRankLevel(maxexpplayer)]);
+        Format(buffer, sizeof(buffer), "最高经验分: %N(%s)", maxexpplayer, g_sEXPRankNames[L4D2_GetClientExpRankLevel(maxexpplayer)]);
         Format(buffer2, sizeof(buffer2), "%i", maxexpplayer);
         IntToString(UID(maxexpplayer), SZF(buffer2));
         menu.AddItem(buffer2, buffer);
@@ -368,6 +371,8 @@ public int MenuForceHandler(Menu menu, MenuAction action, int tank, int param2)
             delete menu;
         }
     }
+
+    return 0;
 }
 public int MenuPassHandler(Menu menu, MenuAction action, int tank, int param2)
 {
@@ -387,6 +392,7 @@ public int MenuPassHandler(Menu menu, MenuAction action, int tank, int param2)
             delete menu;
         }
     }
+    return 0;
 }
 
 void OfferMenu(int tank, int target)
@@ -431,6 +437,8 @@ public int OfferMenuHandler(Menu menu, MenuAction action, int target, int param2
             delete menu;
         }
     }
+
+    return 0;
 }
 /*
 |--------------------------------------------------------------------------
@@ -560,6 +568,8 @@ public Action Timer_Notify(Handle timer, DataPack pack)
 
         CPrintToChat(client, "[{olive}!{default}] %t", "phrase1");
     }
+
+    return Plugin_Stop;
 }
 
 public void Event_EntityKilled(Event h_Event, char[] s_Name, bool b_DontBroadcast)

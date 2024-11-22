@@ -163,18 +163,18 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 }
 public Action OnPlayerRunCmd(int client, int &buttons, int &impulse, float vel[3], float angles[3], int &weapon)
 {
-	if (!IsClientInGame(client) || IsFakeClient(client) || GetClientTeam(client) != L4D2Team_Infected)
-			return Plugin_Continue;
-	
+    if (!IsClientInGame(client) || IsFakeClient(client) || GetClientTeam(client) != L4D2Team_Infected)
+        return Plugin_Continue;
+
     if (!IsInfectedGhost(client)) return Plugin_Continue;
     if (!IsInReady()) return Plugin_Continue;
-	
+    
     if (buttons & IN_USE)
-	{
-		TeleportEntity(client, g_vSmodelPos, g_vSmodelAng);
+    {
+        TeleportEntity(client, g_vSmodelPos, g_vSmodelAng);
         return Plugin_Handled;
-	}
-	return Plugin_Continue;
+    }
+    return Plugin_Continue;
 }
 
 public void OnPluginStart()
@@ -232,7 +232,7 @@ void PreDamageMenu(int client){
         }
     }
     menu.ExitBackButton = true;
-	menu.Display(client, MENU_TIME_FOREVER);
+    menu.Display(client, MENU_TIME_FOREVER);
 }
 
 int PreDamageMenuHandler(Menu menu, MenuAction action, int iClient, int param2)
@@ -249,7 +249,7 @@ int PreDamageMenuHandler(Menu menu, MenuAction action, int iClient, int param2)
                 PrintToChat(iClient, "预伤害阶段已经过了~");
                 return 0;
             }
-			char index[12];
+            char index[12];
             menu.GetItem(param2, index, sizeof(index));
             int victim = StringToInt(index);
             int tank_fru;
@@ -419,22 +419,22 @@ CountdownTimer CountdownPointer()
 void InitiateCountdown()
 {
     for (int i = 1; i <= MaxClients; i++) {
-		if (IsClientInGame(i) && !IsFakeClient(i)) {
-			ShowVGUIPanel(i, "ready_countdown", _, true);
-		}
-	}
-	CTimer_Start(CountdownPointer(), TFData.fPreDamageDuration);
+        if (IsClientInGame(i) && !IsFakeClient(i)) {
+            ShowVGUIPanel(i, "ready_countdown", _, true);
+        }
+    }
+    CTimer_Start(CountdownPointer(), TFData.fPreDamageDuration);
 }
 
-bool IsCountdownRunning()
-{
-	return CTimer_HasStarted(CountdownPointer());
-}
+// bool IsCountdownRunning()
+// {
+// 	return CTimer_HasStarted(CountdownPointer());
+// }
 
-bool HasCountdownElapsed()
-{
-	return CTimer_IsElapsed(CountdownPointer());
-}
+// bool HasCountdownElapsed()
+// {
+// 	return CTimer_IsElapsed(CountdownPointer());
+// }
 
 void StopCountdown()
 {

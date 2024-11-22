@@ -6,7 +6,6 @@
 float g_HittableOrigin[MAX_HITTABLES][3];
 // 铁角度
 float g_HittableAngle[MAX_HITTABLES][3];
-int Hittables[100];
 bool g_bHittableControlExists;
 Logger log;
 
@@ -32,7 +31,7 @@ public Action CMD_SaveProps(int client, int args){
 }
 void SaveTankProps()
 {
-	log.info("SaveTankProps")
+	log.info("SaveTankProps");
 	int iEntCount = GetMaxEntities();
 	for (int i = MaxClients; i < iEntCount; i++) {
 		if (IsTankProp(i)) {
@@ -46,7 +45,7 @@ void SaveTankProps()
 	}
 }
 void ResetAllTankProps(){
-	log.info("SaveTankProps")
+	log.info("SaveTankProps");
 	int iEntCount = GetMaxEntities();
 	for (int i = MaxClients; i < iEntCount; i++) {
 		if (IsTankProp(i)) {

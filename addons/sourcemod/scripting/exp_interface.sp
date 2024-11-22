@@ -74,11 +74,13 @@ public void OnPluginStart(){
 
 public void OnClientPutInServer(int iClient)
 {
-	if(IS_VALID_CLIENT(iClient)) {
-		GetTimeOut[iClient] = MAX_RETRY;
+    if(IS_VALID_CLIENT(iClient))
+    {
+        GetTimeOut[iClient] = MAX_RETRY;
         CreateTimer(0.5, Timer_GetClientExp, iClient);
-	}
+    }
 }
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
     g_hForward_OnGetExp = CreateGlobalForward("L4D2_OnGetExp", ET_Ignore, Param_Cell, Param_Cell);

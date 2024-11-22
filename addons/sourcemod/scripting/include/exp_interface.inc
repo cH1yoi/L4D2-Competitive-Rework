@@ -38,6 +38,7 @@ stock const char EXPRankNames[EXPRANK_SIZE][] = {
 	"小小登",
 	"看不见登"
 }
+
 /**
  * @brief 获取客户端的等级
  *
@@ -45,12 +46,12 @@ stock const char EXPRankNames[EXPRANK_SIZE][] = {
  *
  * @return				等级
  */
-int L4D2_GetClientExpRankLevel(int client){
-	int rank = L4D2_GetClientExp(client);
-	for (int i = 0; i < EXPRANK_SIZE; i++){
-		if (rank > EXPRankTable[i]) return i;
-	}
-	return EXPRANK_SIZE - 1;
+stock int L4D2_GetClientExpRankLevel(int client){
+    int rank = L4D2_GetClientExp(client);
+    for (int i = 0; i < EXPRANK_SIZE; i++){
+        if (rank > EXPRankTable[i]) return i;
+    }
+    return EXPRANK_SIZE - 1;
 }
 
 /**

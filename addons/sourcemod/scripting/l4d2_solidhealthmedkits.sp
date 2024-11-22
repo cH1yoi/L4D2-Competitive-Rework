@@ -100,8 +100,6 @@ public HealSuccess_Event(Handle:event, const String:name[], bool:dontBroadcast)
 	
 	new client = GetClientOfUserId(GetEventInt(event, "subject"));
 	new character = GetSurvivorCharacter(client);
-	new max_health = GetEntProp(client, Prop_Send, "m_iMaxHealth", 2);
-	new preheal_total = preheal_perm[character] + preheal_temp[character];
 	new HealAmount = GetConVarInt(hAmount);
 	
 	new new_perm = preheal_perm[character] + HealAmount;

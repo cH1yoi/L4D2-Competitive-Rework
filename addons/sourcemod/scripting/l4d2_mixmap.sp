@@ -44,9 +44,9 @@ ConVar 	g_cvNextMapPrint,
 		g_cvMaxMapsNum,
 		g_cvFinaleEndStart;
 
-const TEAM_SPECTATOR = 1;
-const TEAM_SURVIVOR = 2;
-const TEAM_INFECTED = 3;
+#define TEAM_SPECTATOR 1
+#define TEAM_SURVIVOR 2
+#define TEAM_INFECTED 3
 char cfg_exec[BUF_SZ];
 
 Handle hVoteMixmap;

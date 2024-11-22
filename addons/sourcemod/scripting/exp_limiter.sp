@@ -76,16 +76,19 @@ bool IsWarmBot(int client)
     return StrEqual(steamid, WARMBOT_STEAMID);
 }
 
-public void SteamWorks_OnValidateClient(int ownerauthid, int authid)
+public int SteamWorks_OnValidateClient(int ownerauthid, int authid)
 {
     int client = GetClientOfAuthId(authid);
-    if (client == -1) return;
+    if (client == -1) return 0;
     if(ownerauthid != authid) isFamilyShared[client] = true;
     else isFamilyShared[client] = false;
+    return 0;
 }
+
 public void OnClientDisconnect(int client){
     isFamilyShared[client] = false;
 }
+
 stock int GetClientOfAuthId(int authid)
 {
     for(int i = 1; i <= MaxClients; i++)

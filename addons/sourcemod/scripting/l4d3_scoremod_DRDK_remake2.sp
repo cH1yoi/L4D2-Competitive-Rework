@@ -129,11 +129,9 @@ public OnPluginStart()
 	HookConVarChange(hCvarBonusPerSurvivorMultiplier, CvarChanged);
 	HookConVarChange(hCvarPermBonusProportion, CvarChanged);
 
-	HookEvent("round_start", EventHook:OnRoundStart, EventHookMode_PostNoCopy);
-	//HookEvent("player_ledge_grab", OnPlayerLedgeGrab);
-	//HookEvent("player_incapacitated", OnPlayerIncapped);
+	HookEvent("round_start", OnRoundStart, EventHookMode_PostNoCopy);
+	HookEvent("player_incapacitated", OnPlayerIncapped);
 	HookEvent("player_hurt", OnPlayerHurt);
-	//HookEvent("revive_success", OnPlayerRevived, EventHookMode_Post);
 	HookEvent("player_death", OnPlayerDeath);
 
 	RegConsoleCmd("sm_health", CmdBonus);
@@ -259,14 +257,17 @@ public OnClientDisconnect(client)
 	SDKUnhook(client, SDKHook_OnTakeDamagePost, OnTakeDamagePost);
 }
 
-public OnRoundStart()
+public Action OnRoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	for (new i = 0; i < MAXPLAYERS; i++)
-	{
-		iTempHealth[i] = 0;
-	}
-	bRoundOver = false;
+    for (new i = 0; i < MAXPLAYERS; i++)
+    {
+        iTempHealth[i] = 0;
+    }
+    bRoundOver = false;
+    
+    return Plugin_Continue;
 }
+
 public Action:CmdRecover(client, args)
 {
 	iLostTempHealth[InSecondHalfOfRound()] = 0;
@@ -327,6 +328,20 @@ public Native_GetMaxThrowBonus(Handle:plugin, numParams)
     return iThrowWorth * iTeamSize;
 }
 **/
+public Action OnPlayerIncapped(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(GetEventInt(event, "userid"));
+    if (!IsSurvivor(client)) return Plugin_Continue;
+    
+    float fIncapPenalty = GetConVarFloat(hCvarIncapPenalty);
+    iLostTempHealth[InSecondHalfOfRound()] += RoundToFloor(fTempHpWorth * fIncapPenalty);
+    
+#if SM2_DEBUG
+    PrintToChatAll("\x01Player \x05%N\x01 was incapped. Adding penalty: \x04%d\x01", client, RoundToFloor(fTempHpWorth * fIncapPenalty));
+#endif
+
+    return Plugin_Continue;
+}
 
 public Action:CmdBonus(client, args)
 {
