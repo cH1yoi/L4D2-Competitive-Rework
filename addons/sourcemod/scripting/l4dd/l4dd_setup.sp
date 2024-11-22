@@ -62,7 +62,6 @@ void SetupForwardsNatives()
 	g_hFWD_CTerrorPlayer_TakeOverBot_Pre									= new GlobalForward("L4D_OnTakeOverBot",								ET_Event, Param_Cell);
 	g_hFWD_CTerrorPlayer_TakeOverBot_Post									= new GlobalForward("L4D_OnTakeOverBot_Post",							ET_Event, Param_Cell, Param_Cell);
 	g_hFWD_CTerrorPlayer_TakeOverBot_PostHandled							= new GlobalForward("L4D_OnTakeOverBot_PostHandled",					ET_Event, Param_Cell, Param_Cell);
-	g_hFWD_CDirector_OnFinishIntro											= new GlobalForward("L4D_OnFinishIntro",								ET_Event);
 	g_hFWD_CDirector_IsTeamFull												= new GlobalForward("L4D_OnIsTeamFull",									ET_Event, Param_Cell, Param_CellByRef);
 	g_hFWD_CTerrorGameRules_ClearTeamScores									= new GlobalForward("L4D_OnClearTeamScores",							ET_Event, Param_Cell);
 	g_hFWD_CTerrorGameRules_SetCampaignScores								= new GlobalForward("L4D_OnSetCampaignScores",							ET_Event, Param_CellByRef, Param_CellByRef);
@@ -233,9 +232,6 @@ void SetupForwardsNatives()
 		g_hFWD_CGasCan_ShouldStartAction									= new GlobalForward("L4D2_CGasCan_ShouldStartAction",					ET_Event, Param_Cell, Param_Cell, Param_Cell);
 		g_hFWD_CGasCan_ShouldStartAction_Post								= new GlobalForward("L4D2_CGasCan_ShouldStartAction_Post",				ET_Event, Param_Cell, Param_Cell, Param_Cell);
 		g_hFWD_CGasCan_ShouldStartAction_PostHandled						= new GlobalForward("L4D2_CGasCan_ShouldStartAction_PostHandled",		ET_Event, Param_Cell, Param_Cell, Param_Cell);
-		g_hFWD_CTerrorPlayer_StartUseAction									= new GlobalForward("L4D2_OnStartUseAction",							ET_Event, Param_Cell, Param_Cell, Param_Cell);
-		g_hFWD_CTerrorPlayer_StartUseAction_Post							= new GlobalForward("L4D2_OnStartUseAction_Post",						ET_Event, Param_Cell, Param_Cell, Param_Cell);
-		g_hFWD_CTerrorPlayer_StartUseAction_PostHandled						= new GlobalForward("L4D2_OnStartUseAction_PostHandled",				ET_Event, Param_Cell, Param_Cell, Param_Cell);
 		g_hFWD_CBaseBackpackItem_StartAction								= new GlobalForward("L4D2_BackpackItem_StartAction",					ET_Event, Param_Cell, Param_Cell, Param_Cell);
 		g_hFWD_CBaseBackpackItem_StartAction_Post							= new GlobalForward("L4D2_BackpackItem_StartAction_Post",				ET_Event, Param_Cell, Param_Cell, Param_Cell);
 		g_hFWD_CBaseBackpackItem_StartAction_PostHandled					= new GlobalForward("L4D2_BackpackItem_StartAction_PostHandled",		ET_Event, Param_Cell, Param_Cell, Param_Cell);
@@ -333,7 +329,6 @@ void SetupForwardsNatives()
 	CreateNative("L4D2_IsVisibleToPlayer",		 					Native_IsVisibleToPlayer);
 	CreateNative("L4D_GetNearestNavArea",		 					Native_CNavMesh_GetNearestNavArea);
 	CreateNative("L4D_GetLastKnownArea",		 					Native_CTerrorPlayer_GetLastKnownArea);
-	CreateNative("L4D_IsTouchingTrigger",		 					Native_CBaseTrigger_IsTouching);
 	CreateNative("L4D_HasAnySurvivorLeftSafeArea",		 			Native_CDirector_HasAnySurvivorLeftSafeArea);
 	CreateNative("L4D_IsAnySurvivorInStartArea",		 			Native_CDirector_IsAnySurvivorInStartArea);
 	CreateNative("L4D_IsAnySurvivorInCheckpoint",		 			Native_CDirector_IsAnySurvivorInCheckpoint);
@@ -434,7 +429,6 @@ void SetupForwardsNatives()
 	CreateNative("L4D_GetNavArea_AttributeFlags",					Native_GetCNavArea_AttributeFlags);
 	CreateNative("L4D_SetNavArea_AttributeFlags",					Native_SetCNavArea_AttributeFlags);
 	CreateNative("L4D_GetMaxChapters",								Native_CTerrorGameRules_GetNumChaptersForMissionAndMode);
-	CreateNative("L4D_IsInIntro",									Native_CTerrorGameRules_IsInIntro);
 	CreateNative("L4D_GetVersusMaxCompletionScore",					Native_GetVersusMaxCompletionScore);
 	CreateNative("L4D_SetVersusMaxCompletionScore",					Native_SetVersusMaxCompletionScore);
 
@@ -583,7 +577,6 @@ void SetupForwardsNatives()
 	CreateNative("L4D_Smoker_ReleaseVictim",						Native_CTerrorPlayer_ReleaseTongueVictim);
 	CreateNative("L4D_RespawnPlayer",								Native_CTerrorPlayer_RespawnPlayer);
 	CreateNative("L4D_CreateRescuableSurvivors",					Native_CDirector_CreateRescuableSurvivors);
-	CreateNative("L4D_StopBeingRevived",							Native_CTerrorPlayer_StopBeingRevived);
 	CreateNative("L4D_ReviveSurvivor",								Native_CTerrorPlayer_OnRevived);
 	CreateNative("L4D_GetHighestFlowSurvivor",						Native_CDirectorTacticalServices_GetHighestFlowSurvivor);
 	CreateNative("L4D_GetInfectedFlowDistance",						Native_Infected_GetInfectedFlowDistance);

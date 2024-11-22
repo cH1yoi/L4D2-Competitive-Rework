@@ -18,8 +18,8 @@
 
 
 
-#define PLUGIN_VERSION		"1.151"
-#define PLUGIN_VERLONG		1151
+#define PLUGIN_VERSION		"1.143"
+#define PLUGIN_VERLONG		1143
 
 #define DEBUG				0
 // #define DEBUG			1	// Prints addresses + detour info (only use for debugging, slows server down).
@@ -115,7 +115,7 @@
 
 // ====================================================================================================
 // UPDATER
-#define UPDATE_URL						"https://raw.githubusercontent.com/SilvDev/Left4DHooks/main/sourcemod/updater.txt"
+#define UPDATE_URL					"https://raw.githubusercontent.com/SilvDev/Left4DHooks/main/sourcemod/updater.txt"
 
 native void Updater_AddPlugin(const char[] url);
 // ====================================================================================================
@@ -298,7 +298,6 @@ int g_iOff_m_PendingMobCount;
 int g_iOff_m_nFirstClassIndex;
 int g_iOff_m_fMapMaxFlowDistance;
 int g_iOff_m_chapter;
-int g_iOff_m_bInIntro;
 int g_iOff_m_attributeFlags;
 int g_iOff_m_spawnAttributes;
 int g_iOff_NavAreaID;
@@ -349,7 +348,6 @@ int g_iCanBecomeGhostOffset;
 
 // Other
 Address g_pScriptId;
-int g_iCancelStagger[MAXPLAYERS+1];
 int g_iPlayerResourceRef;
 int g_iOffsetAmmo;
 int g_iPrimaryAmmoType;
@@ -683,6 +681,7 @@ public void OnPluginStart()
 	{
 		g_hCvar_VScriptBuffer = CreateConVar("l4d2_vscript_return", "", "Buffer used to return VScript values. Do not use.", FCVAR_DONTRECORD);
 		g_hCvar_AddonsEclipse = CreateConVar("l4d2_addons_eclipse", "-1", "Addons Manager (-1: use addonconfig; 0: disable addons; 1: enable addons.)", FCVAR_NOTIFY);
+		AutoExecConfig(true, "left4dhooks");
 
 		g_hCvar_AddonsEclipse.AddChangeHook(ConVarChanged_Addons);
 		g_iCvar_AddonsEclipse = g_hCvar_AddonsEclipse.IntValue;
@@ -729,7 +728,15 @@ void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-	ResetVars();
+	// Reset checkpoints
+	if( !g_bLeft4Dead2 )
+	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			g_bCheckpointFirst[i] = false;
+			g_bCheckpointLast[i] = false;
+		}
+	}
 }
 
 void Event_EnteredStartArea(Event event, const char[] name, bool dontBroadcast)
@@ -800,25 +807,6 @@ public void OnPluginEnd()
 
 	// Target Filters
 	UnloadTargetFilters();
-}
-
-void ResetVars()
-{
-	// Reset L4D1 variables
-	if( !g_bLeft4Dead2 )
-	{
-		for( int i = 1; i <= MaxClients; i++ )
-		{
-			// Reset checkpoints
-			g_bCheckpointFirst[i] = false;
-			g_bCheckpointLast[i] = false;
-
-			// Reset stagger hooks
-			if( g_iCancelStagger[i] )
-				SDKUnhook(i, SDKHook_PostThinkPost, OnThinkCancelStagger);
-			g_iCancelStagger[i] = 0;
-		}
-	}
 }
 
 
@@ -899,21 +887,6 @@ int Native_CTerrorGameRules_IsGenericCooperativeMode(Handle plugin, int numParam
 
 int Native_Internal_IsCoopMode(Handle plugin, int numParams) // Native "L4D_IsCoopMode"
 {
-	if( g_iCurrentMode == GAMEMODE_COOP && g_bLeft4Dead2 )
-	{
-		if( !g_bMapStarted )
-		{
-			ThrowNativeError(SP_ERROR_NOT_RUNNABLE, NATIVE_TOO_EARLY, "L4D_IsCoopMode");
-			return false;
-		}
-
-		ValidateAddress(g_pGameRules, "g_pGameRules");
-		ValidateNatives(g_hSDK_CTerrorGameRules_IsRealismMode, "CTerrorGameRules::IsRealismMode");
-
-		//PrintToServer("#### CALL g_hSDK_CTerrorGameRules_IsRealismMode");
-		return SDKCall(g_hSDK_CTerrorGameRules_IsRealismMode, g_pGameRules) == false;
-	}
-
 	return g_iCurrentMode == GAMEMODE_COOP;
 }
 
@@ -961,13 +934,19 @@ public void OnMapEnd()
 	g_bFinalCheck = false;
 	g_iMaxChapters = 0;
 
-	ResetVars();
+	// Reset checkpoints
+	if( !g_bLeft4Dead2 )
+	{
+		for( int i = 1; i <= MaxClients; i++ )
+		{
+			g_bCheckpointFirst[i] = false;
+			g_bCheckpointLast[i] = false;
+		}
+	}
 
 	// Reset hooks - Clear causes memory leaks, delete and re-create
 	// g_iAnimationHookedClients.Clear();
 	// g_iAnimationHookedPlugins.Clear();
-	delete g_iAnimationHookedClients;
-	delete g_iAnimationHookedPlugins;
 	g_iAnimationHookedClients = new ArrayList();
 	g_iAnimationHookedPlugins = new ArrayList(2);
 
@@ -1117,7 +1096,8 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 	int entity;
 
 	// Loop through all anim hooks
-	for( int i = g_iAnimationHookedPlugins.Length-1; i >= 0; i-- )
+	int length = g_iAnimationHookedPlugins.Length;
+	for( int i = 0; i < length; i++ )
 	{
 		// Get hooked plugin handle
 		target = g_iAnimationHookedPlugins.Get(i, 0);
@@ -1132,6 +1112,8 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 			if( client == entity )
 			{
 				g_iAnimationHookedPlugins.Erase(i);
+				if( i > 0 ) i--;
+				length--;
 			} else {
 				keep = true;
 			}
@@ -1148,7 +1130,7 @@ int Native_AnimHookDisable(Handle plugin, int numParams) // Native "AnimHookDisa
 	}
 
 	// Remove detour, no more plugins using it
-	if( g_iAnimationHookedPlugins.Length == 0 && g_aDetoursHooked.Get(index) == 1 && g_aForceDetours.Get(g_iAnimationDetourIndex) == 1 )
+	if( length == 0 && g_aDetoursHooked.Get(index) == 1 && g_aForceDetours.Get(g_iAnimationDetourIndex) == 1 )
 	{
 		g_bAnimationRemoveHook = true;
 		RequestFrame(OnFrameRemoveDetour);

@@ -60,14 +60,14 @@
 
 
 
-// Natives: 273 (including 3 for L4D1 only)
-// L4D1 = 31 [left4downtown] + 47 [l4d_direct] + 16 [l4d2addresses] + 73 [silvers - mine!] + 4 [anim] = 172
-// L4D2 = 61 [left4downtown] + 59 [l4d_direct] + 31 [l4d2addresses] + 117 [silvers - mine!] + 4 [anim] = 272
+// Natives: 272 (including 3 for L4D1 only)
+// L4D1 = 31 [left4downtown] + 47 [l4d_direct] + 16 [l4d2addresses] + 70 [silvers - mine!] + 4 [anim] = 169
+// L4D2 = 61 [left4downtown] + 59 [l4d_direct] + 31 [l4d2addresses] + 114 [silvers - mine!] + 4 [anim] = 269
 // Methods and Natives by "Forgetest": 53 [PlayerAnimState] + 22 [Ammo_t] + 15 [AmmoDef] = 90
 
-// Forwards: 221 (including 5 for L4D1 only)
-// L4D1 = 147
-// L4D2 = 216
+// Forwards: 217 (including 5 for L4D1 only)
+// L4D1 = 146
+// L4D2 = 212
 
 // Stocks: 169 (L4D1 = 114, L4D2 = 167)
 // left4dhooks_silver			46 stocks	(L4D1 = 39,		L4D2 = 53)
@@ -115,7 +115,6 @@ public void __pl_l4dh_SetNTVOptional()
 	MarkNativeAsOptional("L4D_GetRandomPZSpawnPosition");
 	MarkNativeAsOptional("L4D_GetNearestNavArea");
 	MarkNativeAsOptional("L4D_GetLastKnownArea");
-	MarkNativeAsOptional("L4D_IsTouchingTrigger");
 	MarkNativeAsOptional("L4D2_GetFurthestSurvivorFlow");
 	MarkNativeAsOptional("L4D2_GetFirstSpawnClass");
 	MarkNativeAsOptional("L4D2_SetFirstSpawnClass");
@@ -217,7 +216,6 @@ public void __pl_l4dh_SetNTVOptional()
 	MarkNativeAsOptional("L4D2_GetWitchCount");
 	MarkNativeAsOptional("L4D_GetCurrentChapter");
 	MarkNativeAsOptional("L4D_GetMaxChapters");
-	MarkNativeAsOptional("L4D_IsInIntro");
 	MarkNativeAsOptional("L4D_GetAllNavAreas");
 	MarkNativeAsOptional("L4D_GetNavAreaID");
 	MarkNativeAsOptional("L4D_GetNavAreaByID");
@@ -375,7 +373,6 @@ public void __pl_l4dh_SetNTVOptional()
 	MarkNativeAsOptional("L4D_ForceSmokerVictim");
 	MarkNativeAsOptional("L4D2_ForceJockeyVictim");
 	MarkNativeAsOptional("L4D_CreateRescuableSurvivors");
-	MarkNativeAsOptional("L4D_StopBeingRevived");
 	MarkNativeAsOptional("L4D_ReviveSurvivor");
 	MarkNativeAsOptional("L4D_GetHighestFlowSurvivor");
 	MarkNativeAsOptional("L4D_GetInfectedFlowDistance");
@@ -633,32 +630,32 @@ enum
 // NavArea Spawn Attributes:
 enum
 {
-	NAV_SPAWN_EMPTY = 2,							// (1<<1)
-	NAV_SPAWN_STOP_SCAN = 4,						// (1<<5)
-	NAV_SPAWN_BATTLESTATION = 32,					// (1<<6)
-	NAV_SPAWN_FINALE = 64,							// (1<<7)
-	NAV_SPAWN_PLAYER_START = 128,					// (1<<8)
-	NAV_SPAWN_BATTLEFIELD = 256,					// (1<<9)
-	NAV_SPAWN_IGNORE_VISIBILITY = 512,				// (1<<10)
-	NAV_SPAWN_NOT_CLEARABLE = 1024,					// (1<<11)
-	NAV_SPAWN_CHECKPOINT = 2048,					// (1<<12)
-	NAV_SPAWN_OBSCURED = 4096,						// (1<<13)
-	NAV_SPAWN_NO_MOBS = 8192,						// (1<<14)
-	NAV_SPAWN_THREAT = 16384,						// (1<<15)
-	NAV_SPAWN_RESCUE_VEHICLE = 32768,				// (1<<16)
-	NAV_SPAWN_RESCUE_CLOSET = 65536,				// (1<<17)
-	NAV_SPAWN_ESCAPE_ROUTE = 131072,				// (1<<18)
-	NAV_SPAWN_DESTROYED_DOOR = 262144,				// (1<<19)
-	NAV_SPAWN_NOTHREAT = 524288,					// (1<<20)
-	NAV_SPAWN_LYINGDOWN = 1048576,					// (1<<24)
-	NAV_SPAWN_COMPASS_NORTH = 16777216,				// (1<<25)
-	NAV_SPAWN_COMPASS_NORTHEAST = 33554432,			// (1<<26)
-	NAV_SPAWN_COMPASS_EAST = 67108864,				// (1<<27)
-	NAV_SPAWN_COMPASS_EASTSOUTH = 134217728,		// (1<<28)
-	NAV_SPAWN_COMPASS_SOUTH = 268435456,			// (1<<29)
-	NAV_SPAWN_COMPASS_SOUTHWEST = 536870912,		// (1<<30)
-	NAV_SPAWN_COMPASS_WEST = 1073741824,			// (1<<31)
-	NAV_SPAWN_COMPASS_WESTNORTH = -2147483648		// (1<<32)
+	NAV_SPAWN_EMPTY = 2,							// (1<<0)
+	NAV_SPAWN_STOP_SCAN = 4,						// (1<<1)
+	NAV_SPAWN_BATTLESTATION = 32,					// (1<<5)
+	NAV_SPAWN_FINALE = 64,							// (1<<6)
+	NAV_SPAWN_PLAYER_START = 128,					// (1<<7)
+	NAV_SPAWN_BATTLEFIELD = 256,					// (1<<8)
+	NAV_SPAWN_IGNORE_VISIBILITY = 512,				// (1<<9)
+	NAV_SPAWN_NOT_CLEARABLE = 1024,					// (1<<10)
+	NAV_SPAWN_CHECKPOINT = 2048,					// (1<<11)
+	NAV_SPAWN_OBSCURED = 4096,						// (1<<12)
+	NAV_SPAWN_NO_MOBS = 8192,						// (1<<13)
+	NAV_SPAWN_THREAT = 16384,						// (1<<14)
+	NAV_SPAWN_RESCUE_VEHICLE = 32768,				// (1<<15)
+	NAV_SPAWN_RESCUE_CLOSET = 65536,				// (1<<16)
+	NAV_SPAWN_ESCAPE_ROUTE = 131072,				// (1<<17)
+	NAV_SPAWN_DESTROYED_DOOR = 262144,				// (1<<18)
+	NAV_SPAWN_NOTHREAT = 524288,					// (1<<19)
+	NAV_SPAWN_LYINGDOWN = 1048576,					// (1<<20)
+	NAV_SPAWN_COMPASS_NORTH = 16777216,				// (1<<24)
+	NAV_SPAWN_COMPASS_NORTHEAST = 33554432,			// (1<<25)
+	NAV_SPAWN_COMPASS_EAST = 67108864,				// (1<<26)
+	NAV_SPAWN_COMPASS_EASTSOUTH = 134217728,		// (1<<27)
+	NAV_SPAWN_COMPASS_SOUTH = 268435456,			// (1<<28)
+	NAV_SPAWN_COMPASS_SOUTHWEST = 536870912,		// (1<<29)
+	NAV_SPAWN_COMPASS_WEST = 1073741824,			// (1<<30)
+	NAV_SPAWN_COMPASS_WESTNORTH = -2147483648		// (1<<31)
 };
 
 // From: https://developer.valvesoftware.com/wiki/L4D2_Director_Scripts
@@ -678,7 +675,7 @@ enum
 // Some constants from 'l4d2util_contants.inc'
 // These are used by the "L4D2Direct_DoAnimationEvent" native and "L4D_OnDoAnimationEvent*" forwards
 // L4D1 seems to only have 35 animation events, the names may not be relative to those listed here
-// For L4D1: See below the enum
+// For L4D1: See below the enum.
 enum PlayerAnimEvent_t
 {
 	// Made by A1m`
@@ -813,7 +810,7 @@ enum PlayerAnimEvent_t
 26 - Weapon Reload Fast
 27 - Weapon Recoil + Reload
 28 - Weapon Recoil + Reload (same)
-29... - Seems unused (Same for 2, 17-20)
+29... - Seems unused (Same for 2, 17-20).
 */
 
 enum WeaponType
@@ -867,17 +864,17 @@ stock const char g_sWeaponTypes[WeaponType][] =
 // ANIMATION NATIVES
 // ====================================================================================================
 methodmap PlayerAnimState {
-	// Get the PlayerAnimState instance of a player
+	// Get the PlayerAnimState instance of a player.
 	public static native PlayerAnimState FromPlayer(int client);
 
-	// Main activity of player's animation, matching enums in "left4dhooks_anim.inc"
+	// Main activity of player's animation, matching enums in "left4dhooks_anim.inc".
 	public native int GetMainActivity();
 
-	// Restart and recalculate the main activity
+	// Restart and recalculate the main activity.
 	public native void ResetMainActivity();
 
-	// All booleans (or flags) that used for animation events
-	property bool m_bIsCustomSequence { // True only after "CTerrorPlayerAnimState::SetCustomSequence"
+	// All booleans (or flags) that used for animation events.
+	property bool m_bIsCustomSequence { // True only after "CTerrorPlayerAnimState::SetCustomSequence".
 		public native get();
 		public native set(bool value);
 	}
@@ -893,7 +890,7 @@ methodmap PlayerAnimState {
 		public native get();
 		public native set(bool value);
 	}
-	property bool m_bIsHitByCharger { // aka multi-charged, bowling
+	property bool m_bIsHitByCharger { // aka multi-charged, bowling.
 		public native get();
 		public native set(bool value);
 	}
@@ -909,7 +906,7 @@ methodmap PlayerAnimState {
 		public native get();
 		public native set(bool value);
 	}
-	property bool m_bIsStartPummel { // Something to do with charger pummel animation, not sure about the name
+	property bool m_bIsStartPummel { // Something to do with charger pummel animation, not sure about the name.
 		public native get();
 		public native set(bool value);
 	}
@@ -984,7 +981,7 @@ methodmap PlayerAnimState {
 
 
 // ====================================================================================================
-// AMMO NATIVES - Thanks for "Forgetest" for providing
+// AMMO NATIVES - Thanks for "Forgetest" for providing.
 // See link for more info: https://github.com/alliedmodders/hl2sdk/blob/l4d2/game/shared/ammodef.h
 // ====================================================================================================
 /*
@@ -1012,36 +1009,36 @@ struct Ammo_t
 
 
 /**
- * A simple wrapper for C++ ConVar pointers, with hardcoded offsets into the structure that probably never gonna change
+ * A simple wrapper for C++ ConVar pointers, with hardcoded offsets into the structure that probably never gonna change.
  */
 methodmap ConVarPtrWrapper {
 	/**
-	 * @brief Constructor accepting a C++ pointer (address)
+	 * @brief Constructor accepting a C++ pointer (address).
 	 *
-	 * @param p			Pointer (address) of ConVar
+	 * @param p			Pointer (address) of ConVar.
 	 */
 	public ConVarPtrWrapper(Address p) {
 		return view_as<ConVarPtrWrapper>(p);
 	}
 
 	/**
-	 * @brief Retrieves an integer value for the convar
+	 * @brief Retrieves an integer value for the convar.
 	 */
 	public int GetInt() {
 		return this.m_pParent.m_nValue;
 	}
 
 	/**
-	 * @brief Retrieves a float value for the convar
+	 * @brief Retrieves a float value for the convar.
 	 */
 	public float GetFloat() {
 		return this.m_pParent.m_fValue;
 	}
 
 	/**
-	 * @brief Retrieves the SourceMod Handle for the convar
+	 * @brief Retrieves the SourceMod Handle for the convar.
 	 *
-	 * @return				SourceMod ConVar handle
+	 * @return				SourceMod ConVar handle.
 	 */
 	public ConVar GetSMHandle() {
 		char name[MAX_NAME_LENGTH];
@@ -1050,31 +1047,31 @@ methodmap ConVarPtrWrapper {
 	}
 
 	/**
-	 * @brief Retrieves the C string pointer for the convar
+	 * @brief Retrieves the C string pointer for the convar.
 	 */
 	property Address m_pszName {
 		public get() { return LoadFromAddress(view_as<Address>(this) + view_as<Address>(12), NumberType_Int32); }
 	}
 
 	/**
-	 * @brief Retrieves the parent convar
-	 * @remarks This either points to "this" or it points to the original declaration of a ConVar
-	 * @remarks This allows ConVars to exist in separate modules, and they all use the first one to be declared
-	 * @remarks m_pParent->m_pParent must equal m_pParent (ie: m_pParent must be the root, or original, ConVar)
+	 * @brief Retrieves the parent convar.
+	 * @remarks This either points to "this" or it points to the original declaration of a ConVar.
+	 * @remarks This allows ConVars to exist in separate modules, and they all use the first one to be declared.
+	 * @remarks m_pParent->m_pParent must equal m_pParent (ie: m_pParent must be the root, or original, ConVar).
 	 */
 	property ConVarPtrWrapper m_pParent {
 		public get() { return LoadFromAddress(view_as<Address>(this) + view_as<Address>(28), NumberType_Int32); }
 	}
 
 	/**
-	 * @brief DO NOT USE THIS PROPERTY. USE "GetFloat" INSTEAD. Retrieves the float value stored in this convar struct
+	 * @brief DO NOT USE THIS PROPERTY. USE "GetFloat" INSTEAD. Retrieves the float value stored in this convar struct.
 	 */
 	property float m_fValue {
 		public get() { return LoadFromAddress(view_as<Address>(this) + view_as<Address>(44), NumberType_Int32); }
 	}
 
 	/**
-	 * @brief DO NOT USE THIS PROPERTY. USE "GetInt" INSTEAD. Retrieves the integer value stored in this convar struct
+	 * @brief DO NOT USE THIS PROPERTY. USE "GetInt" INSTEAD. Retrieves the integer value stored in this convar struct.
 	 */
 	property int m_nValue {
 		public get() { return LoadFromAddress(view_as<Address>(this) + view_as<Address>(48), NumberType_Int32); }
@@ -1168,34 +1165,34 @@ enum AmmoFlags_t
 methodmap AmmoDef
 {
 	/**
-	 * @brief Retrieves the ammo index (m_nAmmoIndex)
-	 * @remarks Start with an index of 1. Subtract by 1 to get the number of total ammo types
+	 * @brief Retrieves the ammo index (m_nAmmoIndex).
+	 * @remarks Start with an index of 1. Subtract by 1 to get the number of total ammo types.
 	 *
-	 * @return				Current top ammo index
+	 * @return				Current top ammo index.
 	 */
 	public static native int GetAmmoIndex();
 
 	/**
-	 * @brief Returns a pointer to the Ammo at the Index passed in
+	 * @brief Returns a pointer to the Ammo at the Index passed in.
 	 *
-	 * @param nAmmoIndex	Ammo index
-	 * @return				Ammo_t methodmap
+	 * @param nAmmoIndex	Ammo index.
+	 * @return				Ammo_t methodmap.
 	 */
 	public static native Ammo_t GetAmmoOfIndex(int nAmmoIndex);
 
 	/**
-	 * @brief Returns an index for the ammo name
+	 * @brief Returns an index for the ammo name.
 	 *
-	 * @param psz			Ammo name
-	 * @return				An ammo index if found, -1 otherwise
+	 * @param psz			Ammo name.
+	 * @return				An ammo index if found, -1 otherwise.
 	 */
 	public static native int Index(const char[] psz);
 
 	/**
-	 * @brief Retrieves the maximum ammo that a player can carry
+	 * @brief Retrieves the maximum ammo that a player can carry.
 	 *
-	 * @param nAmmoIndex	Ammo index
-	 * @return				Ammo count
+	 * @param nAmmoIndex	Ammo index.
+	 * @return				Ammo count.
 	 */
 	public static native int MaxCarry(int nAmmoIndex);
 
@@ -1673,15 +1670,6 @@ forward void L4D_OnMaterializeFromGhost(int client);
  * @noreturn
  */
 forward void L4D_OnMaterializeFromGhost_PostHandled(int client);
-
-/**
- * @brief Called whenever CDirector::OnFinishIntro is invoked
- * @remarks called when the intro cutscene has finished
- * @remarks This is a post hook, it appears to be called before the "L4D_OnReleaseSurvivorPositions" forward.
- *
- * @noreturn
- */
-forward void L4D_OnFinishIntro();
 
 /**
  * @brief Called whenever IsTeamFull is invoked
@@ -3876,7 +3864,6 @@ forward Action L4D1_FirstAidKit_StartHealing(int client, int entity);
  * @note: Detouring as a post-hook for changing "first_aid_heal_percent" back to default value after healing finishes
  * @note: This does not change the animation speed
  * @note: To find the use entity that is being targeted, use the native: "L4D_FindUseEntity"
- * @remarks This forward will not trigger if the relative pre-hook forward has been blocked with Plugin_Handled
  *
  * @param client			the client performing the action
  * @param entity			the medkit entity they are using
@@ -3893,7 +3880,6 @@ forward void L4D1_FirstAidKit_StartHealing_Post(int client, int entity);
  * @note: Detouring as a post-hook for changing "first_aid_heal_percent" back to default value after healing finishes
  * @note: This does not change the animation speed
  * @note: To find the use entity that is being targeted, use the native: "L4D_FindUseEntity"
- * @remarks This forward will ONLY trigger if the relative pre-hook forward has been blocked with Plugin_Handled
  *
  * @param client			the client performing the action
  * @param entity			the medkit entity they are using
@@ -3904,48 +3890,6 @@ forward void L4D1_FirstAidKit_StartHealing_Post(int client, int entity);
 forward void L4D1_FirstAidKit_StartHealing_PostHandled(int client, int entity);
 
 /**
- * @brief Called whenever CTerrorPlayer::StartUseAction() is invoked
- * @remarks Called when a player is holding an item and about to use it
- *
- * @param action			the type of action being performed (can use the "L4D2UseAction" enum from "left4dhooks_stocks.inc" include file)
- * @param client			the client performing the action
- * @param target			the target they are affecting/using
- *
- * @return					Plugin_Handled to block action, Plugin_Continue otherwise
- */
-// L4D2 only
-forward Action L4D2_OnStartUseAction(any action, int client, int target);
-
-/**
- * @brief Called whenever CTerrorPlayer::StartUseAction() is invoked
- * @remarks Called when a player is holding an item and about to use it
- * @remarks The target entity will appear as the client when deploying upgrade packs
- * @remarks This forward will not trigger if the relative pre-hook forward has been blocked with Plugin_Handled
- *
- * @param action			the type of action being performed (can use the "L4D2UseAction" enum from "left4dhooks_stocks.inc" include file)
- * @param client			the client performing the action
- * @param target			the target they are affecting/using
- *
- * @noreturn
- */
-// L4D2 only
-forward void L4D2_OnStartUseAction_Post(any action, int client, int target);
-
-/**
- * @brief Called whenever CTerrorPlayer::StartUseAction() is invoked
- * @remarks Called when a player is holding an item and about to use it
- * @remarks This forward will ONLY trigger if the relative pre-hook forward has been blocked with Plugin_Handled
- *
- * @param action			the type of action being performed (can use the "L4D2UseAction" enum from "left4dhooks_stocks.inc" include file)
- * @param client			the client performing the action
- * @param target			the target they are affecting/using
- *
- * @noreturn
- */
-// L4D2 only
-forward void L4D2_OnStartUseAction_PostHandled(any action, int client, int target);
-
-/**
  * @brief Called whenever CBaseBackpackItem::StartAction() is invoked
  * @remarks Called when a player is holding an item and about to use it
  * @note: This does not change the animation speed
@@ -3960,7 +3904,7 @@ forward void L4D2_OnStartUseAction_PostHandled(any action, int client, int targe
  * @note: To find the use entity that is being targeted, use the native: "L4D_FindUseEntity"
  *
  * @param client			the client performing the action
- * @param entity			the entity they are using
+ * @param entity			the medkit entity they are using
  * @param type				the weapon type ID. Can be found as L4D2WeaponId in the left4dhooks_stocks include file
  *
  * @return					Plugin_Handled to block healing, Plugin_Continue otherwise
@@ -3971,7 +3915,6 @@ forward Action L4D2_BackpackItem_StartAction(int client, int entity, any type);
 /**
  * @brief Called whenever CBaseBackpackItem::StartAction() is invoked
  * @remarks Called when a player is holding an item and about to use it
- * @remarks This forward will not trigger if the relative pre-hook forward has been blocked with Plugin_Handled
  * @note: This does not change the animation speed
  * @note: Detouring as a pre-hook for changing the following per player before starting any actions:
  * - "first_aid_kit_use_duration"
@@ -3984,7 +3927,7 @@ forward Action L4D2_BackpackItem_StartAction(int client, int entity, any type);
  * @note: To find the use entity that is being targeted, use the native: "L4D_FindUseEntity"
  *
  * @param client			the client performing the action
- * @param entity			the entity they are using
+ * @param entity			the medkit entity they are using
  * @param type				the weapon type ID. Can be found as L4D2WeaponId in the left4dhooks_stocks include file
  *
  * @noreturn
@@ -3995,7 +3938,6 @@ forward void L4D2_BackpackItem_StartAction_Post(int client, int entity, any type
 /**
  * @brief Called whenever CBaseBackpackItem::StartAction() is invoked
  * @remarks Called when a player is holding an item and about to use it
- * @remarks This forward will ONLY trigger if the relative pre-hook forward has been blocked with Plugin_Handled
  * @note: This does not change the animation speed
  * @note: Detouring as a pre-hook for changing the following per player before starting any actions:
  * - "first_aid_kit_use_duration"
@@ -4008,7 +3950,7 @@ forward void L4D2_BackpackItem_StartAction_Post(int client, int entity, any type
  * @note: To find the use entity that is being targeted, use the native: "L4D_FindUseEntity"
  *
  * @param client			the client performing the action
- * @param entity			the entity they are using
+ * @param entity			the medkit entity they are using
  * @param type				the weapon type ID. Can be found as L4D2WeaponId in the left4dhooks_stocks include file
  *
  * @noreturn
@@ -4224,7 +4166,7 @@ native void L4D_PrecacheParticle(const char[] sEffectName);
  *
  * @param	entity		The entity to kill
  * @param	time		After how long to kill the entity
- * @param	user		Which user input/output to use. Valid values 1-4 only
+ * @param	user		Which user input/output to use. Valid values 1-4 only.
  *
  * @noreturn
  */
@@ -4453,7 +4395,7 @@ native void L4D_StopMusic(int client, const char[] music_str, float one_float = 
  *
  * @param entity	The entity to dissolve
  *
- * @return			Entity index of the dissolver, which should automatically delete itself when the effect is done, or -1 on failure
+ * @return			Entity index of the dissolver, which should automatically delete itself when the effect is done
  */
 native int L4D_Dissolve(int entity);
 
@@ -4536,16 +4478,6 @@ native any L4D_GetNearestNavArea(const float vecPos[3], float maxDist = 300.0, b
  * @return					The nav area address or 0 on fail
  */
 native any L4D_GetLastKnownArea(int client);
-
-/**
- * @brief Returns if an entity is touching a trigger
- *
- * @param trigger			The trigger entity to test (for example info_changelevel)
- * @param entity			The entity to test whether it's inside the trigger area
- *
- * @return					True if inside, false otherwise
- */
-native bool L4D_IsTouchingTrigger(int trigger, int entity);
 
 /**
  * @brief Gets the first Special Infected type the Director will spawn. Value set on map start
@@ -4648,18 +4580,15 @@ native bool L4D_IsInFirstCheckpoint(int client);
 
 /**
  * @brief Returns true when the specified Survivor or Special Infected is in the ending checkpoint area
- * @remarks This uses the "info_changelevel" entity, and checks the player is within the vector mins and vector maxs of the entity
  *
  * @param client	Client id to check their checkpoint
  *
- * @return			True if the player is in the ending checkpoint area. False otherwise
+ * @return			True if a survivor is in the ending checkpoint area. False otherwise
  */
 native bool L4D_IsInLastCheckpoint(int client);
 
 /**
  * @brief Returns true when a given vector is within the starting checkpoint area
- * @remarks This might return false on certain maps when the NavArea has the wrong flags to indicate that's within the safe area, please report if that happens
- * @remarks This requires line-of-sight from the vector position to the ground/NavArea to identify
  *
  * @param vecPos	Vector position to check
  *
@@ -4669,8 +4598,6 @@ native bool L4D_IsPositionInFirstCheckpoint(float vecPos[3]);
 
 /**
  * @brief Returns true when a given vector is within the ending checkpoint area
- * @remarks This might return false on certain maps when the NavArea has the wrong flags to indicate that's within the safe area, please report if that happens
- * @remarks This requires line-of-sight from the vector position to the ground/NavArea to identify
  *
  * @param vecPos	Vector position to check
  *
@@ -4799,7 +4726,7 @@ native void L4D_DetonateProjectile(int entity);
  * @param vecAng		Vector direction of the projectile
  * @param vecVel		Vector velocity of the projectile
  *
- * @return				Entity index of the projectile or -1 on failure
+ * @return				Entity index of the projectile
  */
 native int L4D_TankRockPrj(int client, const float vecPos[3], const float vecAng[3], const float vecVel[3] = NULL_VECTOR);
 
@@ -5110,7 +5037,6 @@ native bool L4D2_IsGenericCooperativeMode();
 
 /**
  * @brief Returns if the current game mode is Coop mode
- * @remarks L4D2: Can only be called 1 frame after OnMapStart at the earliest otherwise the addresses are invalid - Since version 1.145 Left4DHooks will block these calls and log an error
  *
  * @return				True if the current game mode is Coop mode, false otherwise
  **/
@@ -5588,13 +5514,6 @@ native int L4D_GetCurrentChapter();
 native int L4D_GetMaxChapters();
 
 /**
- * @brief Returns if the intro cutscene is playing
- *
- * @return			True if the intro cutscene is playing, false otherwise
- */
-native int L4D_IsInIntro();
-
-/**
  * @brief Returns all TheNavAreas addresses
  * @remarks Can only be called 1 frame after OnMapStart at the earliest otherwise the addresses are invalid - Since version 1.133 Left4DHooks will block these calls and log an error
  *
@@ -5655,7 +5574,7 @@ native void L4D_GetNavAreaCenter(Address area, float vecPos[3]);
 native void L4D_GetNavAreaSize(Address area, float vecSize[3]);
 
 /**
- * @brief Returns true if this area is connected to other area in given direction. (If you set direction to -1 or 4, it will automatically check all directions for a connection)
+ * @brief  	Returns true if this area is connected to other area in given direction. (If you set direction to -1 or 4, it will automatically check all directions for a connection)
  *
  *param area1		The address of the first NavArea
  *param are2a		The address of the second NavArea
@@ -7122,16 +7041,6 @@ native void L4D_Smoker_ReleaseVictim(int victim, int attacker);
  * @noreturn
  */
 native void L4D_CreateRescuableSurvivors();
-
-/**
- * @brief Stops reviving an incapacitated survivor, also from ledge hanging
- *
- * @param client			Client ID of the person to affect
- * @param vocalize			Vocalize the player stopping
- *
- * @noreturn
- */
-native void L4D_StopBeingRevived(int client, bool vocalize = false);
 
 /**
  * @brief Revives an incapacitated survivor, also from ledge hanging
