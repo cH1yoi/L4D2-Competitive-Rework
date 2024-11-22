@@ -71,7 +71,10 @@ public OnPluginStart()
 	CloseHandle(config);
 }
 
-public Enabled_Change(Handle:c, const String:n[], const String:o[]) bEnabled = GetConVarBool(hEnabled);
+public Enabled_Change(Handle:c, const String:n[], const String:o[])
+{
+    bEnabled = GetConVarBool(hEnabled);
+}
 
 public HealEnd_Event(Handle:event, const String:name[], bool:dontBroadcast)
 {
