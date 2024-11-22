@@ -128,7 +128,9 @@ public Action Command_ReloadAds(int args)
 /**
  * Menu Handlers
  */
-public int MenuHandler_DoNothing(Menu menu, MenuAction action, int param1, int param2) {}
+public int MenuHandler_DoNothing(Menu menu, MenuAction action, int param1, int param2) {
+    return 0;
+}
 
 
 /**
@@ -137,7 +139,7 @@ public int MenuHandler_DoNothing(Menu menu, MenuAction action, int param1, int p
 public Action Timer_DisplayAd(Handle timer)
 {
     if (!g_hEnabled.BoolValue) {
-        return;
+        return Plugin_Stop;
     }
 
     Advertisement ad;
@@ -233,6 +235,8 @@ public Action Timer_DisplayAd(Handle timer)
     if (++g_iCurrentAd >= g_hAdvertisements.Length) {
         g_iCurrentAd = 0;
     }
+
+    return Plugin_Continue;
 }
 
 public Action Timer_CenterAd(Handle timer, DataPack pack)
