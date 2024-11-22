@@ -66,11 +66,11 @@ public void OnClientPutInServer(int client)
 	}
 }
 
-public Action Cmd_hear(int client,any args)
+public Action Cmd_hear(int client, int args)
 {
-	if (IsValidClient(client))
-		CreateMuteMenu(client);
-	return Plugin_Handled;
+    if (IsValidClient(client))
+        CreateMuteMenu(client);
+    return Plugin_Handled;
 }
 
 void CreateMuteMenu(int client) {
