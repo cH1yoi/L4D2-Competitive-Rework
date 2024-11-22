@@ -54,8 +54,8 @@ public void SBPP_OnBanPlayer(int iAdmin, int iTarget, int iTime, const char[] sR
     Format(buffer, sizeof(buffer), "原因: %s", sReason);
     congratulation.DrawText(buffer);
     char time[64];
-    Format(time, sizeof(time), "%i 分钟", iTime)
-    Format(buffer, sizeof(buffer), "封禁时长: %s", iTime == 0 ? "永久" : iTime);
+    Format(time, sizeof(time), "%i 分钟", iTime);
+    Format(buffer, sizeof(buffer), "封禁时长: %s", iTime == 0 ? "永久" : time);
     congratulation.DrawText(buffer);
     congratulation.DrawItem("", ITEMDRAW_SPACER);
     congratulation.DrawText("==================================");
