@@ -73,48 +73,48 @@ public void SQL_CreateCallback(Database datavas, DBResultSet results, const char
 
 public Action OnClientSayCommand(int client, const char[] command, const char[] szArgs)
 {
-	if (g_bFullyConnected && !IsFakeClient(client))
-	{
-		if (strlen(szArgs) > 0 && szArgs[0]!='!' && szArgs[0]!='/')
-		{
-			int iMsgStyle, iServerPort;
-			int iTimeTmp = GetTime();
-			char szQuery[512], szTime[512], szMap[128], szSteamID[21], szTimeFunction[64], szServerName[64];
+    if (!g_bFullyConnected || IsFakeClient(client))
+        return Plugin_Continue;
 
-			if (StrContains(command, "_", false) != -1)
-			{
-				iMsgStyle = 1; //Team chat
-			}
+    if (strlen(szArgs) == 0 || szArgs[0] == '!' || szArgs[0] == '/')
+        return Plugin_Continue;
 
-			else
-			{
-				iMsgStyle = 0; //General chat
-			}
+    int iMsgStyle, iServerPort;
+    int iTimeTmp = GetTime();
+    char szQuery[512], szTime[512], szMap[128], szSteamID[21], szTimeFunction[64], szServerName[64];
 
-			FormatTime(szTime, sizeof(szTime), "%Y-%m-%d %T", iTimeTmp);
-			GetCurrentMap(szMap, sizeof(szMap));
-			
+    if (StrContains(command, "_", false) != -1)
+    {
+        iMsgStyle = 1;
+    }
+    else
+    {
+        iMsgStyle = 0;
+    }
 
-			if(!GetClientAuthId(client, AuthId_Steam2, szSteamID, sizeof(szSteamID)))
-			{
-				LogError("Player %N's steamid couldn't be fetched", client);
-				return;
-			}
-			iServerPort = GetConVarInt( FindConVar( "hostport" ) );
-			GetConVarString(FindConVar("hostname"), szServerName, sizeof(szServerName));
+    FormatTime(szTime, sizeof(szTime), "%Y-%m-%d %T", iTimeTmp);
+    GetCurrentMap(szMap, sizeof(szMap));
 
-			g_hDatabase.Format(szQuery, sizeof(szQuery), "INSERT INTO chat_log (date, map, steamid, name, message_style, message, server, port) VALUES ('%s', '%s', '%s', '%N', '%d', '%s', '%s', '%d')", szTime, szMap, szSteamID, client, iMsgStyle, szArgs, szServerName, iServerPort);
-			g_hDatabase.Query(SQL_Error, szQuery);
+    if (!GetClientAuthId(client, AuthId_Steam2, szSteamID, sizeof(szSteamID)))
+    {
+        LogError("Player %N's steamid couldn't be fetched", client);
+        return Plugin_Continue;
+    }
 
-			GetConVarString(chatlog_clearTableDuration, szTimeFunction, sizeof(szTimeFunction));
+    iServerPort = GetConVarInt(FindConVar("hostport"));
+    GetConVarString(FindConVar("hostname"), szServerName, sizeof(szServerName));
 
-			if (GetConVarBool(chatlog_clearTable))
-			{
-				g_hDatabase.Format(szQuery, sizeof(szQuery), "DELETE FROM chat_log WHERE date < DATE_SUB(NOW(), INTERVAL %s)", szTimeFunction);
-				g_hDatabase.Query(SQL_Error, szQuery);
-			}
-		}
-	}
+    g_hDatabase.Format(szQuery, sizeof(szQuery), "INSERT INTO chat_log (date, map, steamid, name, message_style, message, server, port) VALUES ('%s', '%s', '%s', '%N', '%d', '%s', '%s', '%d')", szTime, szMap, szSteamID, client, iMsgStyle, szArgs, szServerName, iServerPort);
+    g_hDatabase.Query(SQL_Error, szQuery);
+
+    GetConVarString(chatlog_clearTableDuration, szTimeFunction, sizeof(szTimeFunction));
+    if (GetConVarBool(chatlog_clearTable))
+    {
+        g_hDatabase.Format(szQuery, sizeof(szQuery), "DELETE FROM chat_log WHERE date < DATE_SUB(NOW(), INTERVAL %s)", szTimeFunction);
+        g_hDatabase.Query(SQL_Error, szQuery);
+    }
+
+    return Plugin_Continue;
 }
 
 public void SQL_Error(Database datavas, DBResultSet results, const char[] error, int data)
