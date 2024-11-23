@@ -10,6 +10,8 @@
 
 Sir.P 么么么么~
 
+如使用SourceTv启动项请添加+tv_enable 1 +sv_setmax 31
+
 # **L4D2 Competitive Rework**
 
 **IMPORTANT NOTES** - **DON'T IGNORE THESE!**
