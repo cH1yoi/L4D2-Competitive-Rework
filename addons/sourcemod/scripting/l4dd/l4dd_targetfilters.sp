@@ -201,11 +201,8 @@ void MatchSurvivor(ArrayList clients, int survivorCharacter)
 	int type;
 	bool matched;
 
-<<<<<<< HEAD
-=======
 	if( !g_bLeft4Dead2 ) survivorCharacter -= 4;
 
->>>>>>> parent of 126075fb (test left4dhooks 1.143)
 	for( int i = 1; i <= MaxClients; i++ )
 	{
 		if( IsClientInGame(i) && GetClientTeam(i) == 2 )
@@ -233,11 +230,6 @@ void MatchSurvivor(ArrayList clients, int survivorCharacter)
 				if( type == survivorCharacter )
 					matched = true;
 			} else {
-<<<<<<< HEAD
-				survivorCharacter -= 4;
-
-=======
->>>>>>> parent of 126075fb (test left4dhooks 1.143)
 				if( GetEntProp(i, Prop_Send, "m_survivorCharacter") == survivorCharacter )
 					matched = true;
 			}
