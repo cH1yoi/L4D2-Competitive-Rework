@@ -26,6 +26,7 @@ float g_flDelay;
 bool g_bLeft4Dead2;
 char g_sNextMap[64];
 int g_iMapDistance, g_iNextMapDistance;
+bool g_bMapStarted = false;
 
 #define TRANSLATION_FILE "l4d2_score_difference.phrases"
 void LoadPluginTranslations()
@@ -70,13 +71,26 @@ void OnConVarChanged(ConVar convar, const char[] oldValue, const char[] newValue
 
 public void OnMapStart()
 {
+    g_bMapStarted = true;
+    CreateTimer(0.1, Timer_SetMapDistance, _, TIMER_FLAG_NO_MAPCHANGE);
+}
+
+Action Timer_SetMapDistance(Handle timer)
+{
     g_iMapDistance = L4D_GetVersusMaxCompletionScore();
     UpdateNextMapInfo();
+    return Plugin_Stop;
+}
+
+public void OnMapEnd()
+{
+    g_bMapStarted = false;
+    g_iNextMapDistance = 0;
+    g_sNextMap[0] = '\0';
 }
 
 public void L4D_OnFirstSurvivorLeftSafeArea_Post(int client)
-{
-    g_iMapDistance = L4D_GetVersusMaxCompletionScore();
+{   
     if (g_iNextMapDistance == 0)
     {
         UpdateNextMapInfo();
@@ -88,13 +102,11 @@ void UpdateNextMapInfo()
     if (!g_bLeft4Dead2 || L4D_IsMissionFinalMap())
         return;
 
-    // 获取下一张地图名称
     char nextMapName[64];
     GetNextMapName(nextMapName, sizeof(nextMapName));
     
     if (nextMapName[0] != '\0')
     {
-        // 使用 confogl 的 mapinfo 系统
         if (LGO_IsMatchModeLoaded() && LGO_IsMapDataAvailable())
         {
             char buffer[PLATFORM_MAX_PATH];
@@ -111,18 +123,11 @@ void UpdateNextMapInfo()
             delete kv;
         }
         
-        // 如果没有从 mapinfo 获取到分数，使用当前地图的分数
-        if (g_iNextMapDistance == 0)
+        if (g_iNextMapDistance == 0 && g_bMapStarted)
         {
             g_iNextMapDistance = L4D_GetVersusMaxCompletionScore();
         }
     }
-}
-
-public void OnMapEnd()
-{
-    g_iNextMapDistance = 0;
-    g_sNextMap[0] = '\0';
 }
 
 void GetNextMapName(char[] buffer, int maxlength)
