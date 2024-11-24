@@ -20,8 +20,12 @@
 		}
 		"hyzmtf"
 		{
-			"name" "ZoneMod TankFight(克局Only)"
+			"name" "ZoneMod 2.8.1(克局ONLY)"
 		}
+        "advanced"
+        {
+            "name" "Advanced 进阶包抗"
+        }
 		"zonehunters"
 		{
 			"name" "ZoneHunters 2.8.9"
@@ -141,23 +145,43 @@
 			"name" "1v1 EQ"
 		}
 	}
-	"Other Configs"
+	"娱乐 Configs"
 	{
+		"zonemod5v5"
+		{
+			"name" "ZoneMod 5v5"
+		}
 		"zonemod6v6"
 		{
 			"name" "ZoneMod 6v6"
+		}
+		"zonemod7v7"
+		{
+			"name" "ZoneMod 7v7"
 		}
 		"zonemod8v8"
 		{
 			"name" "ZoneMod 8v8"
 		}
-		"advanced8v8"
+		"hideseek"
 		{
-			"name" "Advanced 8v8(进阶包)"
+			"name" "躲猫猫捏"
 		}
-		"advanced"
+		"blackjockey"
 		{
-			"name" "Advanced 进阶包抗"
+			"name" "黑神话悟空"
 		}
+		"c4s2ghost"
+		{
+			"name" "幽灵模式"
+		}
+		"cul3v3"
+		{     
+		     "name" "cul3v3"
+		}
+		"culmod"
+		{
+		     "name" "culmod"
+		}     
 	}
 }
