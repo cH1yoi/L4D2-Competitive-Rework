@@ -56,7 +56,7 @@ void NotifyRecordingInfo(const char[] path)
     pack.WriteString(halfStr);
     pack.WriteCell(randomNum);
     
-    CreateTimer(5.0, Timer_NotifyRecording, pack);
+    CreateTimer(10.0, Timer_NotifyRecording, pack);
 }
 
 public Action Timer_NotifyRecording(Handle timer, DataPack pack)

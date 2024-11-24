@@ -44,11 +44,11 @@ public void __pl_readyup_SetNTVOptional()
 }
 #endif
 
-public void OnRoundIsLive()
+public void OnRoundLiveCountdownPre()
 {
     if (g_bReadyUpAvailable)
     {
-        CreateTimer(3.0, Timer_DelayedRoundIsLive);
+        CreateTimer(1.0, Timer_DelayedRoundIsLive);
     }
 }
 
@@ -59,6 +59,7 @@ public Action Timer_DelayedRoundIsLive(Handle timer){
     
     for (int i = 1; i <= MaxClients; i++){
         if (!IsClientInGame(i)) continue;
+        if (IsFakeClient(i)) continue;
         switch (GetClientTeam(i)){
             case L4D2Team_Survivor:{
                 surs += L4D2_GetClientExp(i);
@@ -77,6 +78,7 @@ public Action Timer_DelayedRoundIsLive(Handle timer){
         
         for (int i = 1; i <= MaxClients; i++){
             if (!IsClientInGame(i)) continue;
+            if (IsFakeClient(i)) continue;
             switch (GetClientTeam(i)){
                 case L4D2Team_Survivor:{
                     suravg2 += abs(suravg - L4D2_GetClientExp(i));
@@ -102,6 +104,9 @@ public Action CMD_Exp(int client, int args){
     
     for (int i = 1; i <= MaxClients; i++){
         if (!IsClientInGame(i)) continue;
+        if (IsFakeClient(i)) continue;
+        if (IsClientSourceTV(i)) continue;
+        
         switch (GetClientTeam(i)){
             case L4D2Team_Survivor:{
                 CPrintToChat(client, "{blue}%N{default} %i[{green}%s{default}]", i, L4D2_GetClientExp(i), EXPRankNames[L4D2_GetClientExpRankLevel(i)]);
@@ -125,6 +130,7 @@ public Action CMD_Exp(int client, int args){
         int suravg = surs/surc;
         for (int i = 1; i <= MaxClients; i++){
             if (!IsClientInGame(i)) continue;
+            if (IsFakeClient(i)) continue;
             if (GetClientTeam(i) == L4D2Team_Survivor){
                 suravg2 += abs(suravg - L4D2_GetClientExp(i));
             }
@@ -136,6 +142,7 @@ public Action CMD_Exp(int client, int args){
         int infavg = infs/infc;
         for (int i = 1; i <= MaxClients; i++){
             if (!IsClientInGame(i)) continue;
+            if (IsFakeClient(i)) continue;
             if (GetClientTeam(i) == L4D2Team_Infected){
                 infavg2 += abs(infavg - L4D2_GetClientExp(i));
             }
