@@ -7,21 +7,21 @@
 #include <exp_interface>
 
 public Plugin myinfo = { 
-	name = "MixTeamCapitan",
+	name = "MixTeamCaptain",
 	author = "TouchMe",
-	description = "Adds capitan mix",
+	description = "Adds captain mix",
 	version = "build_0001",
 	url = "https://github.com/TouchMe-Inc/l4d2_mix_team"
 };
 
 
-#define TRANSLATIONS            "mt_capitan.phrases"
+#define TRANSLATIONS            "mt_captain.phrases"
 
 #define MENU_TITTLE_SIZE        128
 
 #define STEP_INIT               0
-#define STEP_FIRST_CAPITAN      1
-#define STEP_SECOND_CAPITAN     2
+#define STEP_FIRST_CAPTAIN      1
+#define STEP_SECOND_CAPTAIN     2
 #define STEP_PICK_PLAYER        3
 
 #define LAST_PICK               0
@@ -31,8 +31,8 @@ public Plugin myinfo = {
 
 
 int
-	g_iFirstCapitan = 0,
-	g_iSecondCapitan = 0,
+	g_iFirstCaptain = 0,
+	g_iSecondCaptain = 0,
 	g_iVoteCount[MAXPLAYERS + 1] = {0, ...},
 	g_iOrderPickPlayer = 0;
 
@@ -61,7 +61,7 @@ public void OnPluginStart() {
 public void OnAllPluginsLoaded()
 {
 	int iCalcMinPlayers = (FindConVar("survivor_limit").IntValue * 2);
-	AddMix("capitan", (iCalcMinPlayers < MIN_PLAYERS) ? MIN_PLAYERS : iCalcMinPlayers, 60);
+	AddMix("captain", (iCalcMinPlayers < MIN_PLAYERS) ? MIN_PLAYERS : iCalcMinPlayers, 60);
 }
 
 public void GetVoteDisplayMessage(int iClient, char[] sTitle) {
@@ -93,12 +93,12 @@ public int BuildMenu(Menu &hMenu, int iClient, int iStep)
 
 	switch(iStep)
 	{
-		case STEP_FIRST_CAPITAN: {
-			Format(sMenuTitle, MENU_TITTLE_SIZE, "%t", "MENU_TITLE_FIRST_CAPITAN", iClient);
+		case STEP_FIRST_CAPTAIN: {
+			Format(sMenuTitle, MENU_TITTLE_SIZE, "%t", "MENU_TITLE_FIRST_CAPTAIN", iClient);
 		}
 
-		case STEP_SECOND_CAPITAN: {
-			Format(sMenuTitle, MENU_TITTLE_SIZE, "%t", "MENU_TITLE_SECOND_CAPITAN", iClient);
+		case STEP_SECOND_CAPTAIN: {
+			Format(sMenuTitle, MENU_TITTLE_SIZE, "%t", "MENU_TITLE_SECOND_CAPTAIN", iClient);
 		}
 
 		case STEP_PICK_PLAYER: {
@@ -154,15 +154,15 @@ public int HandleMenu(Menu hMenu, MenuAction iAction, int iClient, int iIndex)
 
 		switch(iStep)
 		{
-			case STEP_FIRST_CAPITAN, STEP_SECOND_CAPITAN: {
+			case STEP_FIRST_CAPTAIN, STEP_SECOND_CAPTAIN: {
 				g_iVoteCount[iTarget] ++;
 			}
 
 			case STEP_PICK_PLAYER: 
 			{
-				bool bIsOrderPickFirstCapitan = !(g_iOrderPickPlayer & 2);
+				bool bIsOrderPickFirstCaptain = !(g_iOrderPickPlayer & 2);
 
-				if (bIsOrderPickFirstCapitan && IsFirstCapitan(iClient))
+				if (bIsOrderPickFirstCaptain && IsFirstCaptain(iClient))
 				{
 					SetClientTeam(iTarget, TEAM_SURVIVOR);	
 					CPrintToChatAll("%t", "PICK_TEAM", iClient, iTarget);
@@ -170,7 +170,7 @@ public int HandleMenu(Menu hMenu, MenuAction iAction, int iClient, int iIndex)
 					g_iOrderPickPlayer++;
 				}
 
-				else if (!bIsOrderPickFirstCapitan && IsSecondCapitan(iClient))
+				else if (!bIsOrderPickFirstCaptain && IsSecondCaptain(iClient))
 				{
 					SetClientTeam(iTarget, TEAM_INFECTED);	
 					CPrintToChatAll("%t", "PICK_TEAM", iClient, iTarget);
@@ -193,48 +193,48 @@ public void Flow(int iStep)
 			g_iOrderPickPlayer = 1;
 
 			ResetVoteCount();
-			DisplayMenuAll(STEP_FIRST_CAPITAN, 10);
+			DisplayMenuAll(STEP_FIRST_CAPTAIN, 10);
 
-			CreateTimer(11.0, NextStepTimer, STEP_FIRST_CAPITAN);
+			CreateTimer(11.0, NextStepTimer, STEP_FIRST_CAPTAIN);
 		}
 
-		case STEP_FIRST_CAPITAN: 
+		case STEP_FIRST_CAPTAIN: 
 		{
-			int iFirstCapitan = GetVoteWinner();
+			int iFirstCaptain = GetVoteWinner();
 
-			SetClientTeam((g_iFirstCapitan = iFirstCapitan), TEAM_SURVIVOR);
+			SetClientTeam((g_iFirstCaptain = iFirstCaptain), TEAM_SURVIVOR);
 
-			CPrintToChatAll("%t", "NEW_FIRST_CAPITAN", iFirstCapitan, g_iVoteCount[iFirstCapitan]);
+			CPrintToChatAll("%t", "NEW_FIRST_CAPTAIN", iFirstCaptain, g_iVoteCount[iFirstCaptain]);
 
 			ResetVoteCount();
 
-			CreateTimer(11.0, NextStepTimer, STEP_SECOND_CAPITAN);
+			CreateTimer(11.0, NextStepTimer, STEP_SECOND_CAPTAIN);
 
-			DisplayMenuAll(STEP_SECOND_CAPITAN, 10);
+			DisplayMenuAll(STEP_SECOND_CAPTAIN, 10);
 		}
 
-		case STEP_SECOND_CAPITAN:
+		case STEP_SECOND_CAPTAIN:
 		{
-			int iSecondCapitan = GetVoteWinner();
+			int iSecondCaptain = GetVoteWinner();
 
-			SetClientTeam((g_iSecondCapitan = iSecondCapitan), TEAM_INFECTED);
+			SetClientTeam((g_iSecondCaptain = iSecondCaptain), TEAM_INFECTED);
 
-			CPrintToChatAll("%t", "NEW_SECOND_CAPITAN", iSecondCapitan, g_iVoteCount[iSecondCapitan]);
+			CPrintToChatAll("%t", "NEW_SECOND_CAPTAIN", iSecondCaptain, g_iVoteCount[iSecondCaptain]);
 
 			Flow(STEP_PICK_PLAYER);
 		}
 
 		case STEP_PICK_PLAYER: 
 		{
-			int iCapitan = (g_iOrderPickPlayer & 2) ? g_iSecondCapitan : g_iFirstCapitan;
+			int iCaptain = (g_iOrderPickPlayer & 2) ? g_iSecondCaptain : g_iFirstCaptain;
 
 			Menu hMenu;
 
-			if (BuildMenu(hMenu, iCapitan, iStep) > 1)
+			if (BuildMenu(hMenu, iCaptain, iStep) > 1)
 			{
 				CreateTimer(1.0, NextStepTimer, iStep);
 
-				DisplayMenu(hMenu, iCapitan, 1);
+				DisplayMenu(hMenu, iCaptain, 1);
 			}
 
 			else {
@@ -336,12 +336,12 @@ int GetVoteWinner()
 	return iWinner;
 }
 
-bool IsFirstCapitan(int iClient) {
-	return g_iFirstCapitan == iClient;
+bool IsFirstCaptain(int iClient) {
+	return g_iFirstCaptain == iClient;
 }
 
-bool IsSecondCapitan(int iClient) {
-	return g_iSecondCapitan == iClient;
+bool IsSecondCaptain(int iClient) {
+	return g_iSecondCaptain == iClient;
 }
 
 /**

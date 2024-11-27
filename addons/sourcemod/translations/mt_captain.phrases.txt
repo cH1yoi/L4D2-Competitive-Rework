@@ -1,12 +1,12 @@
 "Phrases"
 {
-	"NEW_FIRST_CAPITAN"
+	"NEW_FIRST_CAPTAIN"
 	{
 		"#format"		"{1:N},{2:d}"
 		"en"			"Team {olive}survivors {default}captain {green}{1} {default}(votes {2})"
 	}
 
-	"NEW_SECOND_CAPITAN"
+	"NEW_SECOND_CAPTAIN"
 	{
 		"#format"		"{1:N},{2:d}"
 		"en"			"Team {olive}infected {olive}captain {green}{1} {default}(votes {2})"
@@ -15,7 +15,7 @@
 	"PICK_TEAM"
 	{
 		"#format"		"{1:N},{2:N}"
-		"en"			"The capitan {olive}{1} {default}chose the player {green}{2}"
+		"en"			"The CAPTAIN {olive}{1} {default}chose the player {green}{2}"
 	}
 
 	"VOTE_DISPLAY_MSG"
@@ -28,12 +28,12 @@
 		"en"			"Team mixing with captains in progress"
 	}
 
-	"MENU_TITLE_FIRST_CAPITAN"
+	"MENU_TITLE_FIRST_CAPTAIN"
 	{
 		"en"			"Choose a first team captain"
 	}
 
-	"MENU_TITLE_SECOND_CAPITAN"
+	"MENU_TITLE_SECOND_CAPTAIN"
 	{
 		"en"			"Choose a second team captain"
 	}

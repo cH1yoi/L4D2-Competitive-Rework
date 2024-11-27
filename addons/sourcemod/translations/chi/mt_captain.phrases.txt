@@ -1,12 +1,12 @@
 "Phrases"
 {
-	"NEW_FIRST_CAPITAN"
+	"NEW_FIRST_CAPTAIN"
 	{
 		"#format"		"{1:N},{2:d}"
 		"chi"			"[{green}!{default}] {olive}生还者 {default}队长 {green}{1} {default}({2} 票)"
 	}
 
-	"NEW_SECOND_CAPITAN"
+	"NEW_SECOND_CAPTAIN"
 	{
 		"#format"		"{1:N},{2:d}"
 		"chi"			"[{green}!{default}] {olive}感染者 {olive}队长 {green}{1} {default}({2} 票)"
@@ -28,12 +28,12 @@
 		"chi"			"即将开始mix..."
 	}
 
-	"MENU_TITLE_FIRST_CAPITAN"
+	"MENU_TITLE_FIRST_CAPTAIN"
 	{
 		"chi"			"选择第一个队长"
 	}
 
-	"MENU_TITLE_SECOND_CAPITAN"
+	"MENU_TITLE_SECOND_CAPTAIN"
 	{
 		"chi"			"选择第二个队长"
 	}
