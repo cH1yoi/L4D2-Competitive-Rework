@@ -16,9 +16,94 @@
 
 enum
 {
+<<<<<<< HEAD
     TEAM_SPECTATOR = 1,
     TEAM_SURVIVOR,
     TEAM_INFECTED
+=======
+    name = "Survivor MVP notification",
+    author = "Tabun, Artifacial",
+    description = "Shows MVP for survivor team at end of round",
+    version = "0.3.3",
+    url = "https://github.com/alexberriman/l4d2_survivor_mvp"
+};
+
+
+new     Handle:     hPluginEnabled =    INVALID_HANDLE;
+
+new     Handle:     hCountTankDamage =  INVALID_HANDLE;         // whether we're tracking tank damage for MVP-selection
+new     Handle:     hCountWitchDamage = INVALID_HANDLE;         // whether we're tracking witch damage for MVP-selection
+new     Handle:     hTrackFF =          INVALID_HANDLE;         // whether we're tracking friendly-fire damage (separate stat)
+new     Handle:     hBrevityFlags =     INVALID_HANDLE;         // how verbose/brief the output should be:
+
+new     bool:       bCountTankDamage;
+new     bool:       bCountWitchDamage;
+new     bool:       bTrackFF;
+new                 iBrevityFlags;
+new     bool:       bRUPLive;
+
+new     String:     sClientName[MAXPLAYERS + 1][64];            // which name is connected to the clientId?
+
+// Basic statistics
+new                 iGotKills[MAXPLAYERS + 1];                  // SI kills             track for each client
+new                 iGotCommon[MAXPLAYERS + 1];                 // CI kills
+new                 iDidDamage[MAXPLAYERS + 1];                 // SI only              these are a bit redundant, but will keep anyway for now
+new                 iDidDamageAll[MAXPLAYERS + 1];              // SI + tank + witch
+new                 iDidDamageTank[MAXPLAYERS + 1];             // tank only
+new                 iDidDamageWitch[MAXPLAYERS + 1];            // witch only
+new                 iDidFF[MAXPLAYERS + 1];                     // friendly fire damage
+
+// Detailed statistics
+new                 iDidDamageClass[MAXPLAYERS + 1][ZC_TANK + 1];   // si classes
+new                 timesPinned[MAXPLAYERS + 1][ZC_TANK + 1];   // times pinned
+new                 totalPinned[MAXPLAYERS + 1];                // total times pinned
+new                 pillsUsed[MAXPLAYERS + 1];                  // total pills eaten
+new                 boomerPops[MAXPLAYERS + 1];                 // total boomer pops
+new                 damageReceived[MAXPLAYERS + 1];             // Damage received
+
+// Tank stats
+new                tankSpawned = false;                        // When tank is spawned
+new                 commonKilledDuringTank[MAXPLAYERS + 1];     // Common killed during the tank
+new                 ttlCommonKilledDuringTank = 0;              // Common killed during the tank
+new                 siDmgDuringTank[MAXPLAYERS + 1];            // SI killed during the tank
+//new                 ttlSiDmgDuringTank = 0;                     // Total SI killed during the tank
+new                tankThrow;                                  // Whether or not the tank has thrown a rock
+new                 rocksEaten[MAXPLAYERS + 1];                 // The amount of rocks a player 'ate'.
+new                 rockIndex;                                  // The index of the rock (to detect how many times we were rocked)
+new                 ttlPinnedDuringTank[MAXPLAYERS + 1];        // The total times we were pinned when the tank was up
+
+
+new                 iTotalKills;                                // prolly more efficient to store than to recalculate
+new                 iTotalCommon;
+//new                 iTotalDamage;
+//new                 iTotalDamageTank;
+//new                 iTotalDamageWitch;
+new                 iTotalDamageAll;
+new                 iTotalFF;
+
+new                 iRoundNumber;
+new                 bInRound;
+new                 bPlayerLeftStartArea;                       // used for tracking FF when RUP enabled
+
+//stock char sTmpString[MAX_NAME_LENGTH];                // just used because I'm not going to break my head over why string assignment parameter passing doesn't work
+
+/*
+*      Natives
+*      =======
+*/
+
+public APLRes:AskPluginLoad2(Handle:myself, bool:late, String:error[], err_max)
+{
+    CreateNative("SURVMVP_GetMVP", Native_GetMVP);
+    CreateNative("SURVMVP_GetMVPDmgCount", Native_GetMVPDmgCount);
+    CreateNative("SURVMVP_GetMVPKills", Native_GetMVPKills);
+    CreateNative("SURVMVP_GetMVPDmgPercent", Native_GetMVPDmgPercent);
+    CreateNative("SURVMVP_GetMVPCI", Native_GetMVPCI);
+    CreateNative("SURVMVP_GetMVPCIKills", Native_GetMVPCIKills);
+    CreateNative("SURVMVP_GetMVPCIPercent", Native_GetMVPCIPercent);
+    
+    return APLRes_Success;
+>>>>>>> upstream/master
 }
 
 enum
