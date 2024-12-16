@@ -125,7 +125,7 @@ public void OnPluginStart()
 	PluginStartInit();
 	LoadTranslations("l4d2_mixmap.phrases");
 	
-	AutoExecConfig(true, "l4d2_mixmap");
+	//AutoExecConfig(true, "l4d2_mixmap");
 }
 
 void PluginStartInit() 

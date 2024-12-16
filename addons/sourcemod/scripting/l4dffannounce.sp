@@ -28,7 +28,7 @@ public void OnPluginStart()
     HookEvent("player_hurt_concise", Event_HurtConcise);
     HookEvent("player_death", Event_PlayerDeath);
 
-    AutoExecConfig(true, "l4dffannounce");
+    //AutoExecConfig(true, "l4dffannounce");
 }
 
 public Action Event_HurtConcise(Event event, const char[] name, bool dontBroadcast)
