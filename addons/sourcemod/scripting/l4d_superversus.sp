@@ -133,7 +133,6 @@ public void L4D_OnSpawnTank_Post(int client, const float vecPos[3], const float 
         g_vFirstTankPos = vecPos;
         g_iTanksSpawned = 1;
         
-        // 记录第一个坦克的玩家
         if (client > 0 && !IsFakeClient(client))
         {
             char steamId[64];
@@ -141,7 +140,6 @@ public void L4D_OnSpawnTank_Post(int client, const float vecPos[3], const float 
             h_whosHadTank.PushString(steamId);
         }
         
-        // 如果需要生成多个坦克
         if (g_cvTankCount.IntValue > 1)
         {
             CreateTimer(g_cvTankSpawnDelay.FloatValue, Timer_SpawnAdditionalTanks);
@@ -166,6 +164,7 @@ public Action Timer_SpawnAdditionalTanks(Handle timer)
             {
                 L4D_ReplaceTank(tank, tankPlayer);
             }
+            
             g_iTanksSpawned++;
             
             if (g_iTanksSpawned < g_cvTankCount.IntValue)
@@ -178,47 +177,35 @@ public Action Timer_SpawnAdditionalTanks(Handle timer)
     return Plugin_Stop;
 }
 
-bool FindSafeSpawnPosition(const float originalPos[3], float outPos[3])
+int GetNextTankPlayer()
 {
-    float distance = g_cvTankSpawnDistance.FloatValue;
-    float angles[3];
-    
-    for (int i = 0; i < 8; i++)
+    int infectedPlayerCount = 0;
+    for (int i = 1; i <= MaxClients; i++)
     {
-        float radians = float(i) * 3.14159265359 / 4.0;
-        outPos[0] = originalPos[0] + Cosine(radians) * distance;
-        outPos[1] = originalPos[1] + Sine(radians) * distance;
-        outPos[2] = originalPos[2];
-        
-        TR_TraceRay(outPos, angles, MASK_SOLID, RayType_Infinite);
-        if (!TR_DidHit())
+        if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == TEAM_INFECTED)
         {
-            return true;
+            infectedPlayerCount++;
         }
     }
     
-    outPos = originalPos;
-    return true;
-}
-
-int GetNextTankPlayer()
-{
+    if (infectedPlayerCount == 1 && g_iTanksSpawned > 0)
+    {
+        return -1;
+    }
+    
     ArrayList eligiblePlayers = new ArrayList();
     
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_INFECTED)
+        if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_INFECTED || IsFakeClient(i))
             continue;
             
-        if (!IsFakeClient(i))
+        char steamId[64];
+        GetClientAuthId(i, AuthId_Steam2, steamId, sizeof(steamId));
+        
+        if (h_whosHadTank.FindString(steamId) == -1)
         {
-            char steamId[64];
-            GetClientAuthId(i, AuthId_Steam2, steamId, sizeof(steamId));
-            
-            if (h_whosHadTank.FindString(steamId) == -1)
-            {
-                eligiblePlayers.Push(i);
-            }
+            eligiblePlayers.Push(i);
         }
     }
     
@@ -235,6 +222,29 @@ int GetNextTankPlayer()
     
     delete eligiblePlayers;
     return chosen;
+}
+
+bool FindSafeSpawnPosition(const float originalPos[3], float outPos[3])
+{
+    float distance = g_cvTankSpawnDistance.FloatValue;
+    float angles[3];
+    
+    for (int i = 0; i < 8; i++)
+    {
+        float radians = float(i) * (3.14159265359 / 4.0);
+        outPos[0] = originalPos[0] + Cosine(radians) * distance;
+        outPos[1] = originalPos[1] + Sine(radians) * distance;
+        outPos[2] = originalPos[2];
+        
+        TR_TraceRay(outPos, angles, MASK_SOLID, RayType_Infinite);
+        if (!TR_DidHit())
+        {
+            return true;
+        }
+    }
+    
+    outPos = originalPos;
+    return true;
 }
 
 public Action Command_JoinSurvivor(int client, int args)
