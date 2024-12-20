@@ -21,7 +21,7 @@ enum SourceTVBroadcastTarget {
  *
  * @return SourceTV instance number count. 
  */
-native SourceTV_GetServerInstanceCount();
+native int SourceTV_GetServerInstanceCount();
 
 /**
  * Select a SourceTV instance to operate the rest of the natives on.
@@ -30,47 +30,44 @@ native SourceTV_GetServerInstanceCount();
  * which can have 2 instances running.
  *
  * @param instance The SourceTV instance number.
- * @noreturn
  * @error Invalid SourceTV instance number.
  */
-native SourceTV_SelectServerInstance(instance);
+native void SourceTV_SelectServerInstance(int instance);
 
 /**
  * Get the index of the currently selected SourceTV server instance.
  *
  * @return Index of the selected SourceTV instance number or -1 if no SourceTV enabled.
  */
-native SourceTV_GetSelectedServerInstance();
+native int SourceTV_GetSelectedServerInstance();
 
 /**
  * Called when a SourceTV is initialized.
  *
  * @param instance	The SourceTV instance number.
- * @noreturn
  */
-forward SourceTV_OnServerStart(instance);
+forward void SourceTV_OnServerStart(int instance);
 
  /**
   * Called when a SourceTV server instance is shutdown.
   *
   * @param instance	The SourceTV instance number.
-  * @noreturn
   */
-forward SourceTV_OnServerShutdown(instance);
+forward void SourceTV_OnServerShutdown(int instance);
 
 /**
  * Returns whether this SourceTV instance is currently broadcasting.
  *
  * @return	True if SourceTV instance is broadcasting, false otherwise.
  */
-native bool:SourceTV_IsActive();
+native bool SourceTV_IsActive();
 
 /**
  * Returns whether this SourceTV instance is a master proxy or relay.
  *
  * @return	True if SourceTV instance is master proxy, false otherwise.
  */
-native bool:SourceTV_IsMasterProxy();
+native bool SourceTV_IsMasterProxy();
 
 /**
  * Get the local ip of the SourceTV server.
@@ -79,7 +76,7 @@ native bool:SourceTV_IsMasterProxy();
  * @param maxlen	Maximum length of the buffer.
  * @return	True if IP written, false otherwise.
  */
-native bool:SourceTV_GetServerIP(String:ip[], maxlen);
+native bool SourceTV_GetServerIP(char[] ip, int maxlen);
 
 /**
  * Get the UDP port of the SourceTV server.
@@ -87,14 +84,14 @@ native bool:SourceTV_GetServerIP(String:ip[], maxlen);
  *
  * @return	SourceTV server UDP port.
  */
-native SourceTV_GetServerPort();
+native int SourceTV_GetServerPort();
 
 /**
  * Get the client index of the SourceTV bot.
  *
  * @return Client index of SourceTV bot.
  */
-native SourceTV_GetBotIndex();
+native int SourceTV_GetBotIndex();
 
 /**
  * Get stats of the local SourceTV instance.
@@ -107,9 +104,9 @@ native SourceTV_GetBotIndex();
  * @param proxies	Number of SourceTV proxies connected to this server.
  * @param slots	Number of maximal available SourceTV spectator slots.
  * @param specs Number of currently connected SourceTV spectators.
- * @noreturn
+ * @return True if stats were retrieved, false otherwise.
  */
-native bool:SourceTV_GetLocalStats(&proxies, &slots, &specs);
+native bool SourceTV_GetLocalStats(int &proxies, int &slots, int &specs);
 
 /**
  * Get stats of this SourceTV network.
@@ -123,9 +120,9 @@ native bool:SourceTV_GetLocalStats(&proxies, &slots, &specs);
  * @param proxies	Number of SourceTV proxies connected to all servers.
  * @param slots	Number of maximal available SourceTV spectator slots on all servers.
  * @param specs Number of currently connected SourceTV spectators on all servers.
- * @noreturn
+ * @return True if stats were retrieved, false otherwise.
  */
-native bool:SourceTV_GetGlobalStats(&proxies, &slots, &specs);
+native bool SourceTV_GetGlobalStats(int &proxies, int &slots, int &specs);
 
 /**
  * Current broadcasted tick. Can be lower than the actual server tick,
@@ -133,14 +130,14 @@ native bool:SourceTV_GetGlobalStats(&proxies, &slots, &specs);
  *
  * @return Current broadcast tick from director.
  */
-native SourceTV_GetBroadcastTick();
+native int SourceTV_GetBroadcastTick();
 
 /**
  * Returns current delay in seconds. (tv_delay)
  *
  * @return Current delay in seconds.
  */
-native Float:SourceTV_GetDelay();
+native float SourceTV_GetDelay();
 
 /**
  * Print a center message to all SourceTV spectators for ~2 seconds.
@@ -151,7 +148,7 @@ native Float:SourceTV_GetDelay();
  * @param ...	Variable number of format string arguments.
  * @return	True if message was sent, false otherwise.
  */
-native bool:SourceTV_BroadcastScreenMessage(SourceTVBroadcastTarget:target, const String:format[], any:...);
+native bool SourceTV_BroadcastScreenMessage(SourceTVBroadcastTarget target, const char[] format, any ...);
 
 /**
  * Prints text to the console of all connected SourceTV spectators.
@@ -160,7 +157,7 @@ native bool:SourceTV_BroadcastScreenMessage(SourceTVBroadcastTarget:target, cons
  * @param ...	Variable number of format string arguments.
  * @return	True if message was sent, false otherwise.
  */
-native bool:SourceTV_BroadcastConsoleMessage(const String:format[], any:...);
+native bool SourceTV_BroadcastConsoleMessage(const char[] format, any ...);
 
 /**
  * Print a chat message to all SourceTV spectators.
@@ -170,7 +167,7 @@ native bool:SourceTV_BroadcastConsoleMessage(const String:format[], any:...);
  * @param ...	Variable number of format string arguments.
  * @return	True if message was sent, false otherwise.
  */
-native bool:SourceTV_BroadcastChatMessage(SourceTVBroadcastTarget:target, const String:format[], any:...);
+native bool SourceTV_BroadcastChatMessage(SourceTVBroadcastTarget target, const char[] format, any ...);
 
 
 /********************************************************************************
@@ -184,15 +181,14 @@ native bool:SourceTV_BroadcastChatMessage(SourceTVBroadcastTarget:target, const 
  *
  * @return Current view entity index, 0 if coords are used.
  */
-native SourceTV_GetViewEntity();
+native int SourceTV_GetViewEntity();
 
 /**
  * Get origin of current view point if view entity is 0.
  *
  * @param view	Vector to store view position in.
- * @noreturn
  */
-native SourceTV_GetViewOrigin(Float:view[3]);
+native void SourceTV_GetViewOrigin(float view[3]);
 
 /**
  * Force the auto director to show a certain camera angle.
@@ -205,7 +201,7 @@ native SourceTV_GetViewOrigin(Float:view[3]);
  * @return True if shot was created, false otherwise.
  * @error Invalid target entity.
  */
-native bool:SourceTV_ForceFixedCameraShot(Float:pos[], Float:angle[], iTarget, Float:fov, Float:fDuration = DEF_SHOT_LENGTH);
+native bool SourceTV_ForceFixedCameraShot(float[] pos, float[] angle, int iTarget, float fov, float fDuration = DEF_SHOT_LENGTH);
 
 /**
  * Force the auto director to show a player.
@@ -220,7 +216,7 @@ native bool:SourceTV_ForceFixedCameraShot(Float:pos[], Float:angle[], iTarget, F
  * @return True if shot was created, false otherwise.
  * @error Invalid target1 or target2 entity
  */
-native bool:SourceTV_ForceChaseCameraShot(iTarget1, iTarget2, distance, phi, theta, bool:bInEye, Float:fDuration = DEF_SHOT_LENGTH);
+native bool SourceTV_ForceChaseCameraShot(int iTarget1, int iTarget2, int distance, int phi, int theta, bool bInEye, float fDuration = DEF_SHOT_LENGTH);
 
 
 
@@ -236,21 +232,21 @@ native bool:SourceTV_ForceChaseCameraShot(iTarget1, iTarget2, distance, phi, the
  * @param sFilename	Filename of the demo file.
  * @return True if recording started, false otherwise.
  */
-native bool:SourceTV_StartRecording(const String:sFilename[]);
+native bool SourceTV_StartRecording(const char[] sFilename);
 
 /**
  * Stops recording a SourceTV demo.
  *
  * @return	True if recording stopped, false otherwise.
  */
-native bool:SourceTV_StopRecording();
+native bool SourceTV_StopRecording();
 
 /**
  * Returns whether the SourceTV server is currently recording a demo.
  *
  * @return True if currently recording a SourceTV demo, false otherwise.
  */
-native bool:SourceTV_IsRecording();
+native bool SourceTV_IsRecording();
 
 /**
  * Get the filename of the currently recorded demo.
@@ -259,14 +255,14 @@ native bool:SourceTV_IsRecording();
  * @param maxlen	Maximal length of the buffer.
  * @return True if filename was written, false otherwise.
  */
-native bool:SourceTV_GetDemoFileName(String:sFilename[], maxlen);
+native bool SourceTV_GetDemoFileName(char[] sFilename, int maxlen);
 
 /**
  * Get current tick in the demofile.
  *
  * @return Current recording tick in the demofle.
  */
-native SourceTV_GetRecordingTick();
+native int SourceTV_GetRecordingTick();
 
 /**
  * Print text to the demo console.
@@ -277,7 +273,7 @@ native SourceTV_GetRecordingTick();
  *
  * @return True if message was printed, false otherwise.
  */
-native bool:SourceTV_PrintToDemoConsole(const String:format[], any:...);
+native bool SourceTV_PrintToDemoConsole(const char[] format, any ...);
 
 /**
  * Called when a SourceTV demo starts being recorded.
@@ -285,9 +281,8 @@ native bool:SourceTV_PrintToDemoConsole(const String:format[], any:...);
  *
  * @param instance	The SourceTV instance of server recording.
  * @param filename	The filename of the demo.
- * @noreturn
  */
-forward SourceTV_OnStartRecording(instance, const String:filename[]);
+forward void SourceTV_OnStartRecording(int instance, const char[] filename);
 
 /**
  * Called when a SourceTV demo stops being recorded.
@@ -296,9 +291,8 @@ forward SourceTV_OnStartRecording(instance, const String:filename[]);
  * @param instance	The SourceTV instance of server recording.
  * @param filename	The filename of the demo.
  * @param recordingtick	The tick length of the demo.
- * @noreturn
  */
-forward SourceTV_OnStopRecording(instance, const String:filename[], recordingtick);
+forward void SourceTV_OnStopRecording(int instance, const char[] filename, int recordingtick);
 
 
 
@@ -312,14 +306,14 @@ forward SourceTV_OnStopRecording(instance, const String:filename[], recordingtic
  *
  * @return	SourceTV spectator count.
  */
-native SourceTV_GetSpectatorCount();
+native int SourceTV_GetSpectatorCount();
 
 /**
  * Get the current client limit.
  *
  * @return	Maximal possible spectator count.
  */
-native SourceTV_GetMaxClients();
+native int SourceTV_GetMaxClients();
 
 /**
  * Get number of client slots (used & unused)
@@ -328,7 +322,7 @@ native SourceTV_GetMaxClients();
  *
  * @return	Number of client slots (used & unused)
  */
-native SourceTV_GetClientCount();
+native int SourceTV_GetClientCount();
 
 /**
  * Returns if the spectator is connected.
@@ -337,7 +331,7 @@ native SourceTV_GetClientCount();
  * @return	True if client is connected, false otherwise.
  * @error	Invalid client index.
  */
-native bool:SourceTV_IsClientConnected(client);
+native bool SourceTV_IsClientConnected(int client);
 
 /**
  * Returns if the spectator is a relay proxy.
@@ -346,7 +340,7 @@ native bool:SourceTV_IsClientConnected(client);
  * @return	True if client is a proxy, false otherwise.
  * @error	Invalid client index.
  */
-native bool:SourceTV_IsClientProxy(client);
+native bool SourceTV_IsClientProxy(int client);
 
 /**
  * Get the name of a SourceTV spectator client.
@@ -354,10 +348,9 @@ native bool:SourceTV_IsClientProxy(client);
  * @param client	The spectator client index.
  * @param name	Buffer for the client name.
  * @param maxlen	Maximal length of the buffer.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_GetClientName(client, String:name[], maxlen);
+native void SourceTV_GetClientName(int client, char[] name, int maxlen);
 
 /**
  * Get the IP of a SourceTV spectator client.
@@ -365,10 +358,9 @@ native SourceTV_GetClientName(client, String:name[], maxlen);
  * @param client	The spectator client index.
  * @param name	Buffer for the client ip.
  * @param maxlen	Maximal length of the buffer.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_GetClientIP(client, String:ip[], maxlen);
+native void SourceTV_GetClientIP(int client, char[] ip, int maxlen);
 
 /**
  * Get the password of a SourceTV spectator client.
@@ -378,20 +370,18 @@ native SourceTV_GetClientIP(client, String:ip[], maxlen);
  * @param client	The spectator client index.
  * @param name	Buffer for the client ip.
  * @param maxlen	Maximal length of the buffer.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_GetClientPassword(client, String:password[], maxlen);
+native void SourceTV_GetClientPassword(int client, char[] password, int maxlen);
 
 /**
  * Kick a SourceTV spectator client.
  * 
  * @param client	The spectator client index.
  * @param sReason	The kick reason.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_KickClient(client, const String:sReason[]);
+native void SourceTV_KickClient(int client, const char[] sReason);
 
 /**
  * Print a message to a single client's chat.
@@ -399,10 +389,9 @@ native SourceTV_KickClient(client, const String:sReason[]);
  * @param client	The spectator client index.
  * @param format	The format string.
  * @param ...	Variable number of format string arguments.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_PrintToChat(client, const String:format[], any:...);
+native void SourceTV_PrintToChat(int client, const char[] format, any ...);
 
 /**
  * Print a message to a single client's console.
@@ -410,10 +399,9 @@ native SourceTV_PrintToChat(client, const String:format[], any:...);
  * @param client	The spectator client index.
  * @param format	The format string.
  * @param ...	Variable number of format string arguments.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_PrintToConsole(client, const String:format[], any:...);
+native void SourceTV_PrintToConsole(int client, const char[] format, any ...);
 
 /**
  * Change the stream title only for one spectator.
@@ -423,10 +411,9 @@ native SourceTV_PrintToConsole(client, const String:format[], any:...);
  * @param client	The spectator client index.
  * @param format	The format string.
  * @param ...	Variable number of format string arguments.
- * @noreturn
  * @error	Invalid client index or not connected.
  */
-native SourceTV_SetClientTVTitle(client, const String:format[], any:...);
+native void SourceTV_SetClientTVTitle(int client, const char[] format, any ...);
 
 /**
  * Called when a spectator wants to connect to the SourceTV server.
@@ -439,41 +426,37 @@ native SourceTV_SetClientTVTitle(client, const String:format[], any:...);
  * @param rejectReason	Buffer to write the reject reason to, if you want to reject the client from connecting.
  * @return True to allow the client to connect, false to reject him with the given reason.
  */
-forward bool:SourceTV_OnSpectatorPreConnect(const String:name[], String:password[255], const String:ip[], String:rejectReason[255]);
+forward bool SourceTV_OnSpectatorPreConnect(const char[] name, char password[255], const char[] ip, char rejectReason[255]);
 
 /**
  * Called when a spectator client connected to the SourceTV server.
  * 
  * @param client	The spectator client index.
- * @noreturn
  */
-forward SourceTV_OnSpectatorConnected(client);
+forward void SourceTV_OnSpectatorConnected(int client);
 
 /**
  * Called when a spectator client is about to disconnect.
  * 
  * @param client	The spectator client index.
  * @param reason	The reason for the disconnect. Can be overwritten.
- * @noreturn
  */
-forward SourceTV_OnSpectatorDisconnect(client, String:reason[255]);
+forward void SourceTV_OnSpectatorDisconnect(int client, char reason[255]);
 
 /**
  * Called after a spectator client disconnected.
  * 
  * @param client	The spectator client index.
  * @param reason	The reason for the disconnect.
- * @noreturn
  */
-forward SourceTV_OnSpectatorDisconnected(client, const String:reason[255]);
+forward void SourceTV_OnSpectatorDisconnected(int client, const char reason[255]);
 
 /**
  * Called when a spectator client is entering the game.
  * 
  * @param client	The spectator client index.
- * @noreturn
  */
-forward SourceTV_OnSpectatorPutInServer(client);
+forward void SourceTV_OnSpectatorPutInServer(int client);
 
 /**
  * Called before a spectator's chat message is sent.
@@ -485,7 +468,7 @@ forward SourceTV_OnSpectatorPutInServer(client);
  * @param chatgroup  The chatgroup this message is sent to (tv_chatgroup).
  * @return >= Plugin_Handled to block the message, Plugin_Continue to let it through.
  */
-forward Action:SourceTV_OnSpectatorChatMessage(client, String:message[255], String:chatgroup[255]);
+forward Action SourceTV_OnSpectatorChatMessage(int client, char message[255], char chatgroup[255]);
 
 /**
  * Called after a spectator wrote a chat message.
@@ -494,14 +477,13 @@ forward Action:SourceTV_OnSpectatorChatMessage(client, String:message[255], Stri
  * @param client     The spectator client index.
  * @param message    The message the client typed.
  * @param chatgroup  The chatgroup this message is sent to (tv_chatgroup).
- * @noreturn
  */
-forward SourceTV_OnSpectatorChatMessage_Post(client, const String:message[], const String:chatgroup[]);
+forward void SourceTV_OnSpectatorChatMessage_Post(int client, const char[] message, const char[] chatgroup);
 
 /**
  * Do not edit below this line!
  */
-public Extension:__ext_stvmngr = 
+public Extension __ext_stvmngr = 
 {
 	name = "SourceTV Manager",
 	file = "sourcetvmanager.ext",
@@ -518,7 +500,7 @@ public Extension:__ext_stvmngr =
 };
 
 #if !defined REQUIRE_EXTENSIONS
-public __ext_stvmngr_SetNTVOptional()
+public void __ext_stvmngr_SetNTVOptional()
 {
 	MarkNativeAsOptional("SourceTV_GetServerInstanceCount");
 	MarkNativeAsOptional("SourceTV_SelectServerInstance");
