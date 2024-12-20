@@ -2,6 +2,7 @@
 #include <sdktools>
 #include <left4dhooks>
 #include <colors>
+#include <l4d_CreateSurvivorBot>
 #define L4D2UTIL_STOCKS_ONLY
 #include <l4d2util_rounds>
 #include <witch_and_tankifier>
@@ -35,7 +36,7 @@ public Plugin myinfo = {
     name = "L4D Multi-Versus",
     author = "Hana",
     description = "支持Multi-Versus的基础插件，包含多坦克机制",
-    version = "1.2",
+    version = "1.3",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -76,7 +77,7 @@ public void OnMapStart()
     g_iTanksSpawned = 0;
     g_hPlayedTankList.Clear();
     
-    CreateTimer(1.0, Timer_ForceUpdateBots);
+    CreateTimer(1.0, Timer_CreateSurvivorBots);
 }
 
 public void OnClientDisconnect(int client)
@@ -93,26 +94,6 @@ public void OnClientDisconnect(int client)
         if (index != -1)
             g_hPlayedTankList.Erase(index);
     }
-}
-
-public Action Timer_ForceUpdateBots(Handle timer)
-{
-    int currentLimit = g_cvGameSurvivorLimit.IntValue;
-    int desiredLimit = g_cvSurvivorLimit.IntValue;
-    
-    SetConVarBounds(g_cvGameSurvivorLimit, ConVarBound_Upper, false);
-    
-    if (currentLimit == desiredLimit)
-    {
-        g_cvGameSurvivorLimit.IntValue = 4;
-        CreateTimer(0.5, Timer_SetFinalLimit, desiredLimit);
-    }
-    else
-    {
-        g_cvGameSurvivorLimit.IntValue = desiredLimit;
-    }
-    
-    return Plugin_Stop;
 }
 
 public Action Timer_SetFinalLimit(Handle timer, any desiredLimit)
@@ -200,6 +181,10 @@ public Action Timer_SpawnAdditionalTank(Handle timer)
         int selectedPlayer = GetNextTankPlayer();
         if (selectedPlayer > 0)
         {
+            char steamId[64];
+            GetClientAuthId(selectedPlayer, AuthId_Steam2, steamId, sizeof(steamId));
+            TankControl_OnTankSelection(steamId);
+            
             L4D_ReplaceTank(tank, selectedPlayer);
         }
         
@@ -295,13 +280,11 @@ public void TankControl_OnTankSelection(char sQueuedTank[64])
 
 int GetNextTankPlayer()
 {
-    // 获取当前第一个坦克的控制者
     int currentTankPlayer = GetTankSelection();
     
     ArrayList eligiblePlayers = new ArrayList();
     ArrayList allPlayers = new ArrayList();
     
-    // 收集所有感染者玩家（排除当前坦克控制者）
     for (int i = 1; i <= MaxClients; i++)
     {
         if (!IsClientInGame(i) || GetClientTeam(i) != 3 || IsFakeClient(i) || i == currentTankPlayer)
@@ -339,4 +322,28 @@ int GetNextTankPlayer()
     delete eligiblePlayers;
     delete allPlayers;
     return selectedPlayer;
+}
+
+public Action Timer_CreateSurvivorBots(Handle timer)
+{
+    int currentSurvivorCount = 0;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && GetClientTeam(i) == TEAM_SURVIVOR)
+        {
+            currentSurvivorCount++;
+        }
+    }
+    
+    int botsNeeded = g_cvSurvivorLimit.IntValue - currentSurvivorCount;
+    for (int i = 0; i < botsNeeded; i++)
+    {
+        if (CreateSurvivorBot() == -1)
+        {
+            LogError("Failed to create survivor bot (%d/%d)", i + 1, botsNeeded);
+            break;
+        }
+    }
+
+    return Plugin_Stop;
 }
