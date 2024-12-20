@@ -353,7 +353,7 @@ public void Event_round_start(Event event, const char[] name, bool dontBroadcast
 }
 
 // SourceTV Manager
-public int SourceTV_OnStartRecording(int instance, const char[] filename)
+public void SourceTV_OnStartRecording(int instance, const char[] filename)
 {
     SourceTV_GetDemoFileName(g_szDemoPath, sizeof(g_szDemoPath));
     NotifyRecordingInfo(g_szDemoPath);
