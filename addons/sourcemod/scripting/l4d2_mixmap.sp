@@ -788,19 +788,19 @@ public Action Timed_PostMapSet(Handle timer)
 
 // Returns a handle to the first array which is found to contain the specified mapname
 // (should be the first and only one)
-stock Handle GetPoolThatContainsMap(char[] map, int index, char[] tag) 
+stock Handle GetPoolThatContainsMap(char[] map, char[] tag) 
 {
-	Handle hArrayMapPool;
+    Handle hArrayMapPool;
 
-	for (int i = 0; i < GetArraySize(g_hArrayTags); i++) 
-	{
-		GetArrayString(g_hArrayTags, i, tag, BUF_SZ);
-		GetTrieValue(g_hTriePools, tag, hArrayMapPool);
-		if ((index = FindStringInArray(hArrayMapPool, map)) >= 0) {
-			return hArrayMapPool;
-		}
-	}
-	return INVALID_HANDLE;
+    for (int i = 0; i < GetArraySize(g_hArrayTags); i++) 
+    {
+        GetArrayString(g_hArrayTags, i, tag, BUF_SZ);
+        GetTrieValue(g_hTriePools, tag, hArrayMapPool);
+        if (FindStringInArray(hArrayMapPool, map) >= 0) {
+            return hArrayMapPool;
+        }
+    }
+    return INVALID_HANDLE;
 }
 
 stock void SelectRandomMap() 
