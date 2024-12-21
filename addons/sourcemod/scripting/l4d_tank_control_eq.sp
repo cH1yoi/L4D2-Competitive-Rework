@@ -22,10 +22,6 @@ ConVar
     hTankWindow, 
     hTankDebug;
 
-GlobalForward
-    hForwardOnTryOfferingTankBot,
-    hForwardOnTankSelection;
-
 char 
     queuedTankSteamId[64],
     tankInitiallyChosen[64];
@@ -37,12 +33,26 @@ float
 
 int dcedTankFrustration = -1;
 
+bool g_bRoundStarted;
+
+Handle g_hForwardOnTryOfferingTankBot;
+Handle g_hForwardOnTankSelection;
+
 public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max)
 {
     CreateNative("GetTankSelection", Native_GetTankSelection);
+    CreateNative("GetWhosHadTank", Native_GetWhosHadTank);
+    CreateNative("GetWhosNotHadTank", Native_GetWhosNotHadTank);
+    CreateNative("ClearWhosHadTank", Native_ClearWhosHadTank);
+    CreateNative("GetTankPool", Native_GetTankPool);
+    CreateNative("SetTank", Native_SetTank);
 
-    hForwardOnTryOfferingTankBot = new GlobalForward("TankControl_OnTryOfferingTankBot", ET_Ignore, Param_String);
-    hForwardOnTankSelection = new GlobalForward("TankControl_OnTankSelection", ET_Ignore, Param_String);
+    CreateGlobalForward("OnTankControlReset", ET_Ignore);
+    CreateGlobalForward("OnChooseTank", ET_Event, Param_String);
+    CreateGlobalForward("OnTankGiven", ET_Ignore, Param_String);
+
+    g_hForwardOnTryOfferingTankBot = new GlobalForward("TankControl_OnTryOfferingTankBot", ET_Ignore, Param_String);
+    g_hForwardOnTankSelection = new GlobalForward("TankControl_OnTankSelection", ET_Ignore, Param_String);
 
     return APLRes_Success;
 }
@@ -77,11 +87,16 @@ public void OnPluginStart()
     // Admin commands
     RegAdminCmd("sm_tankshuffle", TankShuffle_Cmd, ADMFLAG_SLAY, "Re-picks at random someone to become tank.");
     RegAdminCmd("sm_givetank", GiveTank_Cmd, ADMFLAG_SLAY, "Gives the tank to a selected player");
+    RegAdminCmd("sm_addtankpool", AddTankPool_Cmd, ADMFLAG_SLAY, "Adds selected player to tank pool.");
+    RegAdminCmd("sm_queuetank", AddTankPool_Cmd, ADMFLAG_SLAY, "Adds selected player to tank pool.");
+    RegAdminCmd("sm_removetankpool", RemoveTankPool_Cmd, ADMFLAG_SLAY, "Removes selected player from tank pool.");
+    RegAdminCmd("sm_dequeuetank", RemoveTankPool_Cmd, ADMFLAG_SLAY, "Removes selected player from tank pool.");
 
     // Register the boss commands
     RegConsoleCmd("sm_tank", Tank_Cmd, "Shows who is becoming the tank.");
     RegConsoleCmd("sm_boss", Tank_Cmd, "Shows who is becoming the tank.");
     RegConsoleCmd("sm_witch", Tank_Cmd, "Shows who is becoming the tank.");
+    RegConsoleCmd("sm_tankpool", TankPool_Cmd, "Shows who is in the pool of possible tanks.");
     
     // Cvars
     hTankPrint  = CreateConVar("tankcontrol_print_all", "0", "Who gets to see who will become the tank? (0 = Infected, 1 = Everyone)");
@@ -143,7 +158,7 @@ public Action L4D_OnTryOfferingTankBot(int tank_index, bool &enterStatis)
     // Allow third party plugins to override tank selection
     char sOverrideTank[64];
     sOverrideTank[0] = '\0';
-    Call_StartForward(hForwardOnTryOfferingTankBot);
+    Call_StartForward(g_hForwardOnTryOfferingTankBot);
     Call_PushStringEx(sOverrideTank, sizeof(sOverrideTank), SM_PARAM_STRING_UTF8, SM_PARAM_COPYBACK);
     Call_Finish();
 
@@ -217,6 +232,7 @@ void RoundStart_Event(Event hEvent, const char[] eName, bool dontBroadcast)
     dcedTankFrustration = -1;
     gotTankAt = 0.0;
     tankInitiallyChosen = "";
+    g_bRoundStarted = true;
 }
 
 Action newGame(Handle timer)
@@ -243,6 +259,7 @@ void RoundEnd_Event(Event hEvent, const char[] eName, bool dontBroadcast)
 {
     queuedTankSteamId = "";
     tankInitiallyChosen = "";
+    g_bRoundStarted = false;
 }
 
 /**
@@ -477,6 +494,134 @@ Action GiveTank_Cmd(int client, int args)
     return Plugin_Handled;
 }
 
+public Action TankPool_Cmd(int client, int args)
+{
+    if (!IsClientInGame(client))
+        return Plugin_Handled;
+       
+    // Create our pool of players to choose from
+    ArrayList infectedPool = new ArrayList(ByteCountToCells(64));
+    AddTeamSteamIdsToArray(infectedPool, TEAM_INFECTED);
+   
+    // Remove players who've already had tank from the pool
+    RemoveSteamIdsFromArray(infectedPool, h_whosHadTank);
+   
+    // If the infected pool is empty, reset pool of players
+    if (infectedPool.Length == 0)
+        AddTeamSteamIdsToArray(infectedPool, TEAM_INFECTED);
+       
+    // If there is nobody on the infected team
+    if (infectedPool.Length == 0)
+    {
+        CPrintToChat(client, "{olive}[SM] {default}Nobody on the infected team!");
+        delete infectedPool;
+        return Plugin_Handled;
+    }
+   
+    char steamId[64];
+    char names[MAX_NAME_LENGTH * 4 + 6]; // 4 names, 3 comma+space in between
+    names[0] = '\0';
+    int tankClient;
+   
+    for (int i = 0; i < infectedPool.Length; i++)
+    {
+        infectedPool.GetString(i, steamId, sizeof(steamId));
+        tankClient = getInfectedPlayerBySteamId(steamId);
+       
+        if (tankClient == -1)
+            continue;
+           
+        if (names[0] == '\0')
+            Format(names, sizeof(names), "%N", tankClient);
+        else
+            Format(names, sizeof(names), "%s, %N", names, tankClient);
+    }
+   
+    CPrintToChat(client, "{olive}[SM] {default}Tank pool: %s", names);
+     
+    delete infectedPool;
+    return Plugin_Handled;
+}
+
+public Action AddTankPool_Cmd(int client, int args)
+{
+    if (args < 1)
+    {
+        ReplyToCommand(client, "[SM] Usage: sm_addtankpool <player>");
+        return Plugin_Handled;
+    }
+   
+    char arg[MAX_NAME_LENGTH];
+    GetCmdArg(1, arg, sizeof(arg));
+   
+    int target = FindTarget(client, arg);
+    if (target == -1)
+        return Plugin_Handled;
+       
+    if (!IsClientInGame(target) || IsFakeClient(target))
+    {
+        CPrintToChat(client, "{olive}[SM] {default}Invalid target");
+        return Plugin_Handled;
+    }
+   
+    if (!IS_INFECTED(target))
+    {
+        CPrintToChat(client, "{olive}[SM] {default}%N not on infected. Unable to add to tank pool", target);
+        return Plugin_Handled;
+    }
+   
+    char steamId[64];
+    GetClientAuthId(target, AuthId_Steam2, steamId, sizeof(steamId));
+   
+    // Remove player from list of who had tank
+    int index = h_whosHadTank.FindString(steamId);
+    if (index != -1)
+        h_whosHadTank.Erase(index);
+       
+    CPrintToChatAll("{olive}[SM] {default}%N added to tank pool!", target);
+    return Plugin_Handled;
+}
+
+public Action RemoveTankPool_Cmd(int client, int args)
+{
+    if (args < 1)
+    {
+        ReplyToCommand(client, "[SM] Usage: sm_removetankpool <player>");
+        return Plugin_Handled;
+    }
+   
+    char arg[MAX_NAME_LENGTH];
+    GetCmdArg(1, arg, sizeof(arg));
+   
+    int target = FindTarget(client, arg);
+    if (target == -1)
+        return Plugin_Handled;
+       
+    if (!IsClientInGame(target) || IsFakeClient(target))
+    {
+        CPrintToChat(client, "{olive}[SM] {default}Invalid target");
+        return Plugin_Handled;
+    }
+   
+    if (!IS_INFECTED(target))
+    {
+        CPrintToChat(client, "{olive}[SM] {default}%N not on infected. Unable to remove from tank pool", target);
+        return Plugin_Handled;
+    }
+   
+    char steamId[64];
+    GetClientAuthId(target, AuthId_Steam2, steamId, sizeof(steamId));
+   
+    // Add player to list of who had tank if not already in it
+    int index = h_whosHadTank.FindString(steamId);
+    if (index == -1)
+    {
+        h_whosHadTank.PushString(steamId);
+    }
+   
+    CPrintToChatAll("{olive}[SM] {default}%N removed from tank pool!", target);
+    return Plugin_Handled;
+}
 
 /*=========================================================================
 |                                 Stocks                                  |
@@ -492,7 +637,7 @@ void chooseTank(any data)
     // Allow other plugins to override tank selection.
     char sOverrideTank[64];
     sOverrideTank[0] = '\0';
-    Call_StartForward(hForwardOnTankSelection);
+    Call_StartForward(g_hForwardOnTankSelection);
     Call_PushStringEx(sOverrideTank, sizeof(sOverrideTank), SM_PARAM_STRING_UTF8, SM_PARAM_COPYBACK);
     Call_Finish();
 
@@ -720,6 +865,37 @@ void ShuffleArray(ArrayList arrayList, int start, int end)
     }
 }
 
+void AddTeamSteamIdsToArray(ArrayList steamIds, int team)
+{
+    char steamId[64];
+   
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == team)
+        {
+            GetClientAuthId(i, AuthId_Steam2, steamId, sizeof(steamId));
+            steamIds.PushString(steamId);
+        }
+    }
+}
+
+void RemoveSteamIdsFromArray(ArrayList steamIds, ArrayList steamIdsToRemove)
+{
+    int index;
+    char steamId[64];
+   
+    for (int i = 0; i < steamIdsToRemove.Length; i++)
+    {
+        steamIdsToRemove.GetString(i, steamId, sizeof(steamId));
+        index = steamIds.FindString(steamId);
+       
+        if (index != -1)
+        {
+            steamIds.Erase(index);
+        }
+    }
+}
+
 /**
  * Check if the translation file exists
  *
@@ -738,4 +914,60 @@ stock void LoadTranslation(const char[] translation)
 		SetFailState("Missing translation file %s.txt", translation);
 
 	LoadTranslations(translation);
+}
+
+public int Native_GetWhosHadTank(Handle plugin, int numParams)
+{
+    return view_as<int>(CloneHandle(h_whosHadTank, plugin));
+}
+
+public int Native_GetWhosNotHadTank(Handle plugin, int numParams)
+{
+    ArrayList infectedPool = new ArrayList(ByteCountToCells(64));
+    AddTeamSteamIdsToArray(infectedPool, TEAM_INFECTED);
+   
+    // Remove players who've already had tank from the pool
+    RemoveSteamIdsFromArray(infectedPool, h_whosHadTank);
+   
+    return view_as<int>(CloneHandle(infectedPool, plugin));
+}
+
+public int Native_GetTankPool(Handle plugin, int numParams)
+{
+    ArrayList infectedPool = new ArrayList(ByteCountToCells(64));
+    AddTeamSteamIdsToArray(infectedPool, TEAM_INFECTED);
+   
+    // Remove players who've already had tank from the pool
+    RemoveSteamIdsFromArray(infectedPool, h_whosHadTank);
+   
+    // If the infected pool is empty, reset pool of players
+    if (infectedPool.Length == 0)
+    {
+        AddTeamSteamIdsToArray(infectedPool, TEAM_INFECTED);
+    }
+   
+    return view_as<int>(CloneHandle(infectedPool, plugin));
+}
+
+public int Native_ClearWhosHadTank(Handle plugin, int numParams)
+{
+    h_whosHadTank.Clear();
+    return 1;
+}
+
+public int Native_SetTank(Handle plugin, int numParams)
+{
+    char steamId[64];
+    GetNativeString(1, steamId, sizeof(steamId));
+   
+    int client = getInfectedPlayerBySteamId(steamId);
+    if (client == -1 || !IS_VALID_INFECTED(client))
+        return false;
+       
+    strcopy(queuedTankSteamId, sizeof(queuedTankSteamId), steamId);
+   
+    if (g_bRoundStarted)
+        outputTankToAll(0);
+       
+    return true;
 }
