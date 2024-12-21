@@ -5,20 +5,37 @@
 #include <sdktools>
 #include <colors>
 
-#define VOICE_NORMAL	0	/**< Allow the client to listen and speak normally. */
-#define VOICE_MUTED		1	/**< Mutes the client from speaking to everyone. */
-#define VOICE_SPEAKALL	2	/**< Allow the client to speak to everyone. */
-#define VOICE_LISTENALL	4	/**< Allow the client to listen to everyone. */
-#define VOICE_TEAM		8	/**< Allow the client to always speak to team, even when dead. */
-#define VOICE_LISTENTEAM	16	/**< Allow the client to always hear teammates, including dead ones. */
+#if !defined VOICE_NORMAL
+    #define VOICE_NORMAL 0 /**< Allow the client to listen and speak normally. */
+#endif
+
+#if !defined VOICE_MUTED
+    #define VOICE_MUTED 1 /**< Mutes the client from speaking to everyone. */
+#endif
+
+#if !defined VOICE_SPEAKALL
+    #define VOICE_SPEAKALL 2 /**< Allow the client to speak to everyone. */
+#endif
+
+#if !defined VOICE_LISTENALL
+    #define VOICE_LISTENALL 4 /**< Allow the client to listen to everyone. */
+#endif
+
+#if !defined VOICE_TEAM
+    #define VOICE_TEAM 8 /**< Allow the client to always speak to team, even when dead. */
+#endif
+
+#if !defined VOICE_LISTENTEAM
+    #define VOICE_LISTENTEAM 16 /**< Allow the client to always hear teammates, including dead ones. */
+#endif
 
 #define TEAM_SPEC 1
 #define TEAM_SURVIVOR 2
 #define TEAM_INFECTED 3
 
-#define MUTE_TAG		"[X]"
-#define UNMUTE_TAG		"[√]"
-#define ITEMMARK(%0)	(%0 - (%0 % 7))
+#define MUTE_TAG "[X]"
+#define UNMUTE_TAG "[√]"
+#define ITEMMARK(%0) (%0 - (%0 % 7))
 
 Handle hAllTalk;
 
@@ -29,26 +46,25 @@ char g_sClientauthId[MAXPLAYERS+1][32];
 #define PLUGIN_VERSION "2.1"
 public Plugin myinfo = 
 {
-	name = "SpecLister",
-	author = "waertf & bear modded by bman,Bred",
-	description = "Allows spectator listen others team voice for l4d and mute a teammates",
-	version = PLUGIN_VERSION,
-	url = "http://forums.alliedmods.net/showthread.php?t=95474"
+    name = "SpecLister",
+    author = "waertf & bear modded by bman,Bred",
+    description = "Allows spectator listen others team voice for l4d and mute a teammates",
+    version = PLUGIN_VERSION,
+    url = "http://forums.alliedmods.net/showthread.php?t=95474"
 }
-
 
 public void OnPluginStart()
 {
-	HookEvent("player_team",Event_PlayerChangeTeam);
-	RegConsoleCmd("hear", Cmd_hear);
-	
-	//Fix for End of round all-talk.
-	hAllTalk = FindConVar("sv_alltalk");
-	HookConVarChange(hAllTalk, OnAlltalkChange);
-	
-	ResetListenOverride();
+    HookEvent("player_team",Event_PlayerChangeTeam);
+    RegConsoleCmd("hear", Cmd_hear);
+    
+    //Fix for End of round all-talk.
+    hAllTalk = FindConVar("sv_alltalk");
+    HookConVarChange(hAllTalk, OnAlltalkChange);
+    
+    ResetListenOverride();
 
-	LoadTranslations("SpecLister.phrases");
+    LoadTranslations("SpecLister.phrases");
 }
 
 public void OnClientPutInServer(int client)
