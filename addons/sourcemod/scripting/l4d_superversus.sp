@@ -30,13 +30,14 @@ ConVar g_cvPluginEnabled;
 float g_vFirstTankPos[3];
 int g_iTanksSpawned;
 
-ArrayList g_hPlayedTankList;
+// 添加新变量来追踪当前坦克事件
+bool g_bIsTankEventActive = false;
 
 public Plugin myinfo = {
     name = "L4D Multi-Versus",
     author = "Hana",
     description = "支持Multi-Versus的基础插件，包含多坦克机制",
-    version = "1.3",
+    version = "1.5",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -59,8 +60,6 @@ public void OnPluginStart()
     HookConVarChange(g_cvSurvivorLimit, OnLimitChange);
     HookConVarChange(g_cvInfectedLimit, OnLimitChange);
     
-    g_hPlayedTankList = new ArrayList(ByteCountToCells(64));
-    
     RegConsoleCmd("sm_sur", Command_JoinSurvivor, "加入生还者");
     RegConsoleCmd("sm_inf", Command_JoinInfected, "加入感染者");
     
@@ -75,7 +74,6 @@ public void OnMapStart()
         return;
         
     g_iTanksSpawned = 0;
-    g_hPlayedTankList.Clear();
     
     CreateTimer(1.0, Timer_CreateSurvivorBots);
 }
@@ -90,9 +88,6 @@ public void OnClientDisconnect(int client)
         char steamId[64];
         GetClientAuthId(client, AuthId_Steam2, steamId, sizeof(steamId));
         
-        int index = g_hPlayedTankList.FindString(steamId);
-        if (index != -1)
-            g_hPlayedTankList.Erase(index);
     }
 }
 
@@ -126,7 +121,7 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         return;
         
     g_iTanksSpawned = 0;
-    g_hPlayedTankList.Clear();
+    g_bIsTankEventActive = false;
 }
 
 public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
@@ -135,6 +130,7 @@ public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
         return;
         
     g_iTanksSpawned = 0;
+    g_bIsTankEventActive = false;
 }
 
 public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
@@ -146,59 +142,223 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     if (!tank || !IsClientInGame(tank))
         return;
         
-    // 记录第一个坦克的位置和控制者
-    if (g_iTanksSpawned == 0)
+    if (!g_bIsTankEventActive)
     {
+        g_bIsTankEventActive = true;
+        g_iTanksSpawned = 0;
         GetClientAbsOrigin(tank, g_vFirstTankPos);
-        g_iTanksSpawned++;
         
-        if (g_iTanksSpawned < g_cvTankCount.IntValue)
+        // 检查并重置坦克队列
+        CheckAndResetTankQueue();
+    }
+    
+    g_iTanksSpawned++;
+    
+    // 记录第一个坦克的位置和控制者
+    if (g_iTanksSpawned == 1)
+    {
+        // 获取坦克玩家的 Steam ID 并标记为已玩过坦克
+        if (!IsFakeClient(tank))
         {
-            CreateTimer(g_cvTankSpawnDelay.FloatValue, Timer_SpawnAdditionalTank);
+            char steamId[64];
+            GetClientAuthId(tank, AuthId_Steam2, steamId, sizeof(steamId));
+            OnTankGiven(steamId);
         }
+    }
+    
+    if (g_iTanksSpawned < g_cvTankCount.IntValue)
+    {
+        CreateTimer(g_cvTankSpawnDelay.FloatValue, Timer_SpawnAdditionalTank);
+    }
+}
+
+void CheckAndResetTankQueue()
+{
+    // 清空现有队列
+    ClearWhosHadTank();
+
+    ArrayList infectedPlayers = new ArrayList(64);
+    
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && !IsFakeClient(i) && GetClientTeam(i) == TEAM_INFECTED)
+        {
+            char steamId[64];
+            GetClientAuthId(i, AuthId_Steam2, steamId, sizeof(steamId));
+            infectedPlayers.PushString(steamId);
+        }
+    }
+    
+    // 随机打乱顺序并添加到队列
+    int remainingPlayers = infectedPlayers.Length;
+    while (remainingPlayers > 0)
+    {
+        int index = GetRandomInt(0, remainingPlayers - 1);
+        char steamId[64];
+        infectedPlayers.GetString(index, steamId, sizeof(steamId));
+        AddToTankQueue(steamId);
+        infectedPlayers.Erase(index);
+        remainingPlayers--;
+    }
+    
+    delete infectedPlayers;
+}
+
+public void OnEntityDestroyed(int entity)
+{
+    if (!g_cvPluginEnabled.BoolValue || !g_bIsTankEventActive)
+        return;
+        
+    bool tankAlive = false;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && GetClientTeam(i) == 3 && IsPlayerAlive(i) && GetEntProp(i, Prop_Send, "m_zombieClass") == 8)
+        {
+            tankAlive = true;
+            break;
+        }
+    }
+    
+    // 如果没有存活的坦克，重置事件状态
+    if (!tankAlive)
+    {
+        g_bIsTankEventActive = false;
+    }
+}
+
+public void OnTankGiven(const char[] steamId)
+{
+    // 将玩家添加到已玩过坦克的列表中
+    ArrayList hadTankList = GetWhosHadTank();
+    if (hadTankList != null)
+    {
+        if (hadTankList.FindString(steamId) == -1)
+        {
+            hadTankList.PushString(steamId);
+        }
+        delete hadTankList;
     }
 }
 
 public Action Timer_SpawnAdditionalTank(Handle timer)
 {
-    int currentTankPlayer = GetTankSelection();
-    if (currentTankPlayer <= 0)
+    // 确保有足够的玩家可以控制坦克
+    ArrayList tankQueue = GetTankQueue();
+    ArrayList notHadTankList = GetWhosNotHadTank();
+    
+    // 如果队列为空且所有人都玩过坦克，重置队列
+    if ((tankQueue == null || tankQueue.Length == 0) && 
+        (notHadTankList == null || notHadTankList.Length == 0))
     {
-        CreateTimer(0.5, Timer_SpawnAdditionalTank);
+        CheckAndResetTankQueue();
+        // 获取新的队列
+        delete tankQueue;
+        tankQueue = GetTankQueue();
+    }
+    
+    delete notHadTankList;
+    
+    // 如果还是没有可用的玩家，延迟生成
+    if (tankQueue == null || tankQueue.Length == 0)
+    {
+        delete tankQueue;
+        CreateTimer(1.0, Timer_SpawnAdditionalTank);
         return Plugin_Stop;
     }
     
     float spawnPos[3];
-    spawnPos = g_vFirstTankPos;
-    spawnPos[0] += GetRandomFloat(-g_cvTankSpawnDistance.FloatValue, g_cvTankSpawnDistance.FloatValue);
-    spawnPos[1] += GetRandomFloat(-g_cvTankSpawnDistance.FloatValue, g_cvTankSpawnDistance.FloatValue);
+    bool foundValidPos = false;
     
-    int tank = L4D2_SpawnTank(spawnPos, NULL_VECTOR);
-    if (tank > 0)
+    // 获取第一个坦克的 Nav Area
+    Address firstTankArea = L4D_GetNearestNavArea(g_vFirstTankPos, 1000.0, false, false, false, TEAM_INFECTED);
+    if (firstTankArea != Address_Null)
     {
-        g_iTanksSpawned++;
-        
-        int selectedPlayer = GetNextTankPlayer();
-        if (selectedPlayer > 0)
+        int maxAttempts = 10;
+        while (maxAttempts-- > 0)
         {
-            char steamId[64];
-            GetClientAuthId(selectedPlayer, AuthId_Steam2, steamId, sizeof(steamId));
-            TankControl_OnTankSelection(steamId);
+            spawnPos[0] = g_vFirstTankPos[0] + GetRandomFloat(-g_cvTankSpawnDistance.FloatValue, g_cvTankSpawnDistance.FloatValue);
+            spawnPos[1] = g_vFirstTankPos[1] + GetRandomFloat(-g_cvTankSpawnDistance.FloatValue, g_cvTankSpawnDistance.FloatValue);
+            spawnPos[2] = g_vFirstTankPos[2];
             
-            L4D_ReplaceTank(tank, selectedPlayer);
+            Address nearestArea = L4D_GetNearestNavArea(spawnPos, 1000.0, false, false, false, TEAM_INFECTED);
+            if (nearestArea != Address_Null)
+            {
+                L4D_FindRandomSpot(view_as<int>(nearestArea), spawnPos);
+                float distance = GetVectorDistance(g_vFirstTankPos, spawnPos);
+                if (distance <= g_cvTankSpawnDistance.FloatValue)
+                {
+                    foundValidPos = true;
+                    break;
+                }
+            }
         }
+    }
+    
+    if (!foundValidPos)
+    {
+        spawnPos = g_vFirstTankPos;
+    }
+    
+    // 在生成坦克之前先获取下一个玩家
+    char steamId[64];
+    tankQueue.GetString(0, steamId, sizeof(steamId));
+    int targetPlayer = -1;
+    
+    // 找到对应的玩家
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsClientInGame(i) || GetClientTeam(i) != TEAM_INFECTED || IsFakeClient(i))
+            continue;
+            
+        char playerSteamId[64];
+        GetClientAuthId(i, AuthId_Steam2, playerSteamId, sizeof(playerSteamId));
         
-        if (g_iTanksSpawned < g_cvTankCount.IntValue)
+        if (strcmp(steamId, playerSteamId) == 0)
         {
-            CreateTimer(g_cvTankSpawnDelay.FloatValue, Timer_SpawnAdditionalTank);
+            targetPlayer = i;
+            break;
+        }
+    }
+    
+    // 只有在找到目标玩家时才生成坦克
+    if (targetPlayer != -1)
+    {
+        int tank = L4D2_SpawnTank(spawnPos, NULL_VECTOR);
+        if (tank > 0)
+        {
+            g_iTanksSpawned++;
+            
+            // 立即将坦克分配给玩家
+            L4D_ReplaceTank(tank, targetPlayer);
+            OnTankGiven(steamId);
+            
+            // 如果还需要生成更多坦克
+            if (g_iTanksSpawned < g_cvTankCount.IntValue)
+            {
+                CreateTimer(g_cvTankSpawnDelay.FloatValue, Timer_SpawnAdditionalTank);
+            }
+        }
+        else
+        {
+            // 如果生成失败，重试
+            CreateTimer(1.0, Timer_SpawnAdditionalTank);
         }
     }
     else
     {
+        // 如果没找到合适的玩家，重试
         CreateTimer(1.0, Timer_SpawnAdditionalTank);
     }
     
+    delete tankQueue;
     return Plugin_Stop;
+}
+
+public bool TraceFilter_NoPlayers(int entity, int contentsMask)
+{
+    if (entity <= MaxClients)
+        return false;
+    return true;
 }
 
 public Action Command_JoinSurvivor(int client, int args)
@@ -268,60 +428,6 @@ public Action Command_JoinInfected(int client, int args)
     ChangeClientTeam(client, TEAM_INFECTED);
     CPrintToChatAll("{blue}[{default}Multi-Versus{blue}] {olive}%N {default}加入了感染者队伍", client);
     return Plugin_Handled;
-}
-
-public void TankControl_OnTankSelection(char sQueuedTank[64])
-{
-    if (sQueuedTank[0] != '\0')
-    {
-        g_hPlayedTankList.PushString(sQueuedTank);
-    }
-}
-
-int GetNextTankPlayer()
-{
-    int currentTankPlayer = GetTankSelection();
-    
-    ArrayList eligiblePlayers = new ArrayList();
-    ArrayList allPlayers = new ArrayList();
-    
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (!IsClientInGame(i) || GetClientTeam(i) != 3 || IsFakeClient(i) || i == currentTankPlayer)
-            continue;
-            
-        char steamId[64];
-        GetClientAuthId(i, AuthId_Steam2, steamId, sizeof(steamId));
-        allPlayers.Push(i);
-        
-        if (g_hPlayedTankList.FindString(steamId) == -1)
-        {
-            eligiblePlayers.Push(i);
-        }
-    }
-    
-    int selectedPlayer = -1;
-    
-    if (eligiblePlayers.Length > 0)
-    {
-        int randomIndex = GetRandomInt(0, eligiblePlayers.Length - 1);
-        selectedPlayer = eligiblePlayers.Get(randomIndex);
-        
-        char steamId[64];
-        GetClientAuthId(selectedPlayer, AuthId_Steam2, steamId, sizeof(steamId));
-        g_hPlayedTankList.PushString(steamId);
-        
-    }
-    else if (allPlayers.Length > 0)
-    {
-        int randomIndex = GetRandomInt(0, allPlayers.Length - 1);
-        selectedPlayer = allPlayers.Get(randomIndex);
-        
-    }
-    
-    delete eligiblePlayers;
-    delete allPlayers;
-    return selectedPlayer;
 }
 
 public Action Timer_CreateSurvivorBots(Handle timer)
