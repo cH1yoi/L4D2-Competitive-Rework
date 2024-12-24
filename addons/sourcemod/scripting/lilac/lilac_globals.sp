@@ -120,7 +120,7 @@
 #define PLUGIN_NAME      "[Lilac] Little Anti-Cheat"
 #define PLUGIN_AUTHOR    "J_Tanzanite"
 #define PLUGIN_DESC      "An opensource Anti-Cheat"
-#define PLUGIN_VERSION   "1.7.5"
+#define PLUGIN_VERSION   "1.7.4_4"
 #define PLUGIN_URL       "https://github.com/J-Tanzanite/Little-Anti-Cheat"
 
 /* Convars. */
@@ -175,14 +175,13 @@ float playerinfo_angles[MAXPLAYERS + 1][CMD_LENGTH][3];
 float playerinfo_time_usercmd[MAXPLAYERS + 1][CMD_LENGTH];
 float playerinfo_time_forward[MAXPLAYERS + 1][CHEAT_MAX];
 bool playerinfo_banned_flags[MAXPLAYERS + 1][CHEAT_MAX];
-char playerinfo_detected[MAXPLAYERS + 1][1024];
 
 
 /* Forward declarations so we don't need third-party include files. */
 
 #define MA_BAN_STEAM  1
 
-native Function IRC_MsgFlaggedChannels(const char[] flag, const char[] format, any ...);
+native Function IRC_MsgFlaggedChannels(const char[] flag, const char[] format, any:...);
 native Function MABanPlayer(int iClient, int iTarget, int iType, int iTime, char[] sReason);
 native Function SBBanPlayer(int client, int target, int time, const char[] reason);
 native Function SBPP_BanPlayer(int iAdmin, int iTarget, int iTime, const char[] sReason);

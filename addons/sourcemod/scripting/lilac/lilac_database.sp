@@ -46,6 +46,7 @@ public void OnDatabaseConnected(Database db, const char[] error, any data)
 {
 	if (!db) {
 		LogError("Couldn't connect to the database. Please verify your config.");
+		LogError("Error: %s", error);
 		return;
 	}
 	lil_db = db;
@@ -57,7 +58,7 @@ void InitDatabase()
 {
 	/* SQLite syntax, but seems valid for MySQL too */
 	lil_db.Query(OnDatabaseInit, "CREATE TABLE IF NOT EXISTS lilac_detections("
-		... "name varchar(128) NOT NULL, " /* Honestly, you can deal with less bytes. 32 is fine too, but since you shouldn't have a ton of detections, that should be okay. */
+		... "name varchar(256) NOT NULL, " /* Honestly, you can deal with less bytes. 32 is fine too, but since you shouldn't have a ton of detections, that should be okay. */
 		... "steamid varchar(32) NOT NULL, "
 		... "ip varchar(16) NOT NULL, "
 		... "cheat varchar(50) NOT NULL, "

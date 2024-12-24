@@ -65,7 +65,7 @@ public Action timer_query(Handle timer)
 		/* Only increments query index if the player
 		 * has responded to the last one. */
 		if (!query_failed[i]) {
-			if (++query_index[i] >= 10)
+			if (++query_index[i] >= 11)
 				query_index[i] = 0;
 		}
 
@@ -113,33 +113,23 @@ public void query_reply(QueryCookie cookie, int client, ConVarQueryResult result
 
 	int val = StringToInt(cvarValue);
 
-	/* 检查不合法的值.
-	 * 除了部分cvar （drawothermodels）以外，非0值为不合法的 */
+	/* Check for invalid convar responses.
+	 * Other than drawothermodels, a value of non-zero is invalid. */
 	if (StrEqual("r_drawothermodels", cvarName, false) && val == 1)
 		return;
-	// else if (StrEqual("z_gun_vertical_punch", cvarName, false) && val == 1)
-	// 	return;
-	// else if (StrEqual("r_flashlightfov", cvarName, false)){
-	// 	if(StringToFloat(cvarValue) == 53.0) return;}
-	// else if (StrEqual("cl_max_shadow_renderable_dist", cvarName, false) && val == 3000)
-	// 	return;
 	else if (val == 0)
 		return;
 
 	if (lilac_forward_allow_cheat_detection(client, CHEAT_CONVAR) == false)
 		return;
 
-	char sDetails[512];
-	Format(sDetails, sizeof(sDetails), "%s %s", cvarName, cvarValue);
-
-	lilac_save_player_details(client, sDetails);
 	lilac_forward_client_cheat(client, CHEAT_CONVAR);
 
 	if (icvar[CVAR_LOG]) {
 		lilac_log_setup_client(client);
 		Format(line_buffer, sizeof(line_buffer),
-			"%s was detected and banned for an invalid ConVar (%s).",
-			line_buffer, sDetails);
+			"%s was detected and banned for an invalid ConVar (%s %s).",
+			line_buffer, cvarName, cvarValue);
 
 		lilac_log(true);
 

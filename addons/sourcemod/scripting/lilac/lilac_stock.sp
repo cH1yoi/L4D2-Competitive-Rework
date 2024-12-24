@@ -102,7 +102,6 @@ void lilac_reset_client(int client)
 	playerinfo_time_teleported[client] = 0.0;
 	playerinfo_time_aimlock[client] = 0.0;
 	playerinfo_time_process_aimlock[client] = 0.0;
-	Format(playerinfo_detected[client], sizeof(playerinfo_detected[]), "");
 
 	for (int i = 0; i < CHEAT_MAX; i++) {
 		playerinfo_time_forward[client][i] = 0.0;
@@ -301,8 +300,8 @@ void lilac_ban_client(int client, int cheat)
 	}
 
 
-	BanClient(client, get_ban_length(cheat), BANFLAG_AUTO, reason, reason, "lilac", 0);
 	CreateTimer(5.0, timer_kick, GetClientUserId(client));
+	BanClient(client, get_ban_length(cheat), BANFLAG_AUTO, reason, reason, "lilac", 0);
 }
 
 public Action timer_kick(Handle timer, int userid)
@@ -311,7 +310,7 @@ public Action timer_kick(Handle timer, int userid)
 
 	if (is_player_valid(client))
 		KickClient(client, "%T", "kick_ban_generic", client);
-
+		
 	return Plugin_Continue;
 }
 
@@ -432,11 +431,6 @@ bool is_player_valid(int client)
 		&& !IsClientSourceTV(client));
 }
 
-void lilac_save_player_details(int client, const char[] details)
-{
-	Format(playerinfo_detected[client], sizeof(playerinfo_detected[]), "%s", details);
-}
-
 void lilac_forward_client_cheat(int client, int cheat)
 {
 	int dummy;
@@ -479,20 +473,4 @@ bool lilac_forward_allow_cheat_detection(int client, int cheat)
 		return true;
 
 	return false;
-}
-
-public int lilac_native_get_detected_infos(Handle hPlugin, int numParams)
-{
-	int client = GetNativeCell(1);
-	if (!is_player_valid(client))
-		return -1;
-
-	if (!playerinfo_detected[client][0])
-		return -1;
-
-	int maxlen = GetNativeCell(3);
-	if (SetNativeString(2, playerinfo_detected[client], maxlen) == SP_ERROR_NONE)
-		return 1;
-
-	return -1;
 }
