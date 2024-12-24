@@ -1,12 +1,11 @@
 /*
     l4d_tnak_control_eq 必须是本库的
-    生成bot依赖哈利的l4d_CreateSurvivorBot
+    创建bot从哈利的插件里copy
+    copy 这个东西你知道的呀.
 */
 #include <sourcemod>
 #include <left4dhooks>
 #include <colors>
-#include <l4d_CreateSurvivorBot>
-#include <witch_and_tankifier>
 #undef REQUIRE_PLUGIN
 #include <l4d_tank_control_eq>
 #define REQUIRE_PLUGIN
@@ -31,10 +30,13 @@ float g_fInitialTankAng[3];
 int g_iSpawnedTankCount = 0;
 bool g_bSecondTankSpawned = false;
 
+Handle g_hSDK_NextBotCreatePlayerBot;
+Handle g_hSDK_RespawnPlayer;
+
 public Plugin myinfo = {
-    name = "L4D Multi-Versus",
+    name = "L4D2 Multiplayer Versus",
     author = "Hana",
-    description = "支持Multi-Versus的基础插件,包含多坦克机制",
+    description = "支持Multiplayer的基础插件,包含多坦克机制",
     version = "1.6",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
@@ -61,6 +63,31 @@ public void OnPluginStart()
     RegConsoleCmd("sm_sur", Command_JoinSurvivor, "加入生还者");
     RegConsoleCmd("sm_inf", Command_JoinInfected, "加入感染者");
     
+    GameData hGameData = LoadGameConfigFile("l4d2_MultiplayerVersus");
+    if( hGameData == null ) SetFailState("Could not find gamedata file at addons/sourcemod/gamedata/l4d2_MultiplayerVersus.txt");
+
+    StartPrepSDKCall(SDKCall_Player);
+    if( PrepSDKCall_SetFromConf(hGameData, SDKConf_Signature, "CTerrorPlayer::RoundRespawn") == false )
+        SetFailState("Failed to find signature: CTerrorPlayer::RoundRespawn");
+    g_hSDK_RespawnPlayer = EndPrepSDKCall();
+    if( g_hSDK_RespawnPlayer == null ) SetFailState("Failed to create SDKCall: CTerrorPlayer::RoundRespawn");
+
+    StartPrepSDKCall(SDKCall_Static);
+    Address addr = hGameData.GetAddress("NextBotCreatePlayerBot<SurvivorBot>");
+    if( addr == Address_Null ) SetFailState("Failed to find signature: NextBotCreatePlayerBot<SurvivorBot>");
+    int iOS = hGameData.GetOffset("OS");
+    if( iOS == 1 )
+    {
+        Address offset = view_as<Address>(LoadFromAddress(addr + view_as<Address>(1), NumberType_Int32));
+        addr += offset + view_as<Address>(5);
+    }
+    if( PrepSDKCall_SetAddress(addr) == false ) SetFailState("Failed to find signature: NextBotCreatePlayerBot<SurvivorBot>");
+    PrepSDKCall_AddParameter(SDKType_String, SDKPass_Pointer);
+    PrepSDKCall_SetReturnInfo(SDKType_CBasePlayer, SDKPass_Pointer);
+    g_hSDK_NextBotCreatePlayerBot = EndPrepSDKCall();
+    if( g_hSDK_NextBotCreatePlayerBot == null ) SetFailState("Failed to create SDKCall: NextBotCreatePlayerBot<SurvivorBot>");
+    
+    delete hGameData;
 }
 
 public void OnMapStart()
@@ -133,7 +160,7 @@ public Action Command_JoinSurvivor(int client, int args)
         
     if (GetClientTeam(client) == TEAM_SURVIVOR)
     {
-        CPrintToChat(client, "{blue}[{default}Multi-Versus{blue}] {default}你已经在生还者队伍中了!");
+        CPrintToChat(client, "{blue}[{default}!{blue}] {default}你已经在生还者队伍中了!");
         return Plugin_Handled;
     }
     
@@ -149,14 +176,14 @@ public Action Command_JoinSurvivor(int client, int args)
     
     if (targetBot == -1)
     {
-        CPrintToChat(client, "{blue}[{default}Multi-Versus{blue}] {default}生还者队伍已满!");
+        CPrintToChat(client, "{blue}[{default}!{blue}] {default}生还者队伍已满!");
         return Plugin_Handled;
     }
     
     L4D_SetHumanSpec(targetBot, client);
     L4D_TakeOverBot(client);
     
-    CPrintToChatAll("{blue}[{default}Multi-Versus{blue}] {olive}%N {default}加入了生还者队伍", client);
+    CPrintToChatAll("{blue}[{default}!{blue}] {olive}%N {default}加入了生还者队伍", client);
     return Plugin_Handled;
 }
 
@@ -170,7 +197,7 @@ public Action Command_JoinInfected(int client, int args)
         
     if (GetClientTeam(client) == TEAM_INFECTED)
     {
-        CPrintToChat(client, "{blue}[{default}Multi-Versus{blue}] {default}你已经在感染者队伍中了!");
+        CPrintToChat(client, "{blue}[{default}!{blue}] {default}你已经在感染者队伍中了!");
         return Plugin_Handled;
     }
     
@@ -183,12 +210,12 @@ public Action Command_JoinInfected(int client, int args)
     
     if (currentInfected >= g_cvInfectedLimit.IntValue)
     {
-        CPrintToChat(client, "{blue}[{default}Multi-Versus{blue}] {default}感染者队伍已满!");
+        CPrintToChat(client, "{blue}[{default}!{blue}] {default}感染者队伍已满!");
         return Plugin_Handled;
     }
     
     ChangeClientTeam(client, TEAM_INFECTED);
-    CPrintToChatAll("{blue}[{default}Multi-Versus{blue}] {olive}%N {default}加入了感染者队伍", client);
+    CPrintToChatAll("{blue}[{default}!{blue}] {olive}%N {default}加入了感染者队伍", client);
     return Plugin_Handled;
 }
 
@@ -230,7 +257,7 @@ public Action Timer_SpawnExtraTank(Handle timer)
     ArrayList nonTankPlayers = GetWhosNotHadTank();
     if (nonTankPlayers == null || nonTankPlayers.Length == 0)
     {
-        PrintToAdmins("{blue}[{default}Multi-Versus{blue}] {default}错误：没有找到可以分配坦克的玩家");
+        PrintToAdmins("{blue}[{default}!{blue}] {default}错误：没有找到可以分配坦克的玩家");
         delete nonTankPlayers;
         return Plugin_Stop;
     }
@@ -301,5 +328,27 @@ int GetClientBySteamId(const char[] steamId)
         }
     }
     
+    return -1;
+}
+
+int CreateSurvivorBot()
+{
+    if (GetClientCount(false) >= MaxClients)
+    {
+        return -1;
+    }
+
+    int bot = SDKCall(g_hSDK_NextBotCreatePlayerBot, "I am Bot");
+    if( bot > 0 && IsValidEntity(bot) )
+    {
+        ChangeClientTeam(bot, 2);
+        
+        if( !IsPlayerAlive(bot) )
+        {
+            SDKCall(g_hSDK_RespawnPlayer, bot);
+        }
+        return bot;
+    }
+
     return -1;
 }
