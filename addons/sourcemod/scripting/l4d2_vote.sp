@@ -50,7 +50,7 @@ public void OnPluginStart()
     RegConsoleCmd("sm_vote", CommondVote);
     RegConsoleCmd("sm_votekick", Command_VoteKick);
     RegConsoleCmd("sm_votespec", Command_VoteSpec);
-    RegConsoleCmd("sm_hp", Command_HP);
+    RegAdminCmd("sm_hp", Command_HP, ADMFLAG_GENERIC);
     
     LoadTranslations("l4d2_vote.phrases");
 }
