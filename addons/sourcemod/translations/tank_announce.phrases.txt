@@ -1,0 +1,52 @@
+"Phrases"
+{
+	"BRACKET_START"
+	{
+		"en"			"┌ "
+	}
+
+	"BRACKET_MIDDLE"
+	{
+		"en"			"├ "
+	}
+
+	"BRACKET_END"
+	{
+		"en"			"└ "
+	}
+
+	"TAG"
+	{
+		"en"			"<{green}Tank{default}> "
+	}
+
+	"ALIVE"
+	{
+		"#format"		"{1:s},{2:s},{3:d}"
+		"en"			"The {olive}Tank{1}{default} {green}{2}{default} had {olive}{3}{default} health remaining. Attackers:"
+	}
+
+	"ALIVE_WITHOUT_DAMAGE"
+	{
+		"#format"		"{1:s},{2:s},{3:d}"
+		"en"			"The {olive}Tank{1}{default} {green}{2}{default} had {olive}{3}{default} health remaining"
+	}
+
+	"DEAD"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"The {olive}Tank{1}{default} {green}{2}{default} is dead! {olive}Damage{default} dealt to the {olive}Tank{default}:"
+	}
+	
+	"DEAD_WITHOUT_DAMAGE"
+	{
+		"#format"		"{1:s},{2:s}"
+		"en"			"The {olive}Tank{1}{default} {green}{2}{default} is dead!"
+	}
+
+	"DAMAGE"
+	{
+		"#format"		"{1:s},{2:d},{3:s},{4:d},{5:s},{6:s},{7:s}"
+		"en"			"{default}{1}{2} {green}[{3}{default}{4}%%{green}{5}] {6}{7}"
+	}
+}

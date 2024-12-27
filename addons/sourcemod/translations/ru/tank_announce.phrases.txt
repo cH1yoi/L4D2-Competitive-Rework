@@ -1,0 +1,52 @@
+"Phrases"
+{
+	"BRACKET_START"
+	{
+		"ru"			"┌ "
+	}
+
+	"BRACKET_MIDDLE"
+	{
+		"ru"			"├ "
+	}
+
+	"BRACKET_END"
+	{
+		"ru"			"└ "
+	}
+
+	"TAG"
+	{
+		"ru"			"<{green}Tank{default}> "
+	}
+
+	"ALIVE"
+	{
+		"#format"		"{1:s},{2:s},{3:d}"
+		"ru"			"У {olive}Танка{1}{default} {green}{2}{default} осталось {olive}{3}{default} здоровья. Нападавшие:"
+	}
+
+	"ALIVE_WITHOUT_DAMAGE"
+	{
+		"#format"		"{1:s},{2:s},{3:d}"
+		"ru"			"У {olive}Танка{1}{default} {green}{2}{default} осталось {olive}{3}{default} здоровья"
+	}
+
+	"DEAD"
+	{
+		"#format"		"{1:s},{2:s}"
+		"ru"			"{olive}Танк{1}{default} {green}{2}{default} убит! {olive}Урон{default} нанесённый {olive}Танку{default}:"
+	}
+	
+	"DEAD_WITHOUT_DAMAGE"
+	{
+		"#format"		"{1:s},{2:s}"
+		"ru"			"{olive}Танк{1}{default} {green}{2}{default} убит!"
+	}
+
+	"DAMAGE"
+	{
+		"#format"		"{1:s},{2:d},{3:s},{4:d},{5:s},{6:s},{7:s}"
+		"ru"			"{default}{1}{2} {green}[{3}{default}{4}%%{green}{5}] {6}{7}"
+	}
+}

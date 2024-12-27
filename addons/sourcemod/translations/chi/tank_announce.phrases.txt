@@ -1,0 +1,52 @@
+"Phrases"
+{
+    "BRACKET_START"
+    {
+        "chi"           "┌ "
+    }
+
+    "BRACKET_MIDDLE"
+    {
+        "chi"           "├ "
+    }
+
+    "BRACKET_END"
+    {
+        "chi"           "└ "
+    }
+
+    "TAG"
+    {
+        "chi"           "<{green}坦克{default}> "
+    }
+
+    "ALIVE"
+    {
+        "#format"       "{1:s},{2:s},{3:d}"
+        "chi"           "{olive}坦克{1}{default} {green}{2}{default} 还剩余 {olive}{3}{default} 点生命值。攻击者："
+    }
+
+    "ALIVE_WITHOUT_DAMAGE"
+    {
+        "#format"       "{1:s},{2:s},{3:d}"
+        "chi"           "{olive}坦克{1}{default} {green}{2}{default} 还剩余 {olive}{3}{default} 点生命值"
+    }
+
+    "DEAD"
+    {
+        "#format"       "{1:s},{2:s}"
+        "chi"           "{olive}坦克{1}{default} {green}{2}{default} 已死亡！对{olive}坦克{default}造成的{olive}伤害{default}："
+    }
+    
+    "DEAD_WITHOUT_DAMAGE"
+    {
+        "#format"       "{1:s},{2:s}"
+        "chi"           "{olive}坦克{1}{default} {green}{2}{default} 已死亡！"
+    }
+
+    "DAMAGE"
+    {
+        "#format"       "{1:s},{2:d},{3:s},{4:d},{5:s},{6:s},{7:s}"
+        "chi"           "{default}{1}{2} {green}[{3}{default}{4}%%{green}{5}] {6}{7}"
+    }
+}
