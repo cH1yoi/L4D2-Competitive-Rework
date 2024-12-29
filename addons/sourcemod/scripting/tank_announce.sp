@@ -10,8 +10,8 @@ public Plugin myinfo = {
     name        = "TankAnnounce",
     author      = "Visor, Forgetest, xoxo, Griffin and Blade, Sir, TouchMe",
     description = "Announce damage dealt to tanks by survivors",
-    version     = "build_0002",
-    url         = "https://github.com/Target5150/MoYu_Server_Stupid_Plugins"
+    version     = "build_0003",
+    url         = "https://github.com/TouchMe-Inc/l4d2_tank_announce"
 }
 
 
@@ -155,6 +155,7 @@ bool g_bRoundEnd = false;
 UserVector g_aTankInfo;      // Every Tank has a slot here along with relationships.
 StringMap  g_smUserNames;    // Simple map from userid to player names.
 
+ConVar g_cvTankLotteryTime;
 
 public APLRes AskPluginLoad2(Handle hPlugin, bool bLate, char[] szError, int iErrMax)
 {
@@ -182,16 +183,8 @@ any Native_Punches(Handle hPlugin, int iNumParams)
     }
 
     int iUserId = GetClientUserId(iClient);
-    UserVector uDamagerVector;
-    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector))
-        return 0;
 
-    int iSum = 0, iSize = uDamagerVector.Length;
-    for (int i = 0; i < iSize; i++) {
-        iSum += uDamagerVector.Get(i, ePunch);
-    }
-
-    return iSum;
+    return GetTankPunches(iUserId);
 }
 
 any Native_Rocks(Handle hPlugin, int iNumParams)
@@ -202,16 +195,8 @@ any Native_Rocks(Handle hPlugin, int iNumParams)
     }
 
     int iUserId = GetClientUserId(iClient);
-    UserVector uDamagerVector;
-    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector))
-        return 0;
 
-    int iSum = 0, iSize = uDamagerVector.Length;
-    for (int i = 0; i < iSize; i++) {
-        iSum += uDamagerVector.Get(i, eRock);
-    }
-
-    return iSum;
+    return GetTankRocks(iUserId);
 }
 
 any Native_Hittables(Handle hPlugin, int iNumParams)
@@ -222,17 +207,8 @@ any Native_Hittables(Handle hPlugin, int iNumParams)
     }
 
     int iUserId = GetClientUserId(iClient);
-    UserVector uDamagerVector;
-    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector)) {
-        return 0;
-    }
-
-    int iSum = 0, iSize = uDamagerVector.Length;
-    for (int i = 0; i < iSize; i++) {
-        iSum += uDamagerVector.Get(i, eHittable);
-    }
-
-    return iSum;
+   
+    return GetTankHittables(iUserId);
 }
 
 any Native_TotalDamage(Handle hPlugin, int iNumParams)
@@ -243,29 +219,27 @@ any Native_TotalDamage(Handle hPlugin, int iNumParams)
     }
 
     int iUserId = GetClientUserId(iClient);
-    int iValue  = 0;
-    g_aTankInfo.UserGet(iUserId, eTotalDamage, iValue);
-    return iValue;
+
+    return GetTankTotalDamage(iUserId);
 }
 
-any Native_UpTime(Handle plugin, int numParams) {
+any Native_UpTime(Handle plugin, int numParams)
+{
     int iClient = GetNativeCell(1);
     if (!IsValidClient(iClient)) {
         ThrowNativeError(SP_ERROR_NATIVE, "Invalid client index %d", iClient);
     }
 
-    int   iUserId = GetClientUserId(iClient);
-    float fValue  = -1.0;
-    if (g_aTankInfo.UserGet(iUserId, eAliveSince, fValue)) {
-        fValue = GetGameTime() - fValue;
-    }
+    int iUserId = GetClientUserId(iClient);
 
-    return RoundToFloor(fValue);
+    return GetTankLifeTime(iUserId);
 }
 
 public void OnPluginStart()
 {
     LoadTranslations(TRANSLATIONS);
+
+    g_cvTankLotteryTime = FindConVar("director_tank_lottery_selection_time");
 
     HookEvent("round_start",          Event_RoundStart, EventHookMode_PostNoCopy);
     HookEvent("round_end",            Event_RoundEnd, EventHookMode_PostNoCopy);
@@ -300,7 +274,7 @@ public void OnClientDisconnect(int iClient)
     IntToString(iUserId, szKey, sizeof(szKey));
 
     char szClientName[MAX_NAME_LENGTH];
-    GetClientName(iClient, szClientName, sizeof(szClientName));
+    GetClientNameFixed(iClient, szClientName, sizeof(szClientName), SHORT_NAME_LENGTH);
     g_smUserNames.SetString(szKey, szClientName);
 
     if (!IsFakeClient(iClient)) {
@@ -356,12 +330,11 @@ public void L4D_OnSpawnTank_Post(int iClient, const float vPos[3], const float v
 
     int iUserId = GetClientUserId(iClient);
     g_iTankIdx++;
-
     g_bIsTankInPlay = true;
 
     int iHealth = GetEntProp(iClient, Prop_Send, "m_iHealth", 4, 0);
     g_aTankInfo.UserSet(iUserId, eDamagerInfoVector, new UserVector(eDamagerInfoSize), true);
-    g_aTankInfo.UserSet(iUserId, eAliveSince,     GetGameTime());
+    g_aTankInfo.UserSet(iUserId, eAliveSince, GetGameTime() + g_cvTankLotteryTime.FloatValue);
     g_aTankInfo.UserSet(iUserId, eTankLastHealth, iHealth);
     g_aTankInfo.UserSet(iUserId, eTankMaxHealth,  iHealth);
     g_aTankInfo.UserSet(iUserId, eTankIndex,      g_iTankIdx);
@@ -390,11 +363,9 @@ void Event_RoundEnd(Event event, const char[] szEventName, bool bDontBroadcast)
     // But only if a tank that hasn't been killed exists
     if (!g_bRoundEnd)
     {
-        int iUserId;
-
-        while (g_aTankInfo.Length)
+        for (int i = g_aTankInfo.Length - 1; i >= 0; i--)
         {
-            iUserId = g_aTankInfo.User(0);
+            int iUserId = g_aTankInfo.User(i);
             PrintTankInfo(iUserId);
             ClearTankInfo(iUserId);
         }
@@ -457,13 +428,75 @@ void HandlePlayerReplace(int iReplacer, int iReplacee)
 
 void Event_PlayerHurt(Event event, const char[] szEventName, bool bDontBroadcast)
 {
-    if (g_bRoundEnd) return;
-    
-    int iVictim = GetClientOfUserId(event.GetInt("userid"));
-    // 修改判断条件，移除 IsFakeClient 检查
-    if (!IsClientTank(iVictim)) return;
+    if (!g_bIsTankInPlay)
+        return;
 
-    // ...existing code...
+    int iVictimId = GetEventInt(event, "userid");
+    int iVictim   = GetClientOfUserId(iVictimId);
+    if (iVictim <= 0 || !IsClientInGame(iVictim)) {
+        return;
+    }
+
+    // Victim isn't tank; no damage to record
+    if (IsClientInfected(iVictim) && IsClientTank(iVictim))
+    {
+        // Something buggy happens when tank is dying with regards to damage
+        if (IsClientIncapacitated(iVictim))
+            return;
+
+        int iAttackerId = GetEventInt(event, "attacker");
+        int iAttacker   = GetClientOfUserId(iAttackerId);
+
+        // We only care about damage dealt by survivors and world, though it can be funny to see
+        // claw/self inflicted hittable damage, so maybe in the future we'll do that
+        if (iAttacker == WORLD_INDEX) {
+            iAttackerId = 0;
+        }
+
+        int iTeam = TEAM_NONE;
+        if (iAttacker > 0 && IsClientInGame(iAttacker)) {
+            iTeam = GetClientTeam(iAttacker);
+        }
+
+        g_aTankInfo.UserSet(iVictimId, eTankLastHealth, GetEventInt(event, "health"));
+        UserVector uDamagerVector;
+        g_aTankInfo.UserGet(iVictimId, eDamagerInfoVector, uDamagerVector);
+        uDamagerVector.UserAdd(iAttackerId, eDmgDone, GetEventInt(event, "dmg_health"), true);
+        uDamagerVector.UserSet(iAttackerId, eTeamIdx, iTeam, true);
+    }
+
+    else if (IsClientSurvivor(iVictim))
+    {
+        if (IsClientIncapacitated(iVictim))
+            return;
+
+        int iAttackerId = GetEventInt(event, "attacker");
+        int iAttacker   = GetClientOfUserId(iAttackerId);
+        // We only care about damage dealt by survivors, though it can be funny to see
+        // claw/self inflicted hittable damage, so maybe in the future we'll do that
+        if (iAttacker <= 0 || !IsClientInGame(iAttacker)) {
+            return;
+        }
+
+        if (!IsClientInfected(iAttacker) || !IsClientTank(iAttacker)) {
+            return;
+        }
+
+        char szWeapon[32];
+        GetEventString(event, "weapon", szWeapon, sizeof(szWeapon));
+
+        UserVector uDamagerVector;
+        g_aTankInfo.UserGet(iAttackerId, eDamagerInfoVector, uDamagerVector);
+
+        int iDmg = GetEventInt(event, "dmg_health");
+        if (iDmg > 0) {
+            if      (strcmp(szWeapon, "tank_claw") == 0) uDamagerVector.UserAdd(iVictimId, ePunch,    1, true);
+            else if (strcmp(szWeapon, "tank_rock") == 0) uDamagerVector.UserAdd(iVictimId, eRock,     1, true);
+            else                                         uDamagerVector.UserAdd(iVictimId, eHittable, 1, true);
+            uDamagerVector.UserAdd(iVictimId, eDamageReceived, iDmg);
+            g_aTankInfo.UserAdd(iAttackerId, eTotalDamage, iDmg);
+        }
+    }
 }
 
 void Event_PlayerIncap(Event event, const char[] szEventName, bool bDontBroadcast)
@@ -508,18 +541,49 @@ void Event_PlayerIncap(Event event, const char[] szEventName, bool bDontBroadcas
 
 void Event_PlayerKilled(Event event, const char[] szEventName, bool bDontBroadcast)
 {
-    if (g_bRoundEnd) return;
+    if (!g_bIsTankInPlay) {
+        return;
+    }
 
-    int iVictim = GetClientOfUserId(event.GetInt("userid"));
-    // 修改判断条件，移除 IsFakeClient 检查
-    if (!IsClientTank(iVictim)) return;
+    // A Tank replace is happening
+    if (GetEventBool(event, "abort")) {
+        return;
+    }
 
-    // 统计并显示坦克数据
-    int iUserId = GetClientUserId(iVictim);
-    PrintTankInfo(iUserId);
-    ClearTankInfo(iUserId);
+    int iVictimId = GetEventInt(event, "userid");
+    int iVictim   = GetClientOfUserId(iVictimId);
+    if (iVictim <= 0 || !IsClientInGame(iVictim)) {
+        return;
+    }
 
-    g_bIsTankInPlay = false;
+    int iAttackerId = GetEventInt(event, "attacker");
+    // Victim isn't tank; no damage to record
+    if (IsClientInfected(iVictim) && IsClientTank(iVictim))
+    {
+        // Damage announce could probably happen right here...
+        // Use a delayed timer due to bugs where the tank passes to another player
+        CreateTimer(0.1, Timer_CheckTank, iVictimId, TIMER_FLAG_NO_MAPCHANGE);
+        // Award the killing blow's damage to the attacker; we don't award
+        // damage from player_hurt after the tank has died/is dying
+        // If we don't do it this way, we get wonky/inaccurate damage values
+        int iAttacker = GetClientOfUserId(iAttackerId);
+        if (iAttacker <= 0 || !IsClientInGame(iAttacker)) {
+            return;
+        }
+
+        if (IsClientSurvivor(iAttacker))
+        {
+            int iTankLastHealth;
+            g_aTankInfo.UserGet(iVictimId, eTankLastHealth, iTankLastHealth);
+
+            UserVector uDamagerVector;
+            g_aTankInfo.UserGet(iVictimId, eDamagerInfoVector, uDamagerVector);
+            uDamagerVector.UserAdd(iAttackerId, eDmgDone, iTankLastHealth, true);
+        }
+    }
+    else if (IsClientSurvivor(iVictim)) {
+        g_aTankInfo.UserAdd(iAttackerId, eDeath, 1);
+    }
 }
 
 Action Timer_CheckTank(Handle hTimer, int iUserId)
@@ -588,8 +652,8 @@ void PrintTankInfo(int iUserId)
     UserVector uDamagerVector = g_aTankInfo.Get(iIdx, eDamagerInfoVector);
     uDamagerVector.SortCustom(SortAdtDamageDesc);
 
-    int iDmgTtl = 0, iPctTtl = 0, iSize = uDamagerVector.Length;
-    for (int i = 0; i < iSize; i++)
+    int iDmgTtl = 0, iPctTtl = 0;
+    for (int i = uDamagerVector.Length - 1; i >= 0; i--)
     {
         int iDamage = uDamagerVector.Get(i, eDmgDone);
 
@@ -650,6 +714,7 @@ void PrintTankInfo(int iUserId)
     int iLastPct = 100;
     int iAdjustedPctDmg;
     char szDmgSpace[16], szPrcntSpace[16];
+    int iSize = uDamagerVector.Length;
     for (int iAttacker = 0; iAttacker < iSize; iAttacker++)
     {
         // generally needed
@@ -660,7 +725,7 @@ void PrintTankInfo(int iUserId)
         iDmg     = uDamagerVector.Get(iAttacker, eDmgDone);
         iPct     = GetDamageAsPercent(iDmg, iMaxHealth);
 
-        if (iPctAdjustment != 0 && iDmg > 0 && !IsExactPercent(iIdx, iDmg))
+        if (iPctAdjustment != 0 && iDmg > 0 && !IsExactPercent(iDmg, iMaxHealth))
         {
             iAdjustedPctDmg = iPct + iPctAdjustment;
 
@@ -676,9 +741,19 @@ void PrintTankInfo(int iUserId)
 
         FormatEx(szPrcntSpace, sizeof(szPrcntSpace), "%s",
         iPct < 10 ? "  " : iPct < 100 ? " " : "");
-        // "{olive}%s%d {green}|%s{default}%d%%{green}%s|{default}: %s%s"
+
         CPrintToChatAll("%t%t", (iAttacker + 1) == iSize ? "BRACKET_END" : "BRACKET_MIDDLE", "DAMAGE", szDmgSpace, iDmg, szPrcntSpace, iPct, szPrcntSpace, szTeamColor[iTeamIdx], szClientName);
     }
+
+    CPrintToChatAll("%t%t%t", "BRACKET_START", "TAG", "TANK_ALIVE_SCORE", szIdx, szTankName, GetTankLifeTime(iUserId));
+    CPrintToChatAll("%t%t", "BRACKET_MIDDLE", "TANK_IMPACT", GetTankPunches(iUserId), GetTankRocks(iUserId), GetTankHittables(iUserId));
+
+    int iIncaps = 0, iDeaths = 0;
+    g_aTankInfo.UserGet(iUserId, eIncap, iIncaps);
+    g_aTankInfo.UserGet(iUserId, eDeath, iDeaths);
+    CPrintToChatAll("%t%t", "BRACKET_MIDDLE", "TANK_INCAPS_DEATHS", iIncaps, iDeaths);
+    
+    CPrintToChatAll("%t%t", "BRACKET_END", "TANK_TOTAL_DAMAGE", GetTankTotalDamage(iUserId));
 }
 
 void ClearTankInfo(int iUserId)
@@ -692,6 +767,68 @@ void ClearTankInfo(int iUserId)
     delete uDamagerVector;
 
     g_aTankInfo.Erase(iIdx);
+}
+
+int GetTankPunches(int iUserId)
+{
+    UserVector uDamagerVector;
+    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector)) {
+        return 0;
+    }
+
+    int iPunches = 0, iSize = uDamagerVector.Length;
+    for (int i = 0; i < iSize; i++) {
+        iPunches += uDamagerVector.Get(i, ePunch);
+    }
+
+    return iPunches;
+}
+
+int GetTankRocks(int iUserId)
+{
+    UserVector uDamagerVector;
+    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector)) {
+        return 0;
+    }
+
+    int iRocks = 0, iSize = uDamagerVector.Length;
+    for (int i = 0; i < iSize; i++) {
+        iRocks += uDamagerVector.Get(i, eRock);
+    }
+
+    return iRocks;
+}
+
+int GetTankHittables(int iUserId)
+{
+    UserVector uDamagerVector;
+    if (!g_aTankInfo.UserGet(iUserId, eDamagerInfoVector, uDamagerVector)) {
+        return 0;
+    }
+
+    int iHittables = 0, iSize = uDamagerVector.Length;
+    for (int i = 0; i < iSize; i++) {
+        iHittables += uDamagerVector.Get(i, eHittable);
+    }
+
+    return iHittables;
+}
+
+int GetTankTotalDamage(int iUserId)
+{
+    int iTotalDamage = 0;
+    g_aTankInfo.UserGet(iUserId, eTotalDamage, iTotalDamage);
+    return iTotalDamage;
+}
+
+int GetTankLifeTime(int iUserId)
+{
+    float fValue = -1.0;
+    if (g_aTankInfo.UserGet(iUserId, eAliveSince, fValue)) {
+        fValue = GetGameTime() - fValue;
+    }
+
+    return RoundToFloor(fValue);
 }
 
 // utilize our map g_smUserNames
@@ -795,7 +932,5 @@ bool IsClientIncapacitated(int iClient) {
  * @return           bool
  */
 bool IsClientTank(int iClient) {
-    return (IsClientInGame(iClient) && 
-            GetClientTeam(iClient) == TEAM_INFECTED && 
-            GetEntProp(iClient, Prop_Send, "m_zombieClass") == SI_CLASS_TANK);
+    return (GetInfectedClass(iClient) == SI_CLASS_TANK);
 }
