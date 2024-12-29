@@ -201,4 +201,71 @@
 	"l4d2_bts04_cinema"		"返校M4"
 	"l4d2_bts05_church"		"返校M5"
 	"l4d2_bts06_school"		"返校M6"
+
+	"fos1m1_hill"			"生还之锋m1"
+	"fos1m2_fftown"			"生还之锋m2"
+	"fos1m3_factory"		"生还之锋m3"
+	"fos1m4_moors"			"生还之锋m4"
+	"fos1m5_92farm"			"生还之锋m5"
+
+	"tripday_new_m1"		"旅行日m1"
+	"tripday_new_m2"		"旅行日m2"
+	"tripday_new_m3"		"旅行日m3"
+	"tripday_new_m4"		"旅行日m4"
+	"tripday_new_m5"		"旅行日m5"
+
+	"l4d_tbm_1"			"血腥荒野m1"
+	"l4d_tbm_2"			"血腥荒野m2"
+	"l4d_tbm_3"			"血腥荒野m3"
+	"l4d_tbm_4"			"血腥荒野m4"
+	"l4d_tbm_5"			"血腥荒野m5"
+
+	"qe_1_cliche"				"伦理问题1M1"
+	"qe_2_remember_me"			"伦理问题1M2"
+	"qe_3_unorthodox_paradox"	"伦理问题1M3"
+	"qe_4_ultimate_test"		"伦理问题1M4"
+
+	"qe2_ep1"		"伦理问题2M1"
+	"qe2_ep2"		"伦理问题2M2"
+	"qe2_ep3"		"伦理问题2M3"
+	"qe2_ep4"		"伦理问题2M4"
+	"qe2_ep5"		"伦理问题2M5"
+
+	"msd1_town"  			"再见了晨茗M1"
+	"msd2_gasstation"		"再见了晨茗M2"
+	"msd3_square"			"再见了晨茗M3"
+	"msdnew_tccity_newway"	"再见了晨茗M4"
+
+	"ch_map1_city " 		"FangShi_M1"
+	"ch_map2_temple"		"FangShi_M2"
+	"ch_map3_greatwall"		"FangShi_M3"
+
+	"cf_m1_town"			"冷锋M1"
+	"cf_m2_mall"			"冷锋M2"
+	"cf_m3_evac"			"冷锋M3"
+	"cf_m4_outskirts"		"冷锋M4"
+	"cf_m5_highway"			"冷锋M5"
+
+	"l4d_fallen01_approach"			"坠落M1"
+	"l4d_fallen02_trenches"			"坠落M2"
+	"l4d_fallen03_tower"			"坠落M3"
+	"l4d_fallen04_cliff"			"坠落M4"
+	"l4d_fallen05_shaft"			"坠落M5"
+
+	"re3short_m1"		"生化危机3M1"
+	"re3short_m2"		"生化危机3M2"
+	"re3short_m3"		"生化危机3M3"
+	"re3short_m4"		"生化危机3M4"
+	
+	"dw_woods"			"阴暗森林M1"
+	"dw_underground"	"阴暗森林M2"
+	"dw_complex"		"阴暗森林M3"
+	"dw_otherworld"		"阴暗森林M4"
+	"dw_final"			"阴暗森林M5"
+
+	"bdp_bunker01"		"深埋M1"
+	"bdp_bunker02"		"深埋M2"
+	"bdp_bunker03"		"深埋M3"
+	"bdp_bunker04"		"深埋M4"
+	"bdp_bunker05a"		"深埋M5"
 }
