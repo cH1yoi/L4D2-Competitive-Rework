@@ -36,11 +36,6 @@ public Plugin myinfo = {
 #define TEAM_SURVIVOR           2
 #define TEAM_INFECTED           3
 
-/*
- * Infected Class.
- */
-#define SI_CLASS_TANK           8
-
 
 /**
  * Entity-Relationship: UserVector(Userid, ...)
