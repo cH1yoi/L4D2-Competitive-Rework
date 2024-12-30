@@ -60,20 +60,27 @@ public bool isInRange(int i, int mi, int ma){
     return i >= mi && i <= ma;
 }
 
-public Action Timer_SafeToSpec(Handle timer, int client){
-    if (IsWarmBot(client)) return Plugin_Stop;
-    if (IsFakeClient(client)) return Plugin_Stop;
-    if (IsClientInGame(client) && GetClientTeam(client) != L4D2Team_Spectator) FakeClientCommand(client, "sm_s");
-    else if (IsClientConnected(client)) CreateTimer(3.0, Timer_SafeToSpec, client);
-    else return Plugin_Stop;
-    return Plugin_Continue;
+public Action Timer_SafeToSpec(Handle timer, int client)
+{
+    if (!IsValidClient(client))
+        return Plugin_Stop;
+        
+    ChangeClientTeam(client, L4D2Team_Spectator);
+    return Plugin_Stop;
+}
+
+bool IsValidClient(int client)
+{
+    return (client > 0 && client <= MaxClients && IsClientConnected(client) && IsClientInGame(client));
 }
 
 bool IsWarmBot(int client)
 {
-    char steamid[64];
-    GetClientAuthId(client, AuthId_Steam2, steamid, sizeof(steamid));
-    return StrEqual(steamid, WARMBOT_STEAMID);
+    if (!IsValidClient(client))
+        return false;
+        
+    char authId[32];
+    return (GetClientAuthId(client, AuthId_Steam2, authId, sizeof(authId)) && strcmp(authId, WARMBOT_STEAMID) == 0);
 }
 
 public void SteamWorks_OnValidateClient(int ownerauthid, int authid)
