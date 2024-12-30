@@ -2,81 +2,75 @@
 {
     "BRACKET_START"
     {
-        "en"            "┌ "
         "chi"           "┌ "
     }
 
-    "BRACKET_MIDDLE" 
+    "BRACKET_MIDDLE"
     {
-        "en"            "├ "
         "chi"           "├ "
     }
 
     "BRACKET_END"
     {
-        "en"            "└ "
         "chi"           "└ "
     }
 
     "TAG"
     {
-        "en"            "<{green}Tank{default}> "
         "chi"           "<{green}坦克{default}> "
     }
     
     "ALIVE"
     {
         "#format"       "{1:s},{2:s},{3:d}"
-        "en"            "The Tank{1} {red}{2}{default} had {olive}{3}{default} health remaining. Damage:"
-        "chi"           "坦克{1} {red}{2}{default} 还剩余 {olive}{3}{default} 生命值。伤害统计:"
+        "chi"           "坦克{1} {red}{2}{default} 还剩下 {olive}{3}{default} 生命值。伤害统计:"
     }
 
-    "ALIVE_WITHOUT_DAMAGE" 
+    "ALIVE_WITHOUT_DAMAGE"
     {
         "#format"       "{1:s},{2:s},{3:d}"
-        "en"            "The Tank{1} {red}{2}{default} had {olive}{3}{default} health remaining"
-        "chi"           "坦克{1} {red}{2}{default} 还剩余 {olive}{3}{default} 生命值"
+        "chi"           "坦克{1} {red}{2}{default} 还剩下 {olive}{3}{default} 生命值"
     }
 
     "DEAD"
     {
         "#format"       "{1:s},{2:s}"
-        "en"            "The Tank{1} {red}{2}{default} is dead! {olive}Damage{default} dealt to the {olive}Tank{default}:"
-        "chi"           "坦克{1} {red}{2}{default} 已死亡! 对{olive}坦克{default}造成的{olive}伤害{default}统计:"
+        "chi"           "坦克{1} {red}{2}{default} 已死亡! {olive}对坦克{default}造成的{olive}伤害{default}统计:"
     }
     
     "DEAD_WITHOUT_DAMAGE"
     {
         "#format"       "{1:s},{2:s}"
-        "en"            "The Tank{1} {red}{2}{default} is dead!"
         "chi"           "坦克{1} {red}{2}{default} 已死亡!"
     }
 
     "DAMAGE"
     {
         "#format"       "{1:s},{2:d},{3:s},{4:d},{5:s},{6:s},{7:s}"
-        "en"            "{default}{1}{2} {green}[{3}{default}{4}%%{green}{5}] {6}{7}"
         "chi"           "{default}{1}{2} {green}[{3}{default}{4}%%{green}{5}] {6}{7}"
     }
 
     "TANK_ALIVE_SCORE"
     {
         "#format"       "{1:s},{2:s},{3:d}"
-        "en"            "The Tank{1} {red}{2}{default} dealt damage in {olive}{3}{default} seconds:"
         "chi"           "坦克{1} {red}{2}{default} 在 {olive}{3}{default} 秒内造成的伤害:"
     }
 
     "TANK_IMPACT"
     {
         "#format"       "{1:d},{2:d},{3:d}"
-        "en"            "Punches: {olive}{1} {green}|{default} Rocks: {olive}{2} {green}|{default} Hittables: {olive}{3}"
-        "chi"           "拳: {olive}{1} {green}|{default} 饼: {olive}{2} {green}|{default} 铁: {olive}{3}"
+        "chi"           "拳: {olive}{1}{default} | 饼: {olive}{2}{default} | 铁: {olive}{3}"
+    }
+
+    "TANK_INCAPS_DEATHS"
+    {
+        "#format"       "{1:d},{2:d}"
+        "chi"           "倒地: {olive}{1}{default} | 死亡: {olive}{2}"
     }
 
     "TANK_TOTAL_DAMAGE"
     {
         "#format"       "{1:d}"
-        "en"            "Total damage: {olive}{1}"
-        "chi"           "总伤害: {olive}{1}"
+        "chi"           "对生还者总伤害: {olive}{1}"
     }
 }
