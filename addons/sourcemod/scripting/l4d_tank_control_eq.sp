@@ -194,13 +194,19 @@ public Action L4D_OnTryOfferingTankBot(int tank_index, bool &enterStatis)
 public void L4D_OnLeaveStasis(int tank)
 {
     // Tank is always AI here, delay by a frame.
-    RequestFrame(L4D_OnLeaveStasis_Post, tank);
+    RequestFrame(L4D_OnLeaveStasis_Post, GetClientUserId(tank));
 }
 
-void L4D_OnLeaveStasis_Post(int tank)
+void L4D_OnLeaveStasis_Post(int userid)
 {
+    int tank = GetClientOfUserId(userid);
     // Tank passed from AI to a player, nothing to do here.
-    if (!IsClientInGame(tank))
+    if (!tank || !IsClientInGame(tank))
+        return;
+    
+    // @Forgetest: 
+    //   AI Tank may have committed suicide at the moment
+    if (!IsPlayerAlive(tank) || GetEntProp(tank, Prop_Send, "m_isIncapacitated")) // Thanks to @sheo for noting the tank incap
         return;
 
     if (hTankDebug.BoolValue)
