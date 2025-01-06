@@ -8,19 +8,11 @@
 		}
 		"zonemod"
 		{
-<<<<<<< HEAD
-			"name" "ZoneMod 2.8.9"
-		}
-		"zoneretro"
-		{
-			"name" "ZoneMod Retro 2.8.9"
-=======
 			"name" "ZoneMod 2.8.9e"
 		}
 		"zoneretro"
 		{
 			"name" "ZoneMod Retro 2.8.9e"
->>>>>>> upstream/master
 		}
 		"zonemod4K"
 		{
@@ -157,11 +149,7 @@
 		}
 		"zonemod8v8"
 		{
-<<<<<<< HEAD
 			"name" "ZoneMod 8v8"
-=======
-			"name" "ZoneHunters 2.8.9e"
->>>>>>> upstream/master
 		}
 		"advanced8v8"
 		{
