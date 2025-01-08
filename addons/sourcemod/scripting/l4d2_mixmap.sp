@@ -319,7 +319,7 @@ Action Timer_ShowMaplist(Handle timer, int client)
 }
 
 // Loads a specified set of maps
-Action ForceMixmap(int client, any args) 
+Action ForceMixmap(int client, int args)
 {
 	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
 	
@@ -363,7 +363,7 @@ Action ForceMixmap(int client, any args)
 }
 
 // Load a specified set of maps
-Action ManualMixmap(int client, any args) 
+Action ManualMixmap(int client, int args)
 {
 	if (args < 1) 
 	{
@@ -420,7 +420,7 @@ Action ShowAllMaps(int client, any Args)
 }
 */
 
-Action Mixmap_Cmd(int client, any args) 
+Action Mixmap_Cmd(int client, int args)
 {
 	if (IsClientAndInGame(client))
 	{
@@ -505,7 +505,7 @@ Action Mixmap_Cmd(int client, any args)
 }
 
 // Specifiy a rank for a given tag
-Action TagRank(any args) 
+Action TagRank(int args)
 {
 	if (args < 2) 
 	{
@@ -538,7 +538,7 @@ Action TagRank(any args)
 }
 
 // Add a map to the maplist under specified tags
-Action AddMap(any args) 
+Action AddMap(int args)
 {
 	if (args < 2) 
 	{
@@ -586,7 +586,7 @@ Action AddMap(any args)
 }
 
 // Display current map list
-Action MixMaplist(int client, any args) 
+Action MixMaplist(int client, int args)
 {
 	if (! g_bMaplistFinalized) 
 	{
@@ -628,7 +628,7 @@ Action MixMaplist(int client, any args)
 }
 
 // Abort a currently loaded mapset
-Action StopMixmap_Cmd(int client, any args) 
+Action StopMixmap_Cmd(int client, int args)
 {
 	if (!g_bMapsetInitialized ) 
 	{
@@ -675,7 +675,7 @@ Action StopMixmap_Cmd(int client, any args)
 	return Plugin_Continue;
 }
 
-Action StopMixmap(int client, any args) 
+Action StopMixmap(int client, int args) 
 {
 	if (!g_bMapsetInitialized) 
 	{
