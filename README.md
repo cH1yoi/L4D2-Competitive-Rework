@@ -2,13 +2,13 @@
 
 小花服的插件包,内含大量私有设置,请修改各项配置
 
-仅支持Liunx~
+自行创建修改databases.cfg 和 server.cfg 以及广告和sourcebans 等
 
-感谢Sir.P提供大量插件,我的超人!
+本库有个 game_init.sh 可以用介个一键安装服务端和插件以及启动脚本喵
+
+从Sir.P的库里偷偷偷
 
 介个地方: [PencilMario/L4D2-Competitive-Rework: 0721服务器的Zonemod插件配置 (github.com)](https://github.com/PencilMario/L4D2-Competitive-Rework)
-
-Sir.P 么么么么~
 
 如使用SourceTv启动项请添加+tv_enable 1 +sv_setmax 31
 
@@ -33,7 +33,7 @@ This project is **Actively Developed**.
 
 > **Included Matchmodes:**
 
-* **Zonemod 2.8.9c**
+* **Zonemod 2.8.9e**
 * **Zonemod Hunters**
 * **Zonemod Retro**
 * **NeoMod 0.4a**
