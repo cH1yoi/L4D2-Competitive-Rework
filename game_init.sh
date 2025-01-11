@@ -155,7 +155,7 @@ function download_plugins() {
 }
 
 function create_plugin_update_script() {
-    echo_lang "Creating update scripts..." "正在创建更新脚本..."
+    echo_lang "Creating plugin update script..." "正在创建插件更新脚本..."
     
     cat << PLUGIN_UPDATE_EOF > "$SCRIPT_DIR/update_plugins.sh"
 #!/bin/bash
@@ -163,24 +163,31 @@ echo "==================Plugin Update Time=================="
 TZ=UTC-8 date
 echo "==================Starting Update=================="
 
+# 仓库信息
 PLUGIN_REPO_URL="$PLUGIN_REPO_URL"
 REPO_NAME=\$(basename "\$PLUGIN_REPO_URL" .git)
 
-directories=("$INSTALL_PATH/left4dead2")
+# 目标目录
+TARGET_DIR="\$HOME"  # 将插件克隆到脚本所在目录
 
-if [ ! -d "$INSTALL_PATH/\$REPO_NAME" ]; then
+# 克隆或更新代码
+if [ ! -d "\$TARGET_DIR/\$REPO_NAME" ]; then
     echo "克隆仓库..."
-    git clone "\$PLUGIN_REPO_URL" "$INSTALL_PATH/\$REPO_NAME"
+    git clone "\$PLUGIN_REPO_URL" "\$TARGET_DIR/\$REPO_NAME"
 else
     echo "更新仓库..."
-    cd "$INSTALL_PATH/\$REPO_NAME" || { echo "无法进入目录"; exit 1; }
+    cd "\$TARGET_DIR/\$REPO_NAME" || { echo "无法进入目录"; exit 1; }
     git pull --rebase
 fi
+
+# 复制插件到游戏目录
+directories=("$INSTALL_PATH/left4dead2")
 
 for dir in "\${directories[@]}"; do
     if [ -d "\$dir" ]; then
         echo "更新目录 | \$dir"
         
+        # 删除需要更新的文件和目录
         echo "清理旧文件..."
         
         # 删除 sourcemod 特定目录
@@ -208,8 +215,10 @@ for dir in "\${directories[@]}"; do
         rm -rf "\$dir/cfg/spcontrol_server"
         rm -rf "\$dir/cfg/stripper"
         
-        cp -r "$INSTALL_PATH/\$REPO_NAME"/* "\$dir/"
+        # 复制新文件
+        cp -r "\$TARGET_DIR/\$REPO_NAME"/* "\$dir/"
         
+        # 设置权限
         chmod -R 777 "\$dir/"
         
         echo "更新完成 | \$dir"
@@ -219,7 +228,7 @@ for dir in "\${directories[@]}"; do
 done
 
 echo "==================当前commit=================="
-cd "$INSTALL_PATH/\$REPO_NAME" || exit 1
+cd "\$TARGET_DIR/\$REPO_NAME" || exit 1
 git log -1
 echo "================== 运行结束 =================="
 PLUGIN_UPDATE_EOF
