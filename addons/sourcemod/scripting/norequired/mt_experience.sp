@@ -26,7 +26,7 @@ public Plugin myinfo = {
 #define IS_VALID_CLIENT(%1)     (%1 > 0 && %1 <= MaxClients)
 #define IS_REAL_CLIENT(%1)      (IsClientInGame(%1) && !IsFakeClient(%1))
 
-float g_fSurr, g_fInfr = 0.0;
+float g_fSurr = 0.0, g_fInfr = 0.0;
 enum struct PlayerInfo {
 	int id;
 	float rating;
@@ -81,73 +81,59 @@ public void GetVoteEndMessage(int iClient, char[] sMsg) {
  */
 public Action OnMixInProgress()
 {
-	Handle hPlayers = CreateArray(sizeof(PlayerInfo));
-	PlayerInfo tPlayer;
+    Handle hPlayers = CreateArray(sizeof(PlayerInfo));
+    PlayerInfo tPlayer;
+    g_fSurr = 0.0;
+    g_fInfr = 0.0;
 
-	for (int iClient = 1; iClient <= MaxClients; iClient++)
-	{
-		if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsMixMember(iClient)) {
-			continue;
-		}
+    // 收集所有玩家
+    for (int iClient = 1; iClient <= MaxClients; iClient++)
+    {
+        if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsMixMember(iClient)) {
+            continue;
+        }
 
-		tPlayer.id = iClient;
-		tPlayer.rating = L4D2_GetClientExp(iClient);//CalculatePlayerRating(GetPlayerStats(iClient));
+        tPlayer.id = iClient;
+        tPlayer.rating = L4D2_GetClientExp(iClient);
 
-		if (tPlayer.rating <= 0.0)
-		{
-			CPrintToChatAll("%t", "FAIL_PLAYER_HIDE_INFO_STOP", iClient);
-			Call_AbortMix();
-			return Plugin_Handled;
-		}
+        if (tPlayer.rating <= 0.0)
+        {
+            CPrintToChatAll("%t", "FAIL_PLAYER_HIDE_INFO_STOP", iClient);
+            Call_AbortMix();
+            return Plugin_Handled;
+        }
 
-		PushArrayArray(hPlayers, tPlayer);
-	}
+        PushArrayArray(hPlayers, tPlayer);
+    }
 
-	SortADTArrayCustom(hPlayers, SortPlayerByRating);
+    SortADTArrayCustom(hPlayers, SortPlayerByRating);
 
-	// Balance
-	int iPlayers = GetArraySize(hPlayers);
-	int iHalfPlayers = iPlayers / 2;
-	bool bIsSurvivorTeam = false;
+    int iPlayers = GetArraySize(hPlayers);
+    int iRequiredPerTeam = iPlayers / 2;
+    
+    for (int i = 0; i < iPlayers; i++)
+    {
+        GetArrayArray(hPlayers, i, tPlayer);
+        
+        bool bAssignToSurvivor;
+        
+        if (i < iRequiredPerTeam) {
+            bAssignToSurvivor = (i % 2 == 0);
+        } else {
+            bAssignToSurvivor = (i % 2 == 1);
+        }
 
-	for (int iIndex = 0; iIndex < iHalfPlayers - 1; iIndex++)
-	{
-		bIsSurvivorTeam = (iIndex % 2 == 0);
+        SetClientTeam(tPlayer.id, bAssignToSurvivor ? TEAM_SURVIVOR : TEAM_INFECTED);
+        
+        if (bAssignToSurvivor) {
+            g_fSurr += tPlayer.rating;
+        } else {
+            g_fInfr += tPlayer.rating;
+        }
+    }
 
-		// Left
-		GetArrayArray(hPlayers, iIndex, tPlayer);
-		SetClientTeam(tPlayer.id, bIsSurvivorTeam ? TEAM_SURVIVOR : TEAM_INFECTED);
-		if (bIsSurvivorTeam) {
-			g_fSurr += tPlayer.rating;
-		} else {
-			g_fInfr += tPlayer.rating;
-		}
-		// Right
-		GetArrayArray(hPlayers, iPlayers - iIndex - 1, tPlayer);
-		SetClientTeam(tPlayer.id, bIsSurvivorTeam ? TEAM_SURVIVOR : TEAM_INFECTED);
-		if (bIsSurvivorTeam) {
-			g_fSurr += tPlayer.rating;
-		} else {
-			g_fInfr += tPlayer.rating;
-		}
-	}
-
-	// Center
-	{
-		GetArrayArray(hPlayers, iHalfPlayers, tPlayer);
-		SetClientTeam(tPlayer.id, TEAM_INFECTED);
-		g_fInfr += tPlayer.rating;
-		GetArrayArray(hPlayers, iHalfPlayers - 1, tPlayer);
-		SetClientTeam(tPlayer.id, (iPlayers % 4 != 0) ? TEAM_SURVIVOR : TEAM_INFECTED);
-		if (iPlayers % 4 != 0) {
-			g_fSurr += tPlayer.rating;
-		} else {
-			g_fInfr += tPlayer.rating;
-		}
-	}
-
-	CPrintToChatAll("生还%f / 特感%f", g_fSurr, g_fInfr);
-	return Plugin_Continue;
+    CPrintToChatAll("生还: %.2f / 特感: %.2f (差值: %.2f)", g_fSurr, g_fInfr, FloatAbs(g_fSurr - g_fInfr));
+    return Plugin_Continue;
 }
 
 public void SteamWorks_OnValidateClient(int iOwnerAuthId, int iAuthId)
