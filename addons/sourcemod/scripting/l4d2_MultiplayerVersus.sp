@@ -6,6 +6,7 @@
 #include <sourcemod>
 #include <left4dhooks>
 #include <colors>
+#include <dhooks>
 #undef REQUIRE_PLUGIN
 #include <l4d_tank_control_eq>
 #define REQUIRE_PLUGIN
@@ -33,11 +34,15 @@ bool g_bSecondTankSpawned = false;
 Handle g_hSDK_NextBotCreatePlayerBot;
 Handle g_hSDK_RespawnPlayer;
 
+bool g_bIsSacrificeFinale;
+bool g_bFinalLeaving;
+int g_iSurvivorCount;
+
 public Plugin myinfo = {
     name = "L4D2 Multiplayer Versus",
     author = "Hana",
     description = "支持Multiplayer的基础插件,包含多坦克机制",
-    version = "1.6",
+    version = "1.8",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -87,7 +92,19 @@ public void OnPluginStart()
     g_hSDK_NextBotCreatePlayerBot = EndPrepSDKCall();
     if( g_hSDK_NextBotCreatePlayerBot == null ) SetFailState("Failed to create SDKCall: NextBotCreatePlayerBot<SurvivorBot>");
     
+    // Add rescue vehicle fix detour
+    Handle hDetour = DHookCreateFromConf(hGameData, "CTerrorGameRules::CalculateSurvivalMultiplier");
+    if(!hDetour)
+        SetFailState("Failed to find 'CTerrorGameRules::CalculateSurvivalMultiplier' signature");
+    
+    if(!DHookEnableDetour(hDetour, true, CalculateSurvivalMultiplier_Post))
+        SetFailState("Failed to detour 'CTerrorGameRules::CalculateSurvivalMultiplier'");
+
+    delete hDetour;
     delete hGameData;
+
+    // Add rescue vehicle events
+    HookEvent("finale_vehicle_leaving", Event_FinaleVehicleLeaving, EventHookMode_Pre);
 }
 
 public void OnMapStart()
@@ -98,6 +115,9 @@ public void OnMapStart()
     g_iSpawnedTankCount = 0;
     g_bSecondTankSpawned = false;
     CreateTimer(1.0, Timer_CreateSurvivorBots);
+    g_bFinalLeaving = false;
+    g_iSurvivorCount = 0;
+    g_bIsSacrificeFinale = false;
 }
 
 /*--------------------- 牛魔bot生成相关的 ---------------------*/
@@ -461,4 +481,117 @@ void AddTankToList(const char[] steamId)
         hadTankList.PushString(steamId);
     }
     delete hadTankList;
+}
+
+// 分数修复相关
+public void OnEntityCreated(int entity, const char[] classname)
+{
+    if (strncmp(classname, "trigger_finale", 14) == 0)
+    {
+        RequestFrame(OnNextFrame_trigger_finale, EntIndexToEntRef(entity));
+    }
+}
+
+void OnNextFrame_trigger_finale(int entityRef)
+{
+    int entity = EntRefToEntIndex(entityRef);
+    if (entity == INVALID_ENT_REFERENCE)
+        return;
+
+    HookSingleEntityOutput(entity, "FinaleEscapeStarted", OnFinaleEscapeStarted);
+}
+
+void OnFinaleEscapeStarted(const char[] output, int caller, int activator, float delay)
+{
+    g_bIsSacrificeFinale = view_as<bool>(GetEntProp(caller, Prop_Data, "m_bIsSacrificeFinale"));
+}
+
+void Event_FinaleVehicleLeaving(Event event, const char[] name, bool dontBroadcast)
+{
+    g_bFinalLeaving = true;
+    g_iSurvivorCount = 0;
+
+    for(int i = 1; i <= MaxClients; i++)
+    {
+        if(!IsClientInGame(i) || GetClientTeam(i) != TEAM_SURVIVOR)
+            continue;
+
+        if(IsPlayerAlive(i))
+        {
+            if(IsPlayerIncapacitated(i) || IsPlayerHangingFromLedge(i))
+            {
+                if(L4D_HasPlayerControlledZombies()) 
+                    ForcePlayerSuicide(i);
+                continue;
+            }
+            g_iSurvivorCount++;
+
+            if(!g_bIsSacrificeFinale) 
+                SDKHook(i, SDKHook_OnTakeDamage, SurvivorOnTakeDamage);
+        }
+    }
+
+    // Handle extra survivor positions
+    int entity = FindEntityByClassname(MaxClients + 1, "info_survivor_position");
+    if(IsValidEntity(entity))
+    {
+        float vOrigin[3];
+        GetEntPropVector(entity, Prop_Send, "m_vecOrigin", vOrigin);
+
+        int iSurvivor = 0;
+        static const char sOrder[][] = {"1", "2", "3", "4"};
+        for(int i = 1; i <= MaxClients; i++)
+        {
+            if(!IsClientInGame(i) || GetClientTeam(i) != TEAM_SURVIVOR)
+                continue;
+                
+            if(++iSurvivor < 4)
+                continue;
+                
+            entity = CreateEntityByName("info_survivor_position");
+            if(entity > 2000) 
+            {
+                RemoveEntity(entity);
+                break;
+            }
+
+            DispatchKeyValue(entity, "Order", sOrder[iSurvivor - RoundToFloor(iSurvivor / 4.0) * 4]);
+            TeleportEntity(entity, vOrigin, NULL_VECTOR, NULL_VECTOR);
+            DispatchSpawn(entity);
+        }
+    }
+}
+
+Action SurvivorOnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+{
+    if (!IsClientInGame(victim) || GetClientTeam(victim) != TEAM_SURVIVOR) 
+        return Plugin_Continue;
+
+    return Plugin_Handled;
+}
+
+MRESReturn CalculateSurvivalMultiplier_Post(Address pThis, Handle hParams)
+{
+    if(!g_bFinalLeaving) return MRES_Ignored;
+    if(!L4D_HasPlayerControlledZombies()) return MRES_Ignored;
+
+    int iTeamFliped = GameRules_GetProp("m_bAreTeamsFlipped");
+    int iOrininalSurvivorCount = GameRules_GetProp("m_iVersusSurvivalMultiplier", 4, iTeamFliped);
+
+    if(iOrininalSurvivorCount < g_iSurvivorCount)
+    {
+        GameRules_SetProp("m_iVersusSurvivalMultiplier", g_iSurvivorCount, 4, iTeamFliped, true);
+    }
+
+    return MRES_Ignored;
+}
+
+bool IsPlayerIncapacitated(int client)
+{
+    return view_as<bool>(GetEntProp(client, Prop_Send, "m_isIncapacitated", 1));
+}
+
+bool IsPlayerHangingFromLedge(int client)
+{
+    return view_as<bool>(GetEntProp(client, Prop_Send, "m_isHangingFromLedge") || GetEntProp(client, Prop_Send, "m_isFallingFromLedge"));
 }
