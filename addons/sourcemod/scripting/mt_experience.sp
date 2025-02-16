@@ -10,14 +10,14 @@
 
 public Plugin myinfo = { 
 	name = "MixTeamExperience",
-	author = "SirP, TouchMe",
+	author = "SirP, TouchMe, Hana",
 	description = "Adds mix team by game experience",
 	version = "build_0001"
 };
 
 #define TRANSLATIONS            "mt_experience.phrases"
 
-#define MIN_PLAYERS             6
+#define MIN_PLAYERS             4
 
 // Other
 #define APP_L4D2                550
@@ -26,11 +26,12 @@ public Plugin myinfo = {
 #define IS_VALID_CLIENT(%1)     (%1 > 0 && %1 <= MaxClients)
 #define IS_REAL_CLIENT(%1)      (IsClientInGame(%1) && !IsFakeClient(%1))
 
-float g_fSurr = 0.0, g_fInfr = 0.0;
 enum struct PlayerInfo {
 	int id;
-	float rating;
+	int rating;
 }
+
+float g_fSurr = 0.0, g_fInfr = 0.0;
 
 enum struct PlayerStats {
 	int playedTime;
@@ -86,7 +87,6 @@ public Action OnMixInProgress()
     g_fSurr = 0.0;
     g_fInfr = 0.0;
 
-    // 收集所有玩家
     for (int iClient = 1; iClient <= MaxClients; iClient++)
     {
         if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsMixMember(iClient)) {
@@ -96,7 +96,7 @@ public Action OnMixInProgress()
         tPlayer.id = iClient;
         tPlayer.rating = L4D2_GetClientExp(iClient);
 
-        if (tPlayer.rating <= 0.0)
+        if (tPlayer.rating <= 0)
         {
             CPrintToChatAll("%t", "FAIL_PLAYER_HIDE_INFO_STOP", iClient);
             Call_AbortMix();
@@ -109,7 +109,6 @@ public Action OnMixInProgress()
     SortADTArrayCustom(hPlayers, SortPlayerByRating);
 
     int iPlayers = GetArraySize(hPlayers);
-    int iRequiredPerTeam = iPlayers / 2;
     
     for (int i = 0; i < iPlayers; i++)
     {
@@ -117,68 +116,56 @@ public Action OnMixInProgress()
         
         bool bAssignToSurvivor;
         
-        if (i < iRequiredPerTeam) {
-            bAssignToSurvivor = (i % 2 == 0);
+        if (i < 2) {
+            bAssignToSurvivor = (i == 0);
         } else {
-            bAssignToSurvivor = (i % 2 == 1);
+            bAssignToSurvivor = (g_fSurr < g_fInfr);
         }
 
         SetClientTeam(tPlayer.id, bAssignToSurvivor ? TEAM_SURVIVOR : TEAM_INFECTED);
         
         if (bAssignToSurvivor) {
-            g_fSurr += tPlayer.rating;
+            g_fSurr += float(tPlayer.rating);
         } else {
-            g_fInfr += tPlayer.rating;
+            g_fInfr += float(tPlayer.rating);
         }
     }
 
-    CPrintToChatAll("生还: %.2f / 特感: %.2f (差值: %.2f)", g_fSurr, g_fInfr, FloatAbs(g_fSurr - g_fInfr));
+    int iSurvivorCount = 0, iInfectedCount = 0;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (!IsClientInGame(i) || IsFakeClient(i) || !IsMixMember(i)) {
+            continue;
+        }
+        
+        if (GetClientTeam(i) == TEAM_SURVIVOR) {
+            iSurvivorCount++;
+        } else if (GetClientTeam(i) == TEAM_INFECTED) {
+            iInfectedCount++;
+        }
+    }
+
+    CPrintToChatAll("分配结果: %d生还 vs %d特感", iSurvivorCount, iInfectedCount);
+    CPrintToChatAll("队伍评分 - 生还: %.2f / 特感: %.2f (差值: %.2f)", 
+        g_fSurr, g_fInfr, FloatAbs(g_fSurr - g_fInfr));
+    
     return Plugin_Continue;
 }
 
 public void SteamWorks_OnValidateClient(int iOwnerAuthId, int iAuthId)
 {
-	int iClient = GetClientFromSteamID(iAuthId);
-
-	if(IS_VALID_CLIENT(iClient)) {
-		SteamWorks_RequestStats(iClient, APP_L4D2);
-	}
+    CreateTimer(0.5, Timer_RequestStats, iAuthId);
 }
 
-any[] GetPlayerStats(int iClient)
+public Action Timer_RequestStats(Handle timer, any iAuthId)
 {
-	PlayerStats tPlayerStats;
-
-	SteamWorks_GetStatCell(iClient, "Stat.TotalPlayTime.Total", tPlayerStats.playedTime);
-	SteamWorks_GetStatCell(iClient, "Stat.SpecAttack.Tank", tPlayerStats.tankRocks);
-	SteamWorks_GetStatCell(iClient, "Stat.GamesWon.Versus", tPlayerStats.gamesWon);
-	SteamWorks_GetStatCell(iClient, "Stat.GamesLost.Versus", tPlayerStats.gamesLost);
-	SteamWorks_GetStatCell(iClient, "Stat.smg_silenced.Kills.Total", tPlayerStats.killBySilenced);
-	SteamWorks_GetStatCell(iClient, "Stat.smg.Kills.Total", tPlayerStats.killBySmg);
-	SteamWorks_GetStatCell(iClient, "Stat.shotgun_chrome.Kills.Total", tPlayerStats.killByChrome);
-	SteamWorks_GetStatCell(iClient, "Stat.pumpshotgun.Kills.Total", tPlayerStats.killByPump);
-
-	return tPlayerStats;
-}
-
-float CalculatePlayerRating(PlayerStats tPlayerStats)
-{
-	float fPlayedHours = SecToHours(tPlayerStats.playedTime);
-
-	if (fPlayedHours <= 0.0) {
-		return 0.0;
-	}
-
-	int iKillTotal = tPlayerStats.killByChrome + tPlayerStats.killByPump + tPlayerStats.killBySilenced + tPlayerStats.killBySmg;
-	float fRockPerHours = float(tPlayerStats.tankRocks) / fPlayedHours;
-	int iVersusGame = tPlayerStats.gamesWon + tPlayerStats.gamesLost;
-	float fWinRounds = 0.5;
-
-	if(iVersusGame >= 700) {
-		fWinRounds = float(tPlayerStats.gamesWon) / float(iVersusGame);
-	}
-
-	return fWinRounds * (0.55 * fPlayedHours + fRockPerHours + float(iKillTotal) * 0.005);
+    int iClient = GetClientFromSteamID(iAuthId);
+    
+    if(IS_VALID_CLIENT(iClient) && IsClientConnected(iClient) && IsClientInGame(iClient) && !IsFakeClient(iClient)) {
+        SteamWorks_RequestStats(iClient, APP_L4D2);
+    }
+    
+    return Plugin_Stop;
 }
 
 /**
@@ -207,10 +194,6 @@ int SortPlayerByRating(int indexFirst, int indexSecond, Handle hArrayList, Handl
 	}
 
 	return 0;
-}
-
-float SecToHours(int iSeconds) {
-	return float(iSeconds) / 3600.0;
 }
 
 int GetClientFromSteamID(int authid)
