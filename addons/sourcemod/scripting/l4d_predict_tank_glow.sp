@@ -32,7 +32,8 @@ CZombieManager ZombieManager;
 // order is foreign referred in `PickTankVariant()`
 #define TANK_VARIANT_SLOT (sizeof(g_sTankModels)-1)
 #define TANK_MODEL_STRLEN 128
-static const char g_sTankModels[][TANK_MODEL_STRLEN] = {
+
+static char g_sTankModels[4][TANK_MODEL_STRLEN] = {
 	"models/infected/hulk.mdl",
 	"models/infected/hulk_dlc3.mdl",
 	"models/infected/hulk_l4d1.mdl",
@@ -81,20 +82,19 @@ public void OnPluginStart()
 	
 	HookEvent("round_start", Event_RoundStart);
 	HookEvent("tank_spawn", Event_TankSpawn);
-	
-	// Reset round live state on plugin start
+
 	g_bRoundIsLive = false;
 }
 
 public void OnRoundIsLive()
 {
-	g_bRoundIsLive = true;
-	
-	if (IsValidEdict(g_iPredictModel))
-	{
-		RemoveEntity(g_iPredictModel);
-		g_iPredictModel = INVALID_ENT_REFERENCE;
-	}
+    g_bRoundIsLive = true;
+    
+    if (IsValidEdict(g_iPredictModel))
+    {
+        RemoveEntity(g_iPredictModel);
+        g_iPredictModel = INVALID_ENT_REFERENCE;
+    }
 }
 
 //=========================================================================================================
@@ -117,7 +117,7 @@ public void OnUpdateBosses(int iTankFlow, int iWitchFlow)
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
 	if (!L4D_IsVersusMode()) return;
-	
+
 	g_bRoundIsLive = false;
 	
 	if (!GameRules_GetProp("m_bInSecondHalfOfRound", 1))
@@ -141,7 +141,7 @@ public void OnMapStart()
 
 public void OnMapEnd()
 {
-	strcopy(g_sTankModels[TANK_VARIANT_SLOT], TANK_MODEL_STRLEN, "N/A");
+	strcopy(g_sTankModels[TANK_VARIANT_SLOT], sizeof(g_sTankModels[]), "N/A");
 }
 
 Action Timer_DelayProcess(Handle timer)
@@ -244,8 +244,8 @@ void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
 int ProcessPredictModel(float vPos[3], float vAng[3])
 {
 	if (g_bRoundIsLive)
-		return -1;
-	
+        return -1;
+
 	if (GetVectorLength(vPos) == 0.0)
 	{
 		if (L4D2Direct_GetVSTankToSpawnThisRound(0))
@@ -334,7 +334,7 @@ public void OnGetMissionInfo(int pThis)
 	{
 		static char buffer[64];
 		FormatEx(buffer, sizeof(buffer), "modes/versus/%i/TankVariant", L4D_GetCurrentChapter());
-		InfoEditor_GetString(pThis, buffer, g_sTankModels[TANK_VARIANT_SLOT], TANK_MODEL_STRLEN);
+		InfoEditor_GetString(pThis, buffer, g_sTankModels[TANK_VARIANT_SLOT], sizeof(g_sTankModels[]));
 	}
 }
 
