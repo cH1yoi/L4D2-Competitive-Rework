@@ -3,34 +3,35 @@
 	"Announce_Title"
 	{
 		"#format"	"{1:s}"
-		"en"		"[{green}!{default}] {blue}Facts {default}of the {blue}Tank {default}({olive}{1}{default})"
+		"en"		"┌ <Tank> {olive}{1}{default} Facts:"
+		"chi"		"┌ <Tank> {olive}{1}{default} 数据统计:"
 	}
-	
-	// CSayText appears to be async or via text stream?, whatever it costs random amount of time.
-	// For unknown reason stacking color tags can slow certain processing of message.
-	// To print messages in a proper order, extra tags should be added in front.
 	
 	"Announce_TankAttack"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"{red}{green}> {default}Punch: {red}{1} {green}/ {default}Rock: {red}{2} {green}/ {default}Hittable: {red}{3}"
+		"en"		"├   Punch: {olive}{1}{default} | Rock: {olive}{2}{default} | Hittable: {olive}{3}"
+		"chi"		"├   拳: {olive}{1}{default} | 饼: {olive}{2}{default} | 铁: {olive}{3}"
 	}
 	
 	"Announce_AttackResult"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{blue}{blue}{green}> {default}Incap: {olive}{1} {green}/ {default}Death: {olive}{2} {default}from {blue}Survivors"
+		"en"		"├   Incap: {olive}{1}{default} | Death: {olive}{2}"
+		"chi"		"├   击倒: {olive}{1}{default} | 死亡: {olive}{2}"
 	}
 	
 	"Announce_Summary_WithMinute"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"{lightgreen}{lightgreen}{lightgreen}{green}> {default}Duration: {lightgreen}{1}min {2}s {green}/ {default}Total damage: {lightgreen}{3}"
+		"en"		"└   Duration: {olive}{1}min {2}s{default} | Total Damage: {olive}{3}"
+		"chi"		"└   持续时间: {olive}{1}分{2}秒{default} | 总伤害: {olive}{3}"
 	}
 	
 	"Announce_Summary_WithoutMinute"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"{lightgreen}{lightgreen}{lightgreen}{green}> {default}Duration: {lightgreen}{1}s {green}/ {default}Total damage: {lightgreen}{2}"
+		"en"		"└   Duration: {olive}{1}s{default} | Total Damage: {olive}{2}"
+		"chi"		"└   持续时间: {olive}{1}秒{default} | 总伤害: {olive}{2}"
 	}
 }
