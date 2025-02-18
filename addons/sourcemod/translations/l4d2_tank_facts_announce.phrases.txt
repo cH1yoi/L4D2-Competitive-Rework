@@ -10,28 +10,28 @@
 	"Announce_TankAttack"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"├   Punch: {olive}{1}{default} | Rock: {olive}{2}{default} | Hittable: {olive}{3}"
-		"chi"		"├   拳: {olive}{1}{default} | 饼: {olive}{2}{default} | 铁: {olive}{3}"
+		"en"		"├   Punch: {red}{1}{default} | Rock: {red}{2}{default} | Hittable: {red}{3}"
+		"chi"		"├   拳: {red}{1}{default} | 饼: {red}{2}{default} | 铁: {red}{3}"
 	}
 	
 	"Announce_AttackResult"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"├   Incap: {olive}{1}{default} | Death: {olive}{2}"
-		"chi"		"├   击倒: {olive}{1}{default} | 死亡: {olive}{2}"
+		"en"		"├   Incap: {red}{1}{default} | Death: {red}{2}"
+		"chi"		"├   击倒: {red}{1}{default} | 死亡: {red}{2}"
 	}
 	
 	"Announce_Summary_WithMinute"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"en"		"└   Duration: {olive}{1}min {2}s{default} | Total Damage: {olive}{3}"
-		"chi"		"└   持续时间: {olive}{1}分{2}秒{default} | 总伤害: {olive}{3}"
+		"en"		"└   Duration: {olive}{1}min {2}s{default} | Total Damage: {red}{3}"
+		"chi"		"└   持续时间: {olive}{1}分{2}秒{default} | 总伤害: {red}{3}"
 	}
 	
 	"Announce_Summary_WithoutMinute"
 	{
 		"#format"	"{1:d},{2:d}"
-		"en"		"└   Duration: {olive}{1}s{default} | Total Damage: {olive}{2}"
-		"chi"		"└   持续时间: {olive}{1}秒{default} | 总伤害: {olive}{2}"
+		"en"		"└   Duration: {olive}{1}s{default} | Total Damage: {red}{2}"
+		"chi"		"└   持续时间: {olive}{1}秒{default} | 总伤害: {red}{2}"
 	}
 }

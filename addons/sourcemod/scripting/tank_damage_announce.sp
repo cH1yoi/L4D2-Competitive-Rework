@@ -30,8 +30,8 @@ public void OnPluginStart()
     HookEvent("player_death", Event_PlayerDeath);
     HookEvent("player_hurt", Event_PlayerHurt);
     HookEvent("tank_spawn", Event_TankSpawn);
-    HookEvent("round_start", Event_RoundStart);
-    HookEvent("round_end", Event_RoundEnd);
+    HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
+    HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
 }
 
 public void OnMapStart()
@@ -59,6 +59,7 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     }
     
     if (g_bIsTankInPlay) return;
+    
     g_bIsTankInPlay = true;
 }
 
@@ -88,19 +89,12 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
         CreateTimer(0.1, Timer_DisplayDamage, victim);
         return;
     }
-    
-    if (IsSurvivor(victim) && IsTeamWiped())
-    {
-        DisplayTankDamage(GetTankClient());
-        ClearTankDamage();
-    }
 }
 
-Action Timer_DisplayDamage(Handle timer, any victim)
+Action Timer_DisplayDamage(Handle timer, int tank)
 {
-    DisplayTankDamage(victim);
+    DisplayTankDamage(tank);
     ClearTankDamage();
-    g_bIsTankInPlay = false;
     return Plugin_Stop;
 }
 
@@ -134,20 +128,10 @@ void DisplayTankDamage(int tank)
     
     SortTankDamage();
     
-    bool isTeamWiped = IsTeamWiped();
-    int tankHealth = 0;
-    if (isTeamWiped && IsValidClient(tank) && IsPlayerAlive(tank)) {
-        tankHealth = GetClientHealth(tank);
-    }
-    
     for (int i = 1; i <= MaxClients; i++) {
         if (!IsValidClient(i) || !IsClientInGame(i))
             continue;
             
-        if (isTeamWiped && tankHealth > 0) {
-            CPrintToChat(i, "<{green}Tank{default}> {olive}%s{default} 剩余 {green}%d{default} 血量", displayName, tankHealth);
-        }
-        
         CPrintToChat(i, "┌ <{green}Tank{default}> {olive}%s{default} 受到的伤害:", displayName);
         
         for (int j = 0; j < g_aTankDamage.Length; j += 2) {
@@ -226,6 +210,7 @@ void SwapDamageValues(int index1, int index2)
 void ClearTankDamage()
 {
     g_aTankDamage.Clear();
+    g_bIsTankInPlay = false;
     for (int i = 1; i <= MaxClients; i++) {
         g_iWasTank[i] = 0;
     }
@@ -256,27 +241,6 @@ bool IsValidClient(int client)
 bool IsTank(int client)
 {
     return (GetClientTeam(client) == TEAM_INFECTED && GetEntProp(client, Prop_Send, "m_zombieClass") == SI_CLASS_TANK);
-}
-
-bool IsSurvivor(int client)
-{
-    return (IsValidClient(client) && GetClientTeam(client) == 2);
-}
-
-bool IsTeamWiped()
-{
-    bool anyoneAlive = false;
-    
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (IsClientInGame(i) && IsSurvivor(i) && IsPlayerAlive(i))
-        {
-            anyoneAlive = true;
-            break;
-        }
-    }
-    
-    return !anyoneAlive;
 }
 
 int GetTankClient()
