@@ -29,7 +29,7 @@ public Plugin myinfo =
 	name = "[L4D1/L4D2] Mix Map",
 	author = "Bred, Harry",
 	description = "Randomly select five maps for versus/coop/realism. Adding for fun",
-	version = "1.0h-2024/12/25",
+	version = "1.1h-2025/1/31",
 	url = "https://github.com/fbef0102/L4D1_2-Plugins/tree/master/l4d2_mixmap"
 };
 
@@ -143,7 +143,7 @@ public void OnPluginStart()
 	g_cvMaxMapsNum		= CreateConVar("l4d2mm_max_maps_num",		"2",	"Determine how many maps of one campaign can be selected; 0 = no limits;", FCVAR_NOTIFY, true, 0.0, true, 5.0);
 	g_cvFinaleEndCoop	= CreateConVar("l4d2mm_finale_end_coop",	"0",	"If 1, auto force start mixmap in the end of finale in coop/realism mode (When mixmap is alreaedy on)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvFinaleEndVersus	= CreateConVar("l4d2mm_finale_end_verus",	"0",	"If 1, auto force start mixmap in the end of finale in versus mode (When mixmap is alreaedy on)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	//AutoExecConfig(true, 			   "l4d2_mixmap");
+	AutoExecConfig(true, 			   "l4d2_mixmap");
 
 	//Servercmd 服务器指令（用于cfg文件）
 	RegServerCmd( "sm_addmap", AddMap, "Add a chatper and tag 新增關卡名稱與標記, Usage: sm_addmap <map_name> <tag>");
@@ -157,7 +157,7 @@ public void OnPluginStart()
 	RegAdminCmd( "sm_fstopmixmap",	StopMixmap, ADMFLAG_ROOT, "Force stop a mixmap ;强制中止mixmap，并初始化地图列表");
 
 	//Midcommand 插件启用后可使用的指令
-	RegConsoleCmd( "sm_maplist", MixMaplist, "Show the mix map list; 展示mixmap最终抽取出的地图列表");
+	RegConsoleCmd( "sm_mixmaplist", MixMaplist, "Show the mix map list; 展示mixmap最终抽取出的地图列表");
 	//RegAdminCmd( "sm_allmap", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
 	//RegAdminCmd( "sm_allmaps", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
 
@@ -261,7 +261,7 @@ public void OnMapStart()
 
 	g_hArrayMapOrder.GetString(g_iMapsPlayed+1, buffer, BUF_SZ);
 
-	CreateTimer(5.0, Timer_FindInfoChangelevel, _, TIMER_FLAG_NO_MAPCHANGE);
+	//CreateTimer(5.0, Timer_FindInfoChangelevel, _, TIMER_FLAG_NO_MAPCHANGE);
 
 	Call_StartForward(g_hForwardNext);
 	Call_PushString(buffer);
@@ -319,7 +319,7 @@ Action Timer_ShowMaplist(Handle timer, int client)
 }
 
 // Loads a specified set of maps
-Action ForceMixmap(int client, int args)
+Action ForceMixmap(int client, any args) 
 {
 	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
 	
@@ -363,7 +363,7 @@ Action ForceMixmap(int client, int args)
 }
 
 // Load a specified set of maps
-Action ManualMixmap(int client, int args)
+Action ManualMixmap(int client, any args) 
 {
 	if (args < 1) 
 	{
@@ -420,7 +420,7 @@ Action ShowAllMaps(int client, any Args)
 }
 */
 
-Action Mixmap_Cmd(int client, int args)
+Action Mixmap_Cmd(int client, any args) 
 {
 	if (IsClientAndInGame(client))
 	{
@@ -505,7 +505,7 @@ Action Mixmap_Cmd(int client, int args)
 }
 
 // Specifiy a rank for a given tag
-Action TagRank(int args)
+Action TagRank(any args) 
 {
 	if (args < 2) 
 	{
@@ -538,7 +538,7 @@ Action TagRank(int args)
 }
 
 // Add a map to the maplist under specified tags
-Action AddMap(int args)
+Action AddMap(any args) 
 {
 	if (args < 2) 
 	{
@@ -586,7 +586,7 @@ Action AddMap(int args)
 }
 
 // Display current map list
-Action MixMaplist(int client, int args)
+Action MixMaplist(int client, any args) 
 {
 	if (! g_bMaplistFinalized) 
 	{
@@ -604,7 +604,7 @@ Action MixMaplist(int client, int args)
 		g_hArrayMapOrder.GetString(i, buffer, BUF_SZ);
 		if (g_iMapsPlayed == i)
 			FormatEx(output, BUF_SZ, "\x04 %d - %s", i + 1, buffer);
-		else if (!g_cvNextMapPrint.IntValue && g_iMapsPlayed < i)
+		else if (!g_cvNextMapPrint.BoolValue && g_iMapsPlayed < i)
 		{
 			FormatEx(output, BUF_SZ, "\x01 %d - %T", i + 1, "Secret", client);
 			CPrintToChat(client, "%s", output);
@@ -628,7 +628,7 @@ Action MixMaplist(int client, int args)
 }
 
 // Abort a currently loaded mapset
-Action StopMixmap_Cmd(int client, int args)
+Action StopMixmap_Cmd(int client, any args) 
 {
 	if (!g_bMapsetInitialized ) 
 	{
@@ -675,7 +675,7 @@ Action StopMixmap_Cmd(int client, int args)
 	return Plugin_Continue;
 }
 
-Action StopMixmap(int client, int args) 
+Action StopMixmap(int client, any args) 
 {
 	if (!g_bMapsetInitialized) 
 	{
@@ -818,8 +818,6 @@ Action Timer_PluginStart(Handle timer)
 
 	if(g_ReadyUpAvailable) UpdateReadyUpFooter(5.5);
 
-	
-
 	return Plugin_Continue;
 }
 
@@ -832,7 +830,7 @@ Action Timed_NextMapInfo(Handle timer)
 	GetPrettyName(sMapName_Pretty);
 	//PrintToChatAll("%s", sMapName_Pretty);
 	
-	g_cvNextMapPrint.IntValue ? CPrintToChatAll("%t", "Show_Next_Map", sMapName_Pretty) : CPrintToChatAll("%t", "Show_Next_Map (Secret)", "Secret");
+	g_cvNextMapPrint.BoolValue ? CPrintToChatAll("%t", "Show_Next_Map", sMapName_Pretty) : CPrintToChatAll("%t", "Show_Next_Map (Secret)", "Secret");
 	
 	return Plugin_Continue;
 }
@@ -859,20 +857,23 @@ Action Timer_UpdateReadyUpFooter(Handle timer)
 	char sMapName_Pretty[BUF_SZ];
 	if(g_hArrayMapOrder.Length == 0)
 	{
-		FormatEx(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : No active");
+		//FormatEx(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : No active, type !mixmap");
 	}
 	else
 	{
 		if(g_iMapsPlayed+1 >= g_iMapCount)
 		{
-			FormatEx(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : No Next Map");
+			//FormatEx(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : No Next Map");
 		}
 		else
 		{
-			g_hArrayMapOrder.GetString(g_iMapsPlayed+1, sMapName_Pretty, BUF_SZ);
-			GetPrettyName(sMapName_Pretty);
+			if(g_cvNextMapPrint.BoolValue)
+			{
+				g_hArrayMapOrder.GetString(g_iMapsPlayed+1, sMapName_Pretty, BUF_SZ);
+				GetPrettyName(sMapName_Pretty);
 
-			Format(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : %s", sMapName_Pretty);
+				Format(sMapName_Pretty, sizeof(sMapName_Pretty), "Mixmap : %s", sMapName_Pretty);
+			}
 		}
 	}
 
@@ -892,7 +893,7 @@ Action Timer_UpdateReadyUpFooter(Handle timer)
 	return Plugin_Continue;
 }
 
-Action Timer_FindInfoChangelevel(Handle timer)
+stock Action Timer_FindInfoChangelevel(Handle timer)
 {
 	if(L4D_HasPlayerControlledZombies() && strlen(g_slandmarkName) > 0)
 	{
@@ -908,6 +909,7 @@ Action Timer_FindInfoChangelevel(Handle timer)
 			if(info_landmark > MaxClients)
 			{
 				// To prevent server console spam error: Most gross danger! Cannot find Landmark named ｘｘｘｘｘｘ!
+				// (只出現於對抗模式) 伺服器啟動選項有寫-dev, 第二回合倖存者過關後
 				DispatchKeyValueVector(info_landmark, "origin", targetPos);
 				DispatchKeyValue(info_landmark, "targetname", g_slandmarkName);
 				DispatchSpawn(info_landmark);
