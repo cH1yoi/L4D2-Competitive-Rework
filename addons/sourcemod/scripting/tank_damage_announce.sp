@@ -2,9 +2,7 @@
 #pragma newdecls required
 
 #include <sourcemod>
-#include <sdkhooks>
 #include <colors>
-#include <left4dhooks>
 
 #define TEAM_SURVIVOR 2
 #define TEAM_INFECTED 3
@@ -14,19 +12,22 @@ public Plugin myinfo = {
     name        = "Tank Damage Stats",
     author      = "HANA",
     description = "瞅瞅集火,什么! 1%  √√√×",
-    version     = "1.0",
+    version     = "1.2",
     url         = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
-ArrayList g_aTankDamage;
+enum struct TankDamageStats {
+    int damage[MAXPLAYERS + 1];
+    int userId[MAXPLAYERS + 1];
+    int count;
+}
+
+TankDamageStats g_TankDamage;
 bool g_bIsTankInPlay;
-int g_iWasTank[MAXPLAYERS + 1];
 char g_sLastHumanTankName[MAX_NAME_LENGTH];
 
 public void OnPluginStart()
 {
-    g_aTankDamage = new ArrayList(2);
-    
     HookEvent("player_death", Event_PlayerDeath);
     HookEvent("player_hurt", Event_PlayerHurt);
     HookEvent("tank_spawn", Event_TankSpawn);
@@ -39,6 +40,16 @@ public void OnMapStart()
     g_bIsTankInPlay = false;
     g_sLastHumanTankName[0] = '\0';
     ClearTankDamage();
+}
+
+void ClearTankDamage()
+{
+    for (int i = 1; i <= MaxClients; i++) {
+        g_TankDamage.damage[i] = 0;
+        g_TankDamage.userId[i] = 0;
+    }
+    g_TankDamage.count = 0;
+    g_bIsTankInPlay = false;
 }
 
 public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
@@ -77,6 +88,43 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     AddTankDamage(attacker, damage);
 }
 
+void AddTankDamage(int client, int damage)
+{
+    if (damage <= 0 || !IsValidClient(client))
+        return;
+        
+    int userId = GetClientUserId(client);
+    
+    for (int i = 1; i <= g_TankDamage.count; i++) {
+        if (g_TankDamage.userId[i] == userId) {
+            g_TankDamage.damage[i] += damage;
+            return;
+        }
+    }
+    
+    g_TankDamage.count++;
+    g_TankDamage.userId[g_TankDamage.count] = userId;
+    g_TankDamage.damage[g_TankDamage.count] = damage;
+}
+
+void SortTankDamage()
+{
+    for (int i = 1; i <= g_TankDamage.count - 1; i++) {
+        for (int j = 1; j <= g_TankDamage.count - i; j++) {
+            if (g_TankDamage.damage[j] < g_TankDamage.damage[j + 1]) {
+                int tempDamage = g_TankDamage.damage[j];
+                int tempUserId = g_TankDamage.userId[j];
+                
+                g_TankDamage.damage[j] = g_TankDamage.damage[j + 1];
+                g_TankDamage.userId[j] = g_TankDamage.userId[j + 1];
+                
+                g_TankDamage.damage[j + 1] = tempDamage;
+                g_TankDamage.userId[j + 1] = tempUserId;
+            }
+        }
+    }
+}
+
 public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
     int victim = GetClientOfUserId(event.GetInt("userid"));
@@ -87,7 +135,6 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     if (IsTank(victim))
     {
         CreateTimer(0.1, Timer_DisplayDamage, victim);
-        return;
     }
 }
 
@@ -100,12 +147,9 @@ Action Timer_DisplayDamage(Handle timer, int tank)
 
 void DisplayTankDamage(int tank)
 {
-    if (g_aTankDamage.Length == 0)
+    if (g_TankDamage.count == 0)
         return;
         
-    char tankName[32];
-    GetTankControlName(tank, tankName, sizeof(tankName));
-    
     char displayName[64];
     if (IsFakeClient(tank)) {
         if (g_sLastHumanTankName[0] != '\0') {
@@ -119,8 +163,8 @@ void DisplayTankDamage(int tank)
     }
     
     int totalDamage = 0;
-    for (int i = 0; i < g_aTankDamage.Length; i += 2) {
-        totalDamage += g_aTankDamage.Get(i + 1);
+    for (int i = 1; i <= g_TankDamage.count; i++) {
+        totalDamage += g_TankDamage.damage[i];
     }
     
     if (totalDamage <= 0)
@@ -134,20 +178,19 @@ void DisplayTankDamage(int tank)
             
         CPrintToChat(i, "┌ <{green}Tank{default}> {olive}%s{default} 受到的伤害:", displayName);
         
-        for (int j = 0; j < g_aTankDamage.Length; j += 2) {
-            int userId = g_aTankDamage.Get(j);
-            int client = GetClientOfUserId(userId);
+        for (int j = 1; j <= g_TankDamage.count; j++) {
+            int client = GetClientOfUserId(g_TankDamage.userId[j]);
             
             if (client <= 0 || !IsClientInGame(client))
                 continue;
                 
-            int damage = g_aTankDamage.Get(j + 1);
+            int damage = g_TankDamage.damage[j];
             int percentage = RoundToNearest((float(damage) / float(totalDamage)) * 100.0);
             
             char spaces[8];
             Format(spaces, sizeof(spaces), "%s", (damage < 1000) ? "  " : "");
             
-            if (j == g_aTankDamage.Length - 2) {
+            if (j == g_TankDamage.count) {
                 CPrintToChat(i, "└ %s{olive}%4d{default} [{green}%3d%%{default}] {blue}%N{default}", 
                     spaces, damage, percentage, client);
             } else {
@@ -158,79 +201,12 @@ void DisplayTankDamage(int tank)
     }
 }
 
-void AddTankDamage(int client, int damage)
+public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
-    if (damage <= 0 || !IsValidClient(client))
-        return;
-        
-    int index = -1;
-    for (int i = 0; i < g_aTankDamage.Length; i += 2)
-    {
-        if (g_aTankDamage.Get(i) == GetClientUserId(client))
-        {
-            index = i;
-            break;
-        }
+    if (g_bIsTankInPlay) {
+        DisplayTankDamage(GetTankClient());
     }
-    
-    if (index == -1)
-    {
-        g_aTankDamage.Push(GetClientUserId(client));
-        g_aTankDamage.Push(damage);
-    }
-    else
-    {
-        g_aTankDamage.Set(index + 1, g_aTankDamage.Get(index + 1) + damage);
-    }
-}
-
-void SortTankDamage()
-{
-    for (int i = 0; i < g_aTankDamage.Length - 2; i += 2) {
-        for (int j = 0; j < g_aTankDamage.Length - 2 - i; j += 2) {
-            if (g_aTankDamage.Get(j + 1) < g_aTankDamage.Get(j + 3)) {
-                SwapDamageValues(j, j + 2);
-            }
-        }
-    }
-}
-
-void SwapDamageValues(int index1, int index2)
-{
-    int tempDamage = g_aTankDamage.Get(index1 + 1);
-    int tempId = g_aTankDamage.Get(index1);
-    
-    g_aTankDamage.Set(index1 + 1, g_aTankDamage.Get(index2 + 1));
-    g_aTankDamage.Set(index1, g_aTankDamage.Get(index2));
-    
-    g_aTankDamage.Set(index2 + 1, tempDamage);
-    g_aTankDamage.Set(index2, tempId);
-}
-
-void ClearTankDamage()
-{
-    g_aTankDamage.Clear();
-    g_bIsTankInPlay = false;
-    for (int i = 1; i <= MaxClients; i++) {
-        g_iWasTank[i] = 0;
-    }
-}
-
-bool GetTankControlName(int tank, char[] name, int maxlen)
-{
-    for (int i = 1; i <= MaxClients; i++) {
-        if (IsClientInGame(i) && !IsFakeClient(i) && g_iWasTank[i] == 2) {
-            GetClientName(i, name, maxlen);
-            return true;
-        }
-    }
-    
-    if (!IsFakeClient(tank)) {
-        GetClientName(tank, name, maxlen);
-        return true;
-    }
-    
-    return false;
+    ClearTankDamage();
 }
 
 bool IsValidClient(int client)
@@ -254,14 +230,5 @@ int GetTankClient()
             return i;
         }
     }
-
     return 0;
-}
-
-public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
-{
-    if (g_bIsTankInPlay) {
-        DisplayTankDamage(GetTankClient());
-    }
-    ClearTankDamage();
 }
