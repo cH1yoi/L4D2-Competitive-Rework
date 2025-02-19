@@ -146,13 +146,13 @@ public Action Timer_ShowTankMessage(Handle timer)
 {
     g_Tank[g_iTempAttacker].timer = null;
     
-    char stars[16];
-    switch(g_iTempTankVictims)
+    char stars[32];
+    stars[0] = '\0';
+    int count = g_iTempTankVictims > MAX_PINNED_DISPLAY ? MAX_PINNED_DISPLAY : g_iTempTankVictims;
+    
+    for (int i = 0; i < count; i++)
     {
-        case 2: stars = "★★";
-        case 3: stars = "★★★";
-        case 4: stars = "★★★★";
-        default: stars = "★★★★";
+        StrCat(stars, sizeof(stars), "★");
     }
     
     if (IsFakeClient(g_iTempAttacker))
@@ -222,13 +222,13 @@ public Action Timer_ShowChargeResult(Handle timer, any client)
     
     if (g_Charger[client].victimCount >= 2)
     {
-        char stars[16];
-        switch(g_Charger[client].victimCount)
+        char stars[32];
+        stars[0] = '\0';
+        int count = g_Charger[client].victimCount > MAX_PINNED_DISPLAY ? MAX_PINNED_DISPLAY : g_Charger[client].victimCount;
+        
+        for (int i = 0; i < count; i++)
         {
-            case 2: stars = "★★";
-            case 3: stars = "★★★";
-            case 4: stars = "★★★★";
-            default: stars = "★★★★";
+            StrCat(stars, sizeof(stars), "★");
         }
         
         if (IsFakeClient(client))
@@ -279,13 +279,13 @@ public Action Timer_ShowBoomerMessage(Handle timer)
 {
     g_Boomer[g_iTempAttacker].timer = null;
     
-    char stars[16];
-    switch(g_iTempBoomerVictims)
+    char stars[32];
+    stars[0] = '\0';
+    int count = g_iTempBoomerVictims > MAX_PINNED_DISPLAY ? MAX_PINNED_DISPLAY : g_iTempBoomerVictims;
+    
+    for (int i = 0; i < count; i++)
     {
-        case 2: stars = "★★";
-        case 3: stars = "★★★";
-        case 4: stars = "★★★★";
-        default: stars = "★";
+        StrCat(stars, sizeof(stars), "★");
     }
     
     if (IsFakeClient(g_iTempAttacker))
@@ -447,7 +447,6 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     {
         float currentTime = GetGameTime();
     
-        // 如果超过时间窗口，重置受害者计数
         if ((currentTime - g_fLastTankPunchTime[attacker]) > TANK_PUNCH_WINDOW)
         {
             g_Tank[attacker].victimCount = 0;
