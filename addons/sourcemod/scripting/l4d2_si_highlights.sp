@@ -30,35 +30,34 @@ enum struct TankAttack
     }
 }
 
-TankAttack g_TankAttacks[MAXPLAYERS+1];
-int g_iTankVictimCount[MAXPLAYERS+1];
-bool g_bTankVictims[MAXPLAYERS+1][MAXPLAYERS+1];
-Handle g_hTankTimer = null;
+enum struct InfectedState {
+    int victimCount;
+    bool victims[MAXPLAYERS+1];
+    bool printed;
+    bool isActive;
+    Handle timer;
+}
 
-int g_iChargerVictimCount[MAXPLAYERS+1];
-bool g_bChargerVictims[MAXPLAYERS+1][MAXPLAYERS+1];
-bool g_bChargerPrinted[MAXPLAYERS+1];
+TankAttack g_TankAttacks[MAXPLAYERS+1];
+InfectedState g_Charger[MAXPLAYERS+1];
+InfectedState g_Boomer[MAXPLAYERS+1];
+InfectedState g_Tank[MAXPLAYERS+1];
+
 bool g_bIsCarryingSurvivor[MAXPLAYERS+1];
 bool g_bIsReadyToCharge[MAXPLAYERS+1];
-bool g_bChargeInProgress[MAXPLAYERS+1];
 float g_fLastChargeTime[MAXPLAYERS+1];
 
-int g_iBoomerVictimCount[MAXPLAYERS+1];
-bool g_bBoomerVictims[MAXPLAYERS+1][MAXPLAYERS+1];
-bool g_bBoomerPrinted[MAXPLAYERS+1];
-
 bool g_bHasAnnouncedCount[5] = {false, ...};
-
-Handle g_hBoomerTimer = null;
 
 int g_iTempAttacker;
 int g_iTempTankVictims;
 int g_iTempBoomerVictims;
 
-Handle g_hChargeTimer[MAXPLAYERS+1];
-
 bool g_bIsPinned[MAXPLAYERS+1];
 int g_iPinnedBy[MAXPLAYERS+1];
+
+float g_fLastTankPunchTime[MAXPLAYERS+1];
+#define TANK_PUNCH_WINDOW 1.5
 
 public void OnPluginStart()
 {
@@ -93,16 +92,16 @@ public void OnMapStart()
 {
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (g_hChargeTimer[i] != null)
+        if (g_Charger[i].timer != null)
         {
-            KillTimer(g_hChargeTimer[i]);
-            g_hChargeTimer[i] = null;
+            KillTimer(g_Charger[i].timer);
+            g_Charger[i].timer = null;
         }
-        g_bChargeInProgress[i] = false;
-        g_iChargerVictimCount[i] = 0;
+        g_Charger[i].isActive = false;
+        g_Charger[i].victimCount = 0;
         for (int j = 1; j <= MaxClients; j++)
         {
-            g_bChargerVictims[i][j] = false;
+            g_Charger[i].victims[j] = false;
         }
     }
     
@@ -122,29 +121,30 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 
 void ResetClientStats(int client)
 {
-    g_iChargerVictimCount[client] = 0;
-    g_iBoomerVictimCount[client] = 0;
-    g_iTankVictimCount[client] = 0;
+    g_Charger[client].victimCount = 0;
+    g_Boomer[client].victimCount = 0;
+    g_Tank[client].victimCount = 0;
     
-    g_bChargerPrinted[client] = false;
-    g_bBoomerPrinted[client] = false;
+    g_Charger[client].printed = false;
+    g_Boomer[client].printed = false;
     g_bIsCarryingSurvivor[client] = false;
     g_bIsReadyToCharge[client] = false;
-    g_bChargeInProgress[client] = false;
+    g_Charger[client].isActive = false;
     
     g_TankAttacks[client].Reset();
     
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_bChargerVictims[client][i] = false;
-        g_bBoomerVictims[client][i] = false;
-        g_bTankVictims[client][i] = false;
+        g_Charger[client].victims[i] = false;
+        g_Boomer[client].victims[i] = false;
+        g_Tank[client].victims[i] = false;
     }
+    g_fLastTankPunchTime[client] = 0.0;
 }
 
 public Action Timer_ShowTankMessage(Handle timer)
 {
-    g_hTankTimer = null;
+    g_Tank[g_iTempAttacker].timer = null;
     
     char stars[16];
     switch(g_iTempTankVictims)
@@ -166,10 +166,10 @@ public Action Timer_ShowTankMessage(Handle timer)
             stars, g_iTempAttacker, g_iTempTankVictims);
     }
     
-    g_iTankVictimCount[g_iTempAttacker] = 0;
+    g_Tank[g_iTempAttacker].victimCount = 0;
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_bTankVictims[g_iTempAttacker][i] = false;
+        g_Tank[g_iTempAttacker].victims[i] = false;
     }
     
     return Plugin_Stop;
@@ -183,7 +183,7 @@ public void Event_ChargeStart(Event event, const char[] name, bool dontBroadcast
         return;
         
     ResetChargerStats(client);
-    g_bChargeInProgress[client] = true;
+    g_Charger[client].isActive = true;
     g_fLastChargeTime[client] = GetGameTime();
 }
 
@@ -195,35 +195,35 @@ public void Event_ChargerImpact(Event event, const char[] name, bool dontBroadca
     if (!IsCharger(client) || !IsSurvivor(victim) || !IsPlayerAlive(victim))
         return;
         
-    if (g_bChargeInProgress[client] && !g_bChargerVictims[client][victim])
+    if (g_Charger[client].isActive && !g_Charger[client].victims[victim])
     {
-        g_bChargerVictims[client][victim] = true;
-        g_iChargerVictimCount[client]++;
+        g_Charger[client].victims[victim] = true;
+        g_Charger[client].victimCount++;
     }
 }
 
 void ResetChargerStats(int client)
 {
-    g_bChargerPrinted[client] = false;
-    g_iChargerVictimCount[client] = 0;
+    g_Charger[client].printed = false;
+    g_Charger[client].victimCount = 0;
     g_bIsReadyToCharge[client] = true;
     g_bIsCarryingSurvivor[client] = false;
-    g_bChargeInProgress[client] = false;
+    g_Charger[client].isActive = false;
     
     for (int i = 1; i <= MaxClients; i++)
     {
-        g_bChargerVictims[client][i] = false;
+        g_Charger[client].victims[i] = false;
     }
 }
 
 public Action Timer_ShowChargeResult(Handle timer, any client)
 {
-    g_hChargeTimer[client] = null;
+    g_Charger[client].timer = null;
     
-    if (g_iChargerVictimCount[client] >= 2)
+    if (g_Charger[client].victimCount >= 2)
     {
         char stars[16];
-        switch(g_iChargerVictimCount[client])
+        switch(g_Charger[client].victimCount)
         {
             case 2: stars = "★★";
             case 3: stars = "★★★";
@@ -234,16 +234,16 @@ public Action Timer_ShowChargeResult(Handle timer, any client)
         if (IsFakeClient(client))
         {
             CPrintToChatAll("{red}%s {olive}AI{default}({red}Charger{default}) {red}一撞 {olive}%d", 
-                stars, g_iChargerVictimCount[client]);
+                stars, g_Charger[client].victimCount);
         }
         else
         {
             CPrintToChatAll("{red}%s {olive}%N{default}({red}Charger{default}) {red}一撞 {olive}%d", 
-                stars, client, g_iChargerVictimCount[client]);
+                stars, client, g_Charger[client].victimCount);
         }
     }
     
-    g_bChargeInProgress[client] = false;
+    g_Charger[client].isActive = false;
     return Plugin_Stop;
 }
 
@@ -255,29 +255,29 @@ public void Event_BoomerVomit(Event event, const char[] name, bool dontBroadcast
     if (!IsBoomer(attacker) || !IsSurvivor(victim))
         return;
         
-    if (!g_bBoomerVictims[attacker][victim])
+    if (!g_Boomer[attacker].victims[victim])
     {
-        g_bBoomerVictims[attacker][victim] = true;
-        g_iBoomerVictimCount[attacker]++;
+        g_Boomer[attacker].victims[victim] = true;
+        g_Boomer[attacker].victimCount++;
         
-        if (g_iBoomerVictimCount[attacker] >= 2)
+        if (g_Boomer[attacker].victimCount >= 2)
         {
-            if (g_hBoomerTimer != null)
+            if (g_Boomer[attacker].timer != null)
             {
-                KillTimer(g_hBoomerTimer);
-                g_hBoomerTimer = null;
+                KillTimer(g_Boomer[attacker].timer);
+                g_Boomer[attacker].timer = null;
             }
             
-            g_iTempBoomerVictims = g_iBoomerVictimCount[attacker];
+            g_iTempBoomerVictims = g_Boomer[attacker].victimCount;
             g_iTempAttacker = attacker;
-            g_hBoomerTimer = CreateTimer(1.5, Timer_ShowBoomerMessage);
+            g_Boomer[attacker].timer = CreateTimer(1.5, Timer_ShowBoomerMessage);
         }
     }
 }
 
 public Action Timer_ShowBoomerMessage(Handle timer)
 {
-    g_hBoomerTimer = null;
+    g_Boomer[g_iTempAttacker].timer = null;
     
     char stars[16];
     switch(g_iTempBoomerVictims)
@@ -394,19 +394,19 @@ public void Event_AbilityUse(Event event, const char[] name, bool dontBroadcast)
         
     if (strcmp(ability, "ability_charge") == 0)
     {
-        g_bChargeInProgress[client] = true;
-        g_iChargerVictimCount[client] = 0;
+        g_Charger[client].isActive = true;
+        g_Charger[client].victimCount = 0;
         
-        if (g_hChargeTimer[client] != null)
+        if (g_Charger[client].timer != null)
         {
-            KillTimer(g_hChargeTimer[client]);
-            g_hChargeTimer[client] = null;
+            KillTimer(g_Charger[client].timer);
+            g_Charger[client].timer = null;
         }
         
         for (int i = 1; i <= MaxClients; i++)
-            g_bChargerVictims[client][i] = false;
+            g_Charger[client].victims[i] = false;
             
-        g_hChargeTimer[client] = CreateTimer(3.0, Timer_ShowChargeResult, client);
+        g_Charger[client].timer = CreateTimer(3.0, Timer_ShowChargeResult, client);
     }
 }
 
@@ -424,10 +424,10 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     {
         if (IsSurvivor(victim) && IsPlayerAlive(victim))
         {
-            if (g_bChargeInProgress[attacker] && !g_bChargerVictims[attacker][victim])
+            if (g_Charger[attacker].isActive && !g_Charger[attacker].victims[victim])
             {
-                g_bChargerVictims[attacker][victim] = true;
-                g_iChargerVictimCount[attacker]++;
+                g_Charger[attacker].victims[victim] = true;
+                g_Charger[attacker].victimCount++;
             }
         }
         return;
@@ -442,22 +442,36 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     }
     else if (strcmp(weapon, "tank_claw") == 0)
     {
-        if (!g_bTankVictims[attacker][victim])
+        float currentTime = GetGameTime();
+    
+        // 如果超过时间窗口，重置受害者计数
+        if ((currentTime - g_fLastTankPunchTime[attacker]) > TANK_PUNCH_WINDOW)
         {
-            g_bTankVictims[attacker][victim] = true;
-            g_iTankVictimCount[attacker]++;
-            
-            if (g_iTankVictimCount[attacker] >= 2)
+            g_Tank[attacker].victimCount = 0;
+            for (int i = 1; i <= MaxClients; i++)
             {
-                if (g_hTankTimer != null)
+                g_Tank[attacker].victims[i] = false;
+            }
+        }
+        
+        g_fLastTankPunchTime[attacker] = currentTime;
+        
+        if (!g_Tank[attacker].victims[victim])
+        {
+            g_Tank[attacker].victims[victim] = true;
+            g_Tank[attacker].victimCount++;
+            
+            if (g_Tank[attacker].victimCount >= 2)
+            {
+                if (g_Tank[attacker].timer != null)
                 {
-                    KillTimer(g_hTankTimer);
-                    g_hTankTimer = null;
+                    KillTimer(g_Tank[attacker].timer);
+                    g_Tank[attacker].timer = null;
                 }
                 
-                g_iTempTankVictims = g_iTankVictimCount[attacker];
+                g_iTempTankVictims = g_Tank[attacker].victimCount;
                 g_iTempAttacker = attacker;
-                g_hTankTimer = CreateTimer(0.1, Timer_ShowTankMessage);
+                g_Tank[attacker].timer = CreateTimer(0.1, Timer_ShowTankMessage);
             }
         }
     }
@@ -491,10 +505,10 @@ public void Event_ChargeCarryStart(Event event, const char[] name, bool dontBroa
     if (!IsCharger(client) || !IsSurvivor(victim) || !IsPlayerAlive(victim))
         return;
         
-    if (g_bChargeInProgress[client] && !g_bChargerVictims[client][victim])
+    if (g_Charger[client].isActive && !g_Charger[client].victims[victim])
     {
-        g_bChargerVictims[client][victim] = true;
-        g_iChargerVictimCount[client]++;
+        g_Charger[client].victims[victim] = true;
+        g_Charger[client].victimCount++;
     }
     
     g_bIsCarryingSurvivor[client] = true;
