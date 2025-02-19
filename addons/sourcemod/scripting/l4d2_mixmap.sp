@@ -143,7 +143,7 @@ public void OnPluginStart()
 	g_cvMaxMapsNum		= CreateConVar("l4d2mm_max_maps_num",		"2",	"Determine how many maps of one campaign can be selected; 0 = no limits;", FCVAR_NOTIFY, true, 0.0, true, 5.0);
 	g_cvFinaleEndCoop	= CreateConVar("l4d2mm_finale_end_coop",	"0",	"If 1, auto force start mixmap in the end of finale in coop/realism mode (When mixmap is alreaedy on)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	g_cvFinaleEndVersus	= CreateConVar("l4d2mm_finale_end_verus",	"0",	"If 1, auto force start mixmap in the end of finale in versus mode (When mixmap is alreaedy on)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
-	AutoExecConfig(true, 			   "l4d2_mixmap");
+	//AutoExecConfig(true, 			   "l4d2_mixmap");
 
 	//Servercmd 服务器指令（用于cfg文件）
 	RegServerCmd( "sm_addmap", AddMap, "Add a chatper and tag 新增關卡名稱與標記, Usage: sm_addmap <map_name> <tag>");
@@ -157,7 +157,7 @@ public void OnPluginStart()
 	RegAdminCmd( "sm_fstopmixmap",	StopMixmap, ADMFLAG_ROOT, "Force stop a mixmap ;强制中止mixmap，并初始化地图列表");
 
 	//Midcommand 插件启用后可使用的指令
-	RegConsoleCmd( "sm_mixmaplist", MixMaplist, "Show the mix map list; 展示mixmap最终抽取出的地图列表");
+	RegConsoleCmd( "sm_maplist", MixMaplist, "Show the mix map list; 展示mixmap最终抽取出的地图列表");
 	//RegAdminCmd( "sm_allmap", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
 	//RegAdminCmd( "sm_allmaps", ShowAllMaps, ADMFLAG_ROOT, "Show all official maps code; 展示所有官方地图的地图代码");
 
@@ -319,7 +319,7 @@ Action Timer_ShowMaplist(Handle timer, int client)
 }
 
 // Loads a specified set of maps
-Action ForceMixmap(int client, any args) 
+Action ForceMixmap(int client, int args) 
 {
 	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
 	
@@ -363,7 +363,7 @@ Action ForceMixmap(int client, any args)
 }
 
 // Load a specified set of maps
-Action ManualMixmap(int client, any args) 
+Action ManualMixmap(int client, int args) 
 {
 	if (args < 1) 
 	{
@@ -420,7 +420,7 @@ Action ShowAllMaps(int client, any Args)
 }
 */
 
-Action Mixmap_Cmd(int client, any args) 
+Action Mixmap_Cmd(int client, int args) 
 {
 	if (IsClientAndInGame(client))
 	{
@@ -505,7 +505,7 @@ Action Mixmap_Cmd(int client, any args)
 }
 
 // Specifiy a rank for a given tag
-Action TagRank(any args) 
+Action TagRank(int args) 
 {
 	if (args < 2) 
 	{
@@ -538,7 +538,7 @@ Action TagRank(any args)
 }
 
 // Add a map to the maplist under specified tags
-Action AddMap(any args) 
+Action AddMap(int args) 
 {
 	if (args < 2) 
 	{
@@ -586,7 +586,7 @@ Action AddMap(any args)
 }
 
 // Display current map list
-Action MixMaplist(int client, any args) 
+Action MixMaplist(int client, int args) 
 {
 	if (! g_bMaplistFinalized) 
 	{
@@ -628,7 +628,7 @@ Action MixMaplist(int client, any args)
 }
 
 // Abort a currently loaded mapset
-Action StopMixmap_Cmd(int client, any args) 
+Action StopMixmap_Cmd(int client, int args) 
 {
 	if (!g_bMapsetInitialized ) 
 	{
@@ -675,7 +675,7 @@ Action StopMixmap_Cmd(int client, any args)
 	return Plugin_Continue;
 }
 
-Action StopMixmap(int client, any args) 
+Action StopMixmap(int client, int args) 
 {
 	if (!g_bMapsetInitialized) 
 	{
