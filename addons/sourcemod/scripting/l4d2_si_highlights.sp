@@ -419,6 +419,7 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
     char weapon[64];
     event.GetString("weapon", weapon, sizeof(weapon));
+    int damage = event.GetInt("dmg_health");
     
     if (!attacker || !victim || !IsClientInGame(attacker) || !IsClientInGame(victim))
         return;
@@ -427,6 +428,9 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     {
         if (IsSurvivor(victim) && IsPlayerAlive(victim))
         {
+            if (damage <= 3)
+                return;
+                
             if (g_Charger[attacker].isActive && !g_Charger[attacker].victims[victim])
             {
                 g_Charger[attacker].victims[victim] = true;
