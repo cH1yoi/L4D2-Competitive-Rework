@@ -6,14 +6,14 @@
 #include <sdkhooks>
 #include <colors>
 
-#define PLUGIN_VERSION "1.1"
+#define MAX_PINNED_DISPLAY 12
 
 public Plugin myinfo = 
 {
     name = "L4D2 Special Infected Highlights",
     author = "Hana",    // 碎碎念, 写的有点久
     description = "Announce special infected highlights",
-    version = PLUGIN_VERSION,
+    version = "1.2",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -47,7 +47,7 @@ bool g_bIsCarryingSurvivor[MAXPLAYERS+1];
 bool g_bIsReadyToCharge[MAXPLAYERS+1];
 float g_fLastChargeTime[MAXPLAYERS+1];
 
-bool g_bHasAnnouncedCount[5] = {false, ...};
+bool g_bHasAnnouncedCount[MAX_PINNED_DISPLAY + 1] = {false, ...};
 
 int g_iTempAttacker;
 int g_iTempTankVictims;
@@ -333,19 +333,22 @@ public Action Timer_CheckPinned(Handle timer)
         }
     }
 
+    if (pinned_count > MAX_PINNED_DISPLAY)
+    {
+        pinned_count = MAX_PINNED_DISPLAY;
+    }
+
     if (pinned_count >= 2 && !g_bHasAnnouncedCount[pinned_count])
     {
-        char stars[16];
-        switch(pinned_count)
+        char stars[32];
+        stars[0] = '\0';
+
+        for (int i = 0; i < pinned_count; i++)
         {
-            case 2: stars = "★★";
-            case 3: stars = "★★★";
-            case 4: stars = "★★★★";
-            default: stars = "★★★★";
+            StrCat(stars, sizeof(stars), "★");
         }
         
-        CPrintToChatAll("{red}%s {red}特感阵营达成 {olive}%d {red}控", 
-            stars, pinned_count);
+        CPrintToChatAll("{red}%s {red}特感阵营达成 {olive}%d {red}控", stars, pinned_count);
         
         g_bHasAnnouncedCount[pinned_count] = true;
     }
