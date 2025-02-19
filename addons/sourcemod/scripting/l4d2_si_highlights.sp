@@ -6,7 +6,7 @@
 #include <sdkhooks>
 #include <colors>
 
-#define PLUGIN_VERSION "1.0"
+#define PLUGIN_VERSION "1.1"
 
 public Plugin myinfo = 
 {
@@ -157,12 +157,12 @@ public Action Timer_ShowTankMessage(Handle timer)
     
     if (IsFakeClient(g_iTempAttacker))
     {
-        CPrintToChatAll("{red}%s {olive}AI{default}({red}Tank{default}) {red}一拳命中 {olive}%d {red}人", 
+        CPrintToChatAll("{red}%s {olive}AI{default}({red}Tank{default}) {red}一拍 {olive}%d", 
             stars, g_iTempTankVictims);
     }
     else
     {
-        CPrintToChatAll("{red}%s {olive}%N{default}({red}Tank{default}) {red}一拳命中 {olive}%d {red}人", 
+        CPrintToChatAll("{red}%s {olive}%N{default}({red}Tank{default}) {red}一拍 {olive}%d", 
             stars, g_iTempAttacker, g_iTempTankVictims);
     }
     
@@ -233,12 +233,12 @@ public Action Timer_ShowChargeResult(Handle timer, any client)
         
         if (IsFakeClient(client))
         {
-            CPrintToChatAll("{red}%s {olive}AI{default}({red}Charger{default}) {red}冲锋撞中 {olive}%d {red}人", 
+            CPrintToChatAll("{red}%s {olive}AI{default}({red}Charger{default}) {red}一撞 {olive}%d", 
                 stars, g_iChargerVictimCount[client]);
         }
         else
         {
-            CPrintToChatAll("{red}%s {olive}%N{default}({red}Charger{default}) {red}冲锋撞中 {olive}%d {red}人", 
+            CPrintToChatAll("{red}%s {olive}%N{default}({red}Charger{default}) {red}一撞 {olive}%d", 
                 stars, client, g_iChargerVictimCount[client]);
         }
     }
@@ -290,12 +290,12 @@ public Action Timer_ShowBoomerMessage(Handle timer)
     
     if (IsFakeClient(g_iTempAttacker))
     {
-        CPrintToChatAll("{red}%s {olive}AI{default}({red}Boomer{default}) {red}喷吐命中 {olive}%d {red}人", 
+        CPrintToChatAll("{red}%s {olive}AI{default}({red}Boomer{default}) {red}一喷 {olive}%d", 
             stars, g_iTempBoomerVictims);
     }
     else
     {
-        CPrintToChatAll("{red}%s {olive}%N{default}({red}Boomer{default}) {red}喷吐命中 {olive}%d {red}人", 
+        CPrintToChatAll("{red}%s {olive}%N{default}({red}Boomer{default}) {red}一喷 {olive}%d", 
             stars, g_iTempAttacker, g_iTempBoomerVictims);
     }
     
