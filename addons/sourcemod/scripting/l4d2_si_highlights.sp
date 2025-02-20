@@ -37,7 +37,7 @@ public Plugin myinfo =
     name = "L4D2 Special Infected Highlights",
     author = "Hana",
     description = "Announce special infected highlights",
-    version = "1.2",
+    version = "2.1",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -240,6 +240,17 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
         
         if (strcmp(weapon, "tank_claw") == 0 && damage > 0)
         {
+            float currentTime = GetGameTime();
+            if (!g_Tank[attacker].isActive)
+            {
+                g_Tank[attacker].isActive = true;
+                g_Tank[attacker].victimCount = 0;
+                for (int i = 1; i <= MaxClients; i++)
+                {
+                    g_Tank[attacker].victims[i] = false;
+                }
+            }
+            
             if (!g_Tank[attacker].victims[victim])
             {
                 g_Tank[attacker].victims[victim] = true;
@@ -318,17 +329,21 @@ public void Event_PinnedEnd(Event event, const char[] name, bool dontBroadcast)
 public Action Timer_CheckTankMultiPunch(Handle timer, any attacker)
 {
     if (!IsTank(attacker) || !IsPlayerAlive(attacker))
+    {
+        g_Tank[attacker].timer = null;
         return Plugin_Stop;
-        
+    }
+    
     if (g_Tank[attacker].victimCount >= 2)
     {
         ShowMessage(attacker, g_Tank[attacker].victimCount, "Tank", "一拍");
-        
-        g_Tank[attacker].victimCount = 0;
-        for (int i = 1; i <= MaxClients; i++)
-        {
-            g_Tank[attacker].victims[i] = false;
-        }
+    }
+    
+    g_Tank[attacker].victimCount = 0;
+    g_Tank[attacker].isActive = false;
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_Tank[attacker].victims[i] = false;
     }
     
     g_Tank[attacker].timer = null;
