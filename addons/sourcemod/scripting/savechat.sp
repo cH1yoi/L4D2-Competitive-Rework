@@ -1,407 +1,381 @@
-/*
- ----------------------------------------------------------------
- Plugin      : SaveChat 
- Author      : citkabuto
- Game        : Any Source game
- Description : Will record all player messages to a file
- ================================================================
- Date       Version  Description
- ================================================================
- 23/Feb/10  1.2.1    - Fixed bug with player team id
- 15/Feb/10  1.2.0    - Now records team name when using cvar
-                            sm_record_detail 
- 01/Feb/10  1.1.1    - Fixed bug to prevent errors when using 
-                       HLSW (client index 0 is invalid)
- 31/Jan/10  1.1.0    - Fixed date format on filename
-                       Added ability to record player info
-                       when connecting using cvar:
-                            sm_record_detail (0=none,1=all:def:1)
- 28/Jan/10  1.0.0    - Initial Version 
- ----------------------------------------------------------------
-*/
+#pragma semicolon 1
+#pragma newdecls required //強制1.7以後的新語法
 
 #include <sourcemod>
 #include <sdktools>
-#include <geoip.inc>
-#include <string.inc>
-#include <logger>
-#include <left4dhooks>
-#include <SteamWorks>
+#include <geoip>
+#include <basecomm>
 
-#define FLAG_STRINGS		14
-#define PLUGIN_VERSION "SaveChat_1.2.2"
-char g_FlagNames[FLAG_STRINGS][20] =
-{
-	"res",
-	"admin",
-	"kick",
-	"ban",
-	"unban",
-	"slay",
-	"map",
-	"cvars",
-	"cfg",
-	"chat",
-	"vote",
-	"pass",
-	"rcon",
-	"cheat"
-};
+#define PLUGIN_VERSION "2.1-2024/4/25"
 
-static String:chatFile[128]
-new Handle:sc_record_detail = INVALID_HANDLE
-Logger log, exp, player;
-bool g_SkipOnce;
-public Plugin:myinfo = 
+public Plugin myinfo = 
 {
 	name = "SaveChat",
-	author = "citkabuto",
+	author = "citkabuto & Harry Potter",
 	description = "Records player chat messages to a file",
 	version = PLUGIN_VERSION,
 	url = "http://forums.alliedmods.net/showthread.php?t=117116"
 }
 
-public OnPluginStart()
+ConVar hostport;
+char sHostport[10];
+
+char chatFile[128];
+Handle fileHandle       = null;
+ConVar g_hCvarEnable, g_hCvarConsole;
+bool g_bCvarEnable, g_bCvarConsole;
+
+StringMap
+	g_smIgnoreList;
+
+public void OnPluginStart()
 {
-	new String:date[21]
 
-	/* Register CVars */
-	CreateConVar("sm_savechat_version", PLUGIN_VERSION, "Save Player Chat Messages Plugin", 
-		FCVAR_DONTRECORD|FCVAR_REPLICATED)
-	HookEvent("player_disconnect", Event_OnClientDisconnect)
-	sc_record_detail = CreateConVar("sc_record_detail", "1", 
-		"Record player Steam ID and IP address")
+	hostport = FindConVar("hostport");
 
-	/* Say commands */
-	RegConsoleCmd("say", Command_Say)
-	RegConsoleCmd("say_team", Command_SayTeam)
-	/* Format date for log filename */
-	FormatTime(date, sizeof(date), "%y%m%d", -1)
-
-
-	Format(chatFile, 48, "Chat%s", date);
-	log = new Logger(chatFile, LoggerType_NewLogFile);
-	exp = new Logger(chatFile, LoggerType_NewLogFile);
-	Format(chatFile, 48, "Player%s", date);
-	player = new Logger(chatFile, LoggerType_NewLogFile);
-	Format(chatFile, 48, "Command%s", date);
-	exp.SetLogPrefix("exp_interface");
-	player.SetLogPrefix("Player");
-}
-
-/*
- * Capture player chat and record to file
- */
-public Action:Command_Say(client, args)
-{
-	LogChat(client, args, false)
-	return Plugin_Continue
-}
-
-
-/*
- * Capture player team chat and record to file
- */
-public Action:Command_SayTeam(client, args)
-{
-	LogChat(client, args, true)
-	return Plugin_Continue
-}
-
-public void OnClientPostAdminCheck(client)
-{
-	/* Only record player detail if CVAR set */
-	if(GetConVarInt(sc_record_detail) != 1)
-		return
-
-	if(IsFakeClient(client)) 
-		return
-
-	new String:msg[2048]
-	new String:country[3]
-	new String:steamID[128]
-	new String:playerIP[50]
+	g_hCvarEnable = 	CreateConVar("savechat_enable", 			"1", "0=Plugin off, 1=Plugin on.", FCVAR_NOTIFY, true, 0.0, true, 1.0); 
+	g_hCvarConsole = 	CreateConVar("savechat_cosole_command", 	"1", "If 1, Record and save console commands.", FCVAR_NOTIFY, true, 0.0, true, 1.0); 
+	CreateConVar("sm_savechat_version", PLUGIN_VERSION, "Save Player Chat Messages Plugin",  FCVAR_NOTIFY|FCVAR_DONTRECORD|FCVAR_SPONLY);
+	AutoExecConfig(true, "savechat");
 	
-	GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID))
+	GetCvars();
+	hostport.AddChangeHook(ConVarChanged_Cvars);
+	g_hCvarEnable.AddChangeHook(ConVarChanged_Cvars);
+	g_hCvarConsole.AddChangeHook(ConVarChanged_Cvars);
 
-	AdminId id = GetUserAdmin(client);
-	char adminFlags[255];
-	if (id != INVALID_ADMIN_ID)
-	{
-		int flags = GetUserFlagBits(client);
-		if (flags == 0)
-		{
-			strcopy(adminFlags, sizeof(adminFlags), "无权限");
-		}
-		else if (flags & ADMFLAG_ROOT)
-		{
-			strcopy(adminFlags, sizeof(adminFlags), "root");
-		}
-		else
-		{
-			FlagsToString(adminFlags, sizeof(adminFlags), flags);
-		}
-	}
+	HookEvent("player_disconnect", 	event_PlayerDisconnect);
 
+	g_smIgnoreList = new StringMap();
+	g_smIgnoreList.SetValue("spec_prev", true);
+	g_smIgnoreList.SetValue("spec_next", true);
+	g_smIgnoreList.SetValue("spec_mode", true);
+	g_smIgnoreList.SetValue("skipouttro", true);
+	g_smIgnoreList.SetValue("vocalize", true); // character vocalize
+	g_smIgnoreList.SetValue("vmodenable", true); // join server check
+	g_smIgnoreList.SetValue("achievement_earned", true); // achievement_earned x x
+	g_smIgnoreList.SetValue("vban", true); // join server check
+	g_smIgnoreList.SetValue("choose_closedoor", true); // close door
+	g_smIgnoreList.SetValue("choose_opendoor", true); // open door
+	g_smIgnoreList.SetValue("vote", true); // Vote Yes / Vote No
+	g_smIgnoreList.SetValue("joingame", true);
+	g_smIgnoreList.SetValue("demorestart", true);
+	g_smIgnoreList.SetValue("menuselect", true); // menuselect 1~9
 
-	/* Get 2 digit country code for current player */
-	if(GetClientIP(client, playerIP, sizeof(playerIP), true) == false) {
-		country   = "  "
-	} else {
-		if(GeoipCode2(playerIP, country) == false) {
-			country = "  "
-		}
-	}
-	
-	Format(msg, sizeof(msg), "[%s] %N 进入游戏 ('%s' | '%s'%s)",
-		country,
-		client,
-		steamID,
-		playerIP,
-		id != INVALID_ADMIN_ID ? adminFlags : ""
-		)
-
-	log.info(msg)
-	player.info(msg)
-	CreateTimer(5.0, Timer_PerformWho, client);
 }
 
-
-public Action Timer_PerformWho(Handle timer, int target)
+void ConVarChanged_Cvars(ConVar convar, const char[] oldValue, const char[] newValue)
 {
-	char name[MAX_NAME_LENGTH];
-	GetClientName(target, name, sizeof(name));
-	
-	bool show_name = false;
-	char admin_name[MAX_NAME_LENGTH];
-	AdminId id = GetUserAdmin(target);
-	if (id != INVALID_ADMIN_ID && id.GetUsername(admin_name, sizeof(admin_name)))
+	GetCvars();
+}
+
+void GetCvars()
+{
+	g_bCvarEnable = g_hCvarEnable.BoolValue;
+	g_bCvarConsole = g_hCvarConsole.BoolValue;
+	hostport.GetString(sHostport, sizeof(sHostport));
+}
+
+public Action OnClientSayCommand(int client, const char[] command, const char[] sArgs)
+{
+	if(g_bCvarEnable == false)
+		return Plugin_Continue;
+
+	if(client < 0 || client > MaxClients)
+		return Plugin_Continue;
+
+	if (client > 0 && IsClientInGame(client) && BaseComm_IsClientGagged(client) == true) //this client has been gagged
+		return Plugin_Continue;	
+
+	if (strcmp(command, "say_team") == 0)
 	{
-		show_name = true;
-	}
-	if (id == INVALID_ADMIN_ID)
-	{
-		return Plugin_Stop;
+		LogChat2(client, sArgs, true);
 	}
 	else
 	{
-		int flags = GetUserFlagBits(target);
-		char flagstring[255];
-		if (flags == 0)
-		{
-			strcopy(flagstring, sizeof(flagstring), "none");
-			return Plugin_Stop;
-		}
-		else if (flags & ADMFLAG_ROOT)
-		{
-			strcopy(flagstring, sizeof(flagstring), "root");
-		}
-		else
-		{
-			FlagsToString(flagstring, sizeof(flagstring), flags);
-		}
-		
-		if (show_name)
-		{
-			log.info("'%s' 为 云端管理 '%s'，拥有权限 '%s'", name, admin_name, flagstring);
-			player.info("'%s' 为 云端管理 '%s'，拥有权限 '%s'", name, admin_name, flagstring);
-		}
-		else
-		{
-			log.info("'%s' 为 本地管理员，拥有权限 '%s'", name, flagstring);
-			player.info("'%s' 为 云端管理 '%s'，拥有权限 '%s'", name, admin_name, flagstring);
-		}
-		
-	}
-	return Plugin_Stop;
-}	
-
-
-public void SteamWorks_OnValidateClient(int ownerauthid, int authid)
-{
-    int client = GetClientOfAuthId(authid);
-    if (client == -1) return;
-    if(ownerauthid != authid) {
-		log.info("'%N' 为家庭共享账户，主账户authid为 '[U:1:%i]' !请知悉，中间一位数:1:可能为0", ownerauthid);
-		player.info("'%N' 为家庭共享账户，主账户authid为 '[U:1:%i]' !请知悉，中间一位数:1:可能为0", ownerauthid);
-	}
-}
-stock int GetClientOfAuthId(int authid)
-{
-    for(int i = 1; i <= MaxClients; i++)
-    {
-        if(IsClientConnected(i))
-        {
-            char steamid[32]; GetClientAuthId(i, AuthId_Steam3, steamid, sizeof(steamid));
-            char split[3][32]; 
-            ExplodeString(steamid, ":", split, sizeof(split), sizeof(split[]));
-            ReplaceString(split[2], sizeof(split[]), "]", "");
-            //Split 1: [U:
-            //Split 2: 1:
-            //Split 3: 12345]
-            
-            int auth = StringToInt(split[2]);
-            if(auth == authid) return i;
-        }
-    }
-
-    return -1;
-}
-void FlagsToString(char[] buffer, int maxlength, int flags)
-{
-	char joins[FLAG_STRINGS+1][32];
-	int total;
-
-	for (int i=0; i<FLAG_STRINGS; i++)
-	{
-		if (flags & (1<<i))
-		{
-			strcopy(joins[total++], 32, g_FlagNames[i]);
-		}
-	}
-	
-	char custom_flags[32];
-	if (CustomFlagsToString(custom_flags, sizeof(custom_flags), flags))
-	{
-		Format(joins[total++], 32, "custom(%s)", custom_flags);
+		LogChat2(client, sArgs, false);
 	}
 
-	ImplodeStrings(joins, total, ", ", buffer, maxlength);
+	return Plugin_Continue;
 }
 
-int CustomFlagsToString(char[] buffer, int maxlength, int flags)
+// 不會檢測到客戶端能執行的指令
+public Action OnClientCommand(int client, int args) 
 {
-	char joins[6][6];
-	int total;
-	
-	for (int i=view_as<int>(Admin_Custom1); i<=view_as<int>(Admin_Custom6); i++)
-	{
-		if (flags & (1<<i))
-		{
-			IntToString(i - view_as<int>(Admin_Custom1) + 1, joins[total++], 6);
-		}
-	}
-	
-	ImplodeStrings(joins, total, ",", buffer, maxlength);
-	
-	return total;
+	if(g_bCvarEnable == false || g_bCvarConsole == false)
+		return Plugin_Continue;
+
+	if(client < 0 || client > MaxClients)
+		return Plugin_Continue;
+
+	LogCommand(client);
+	return Plugin_Continue;
 }
 
-public Action Event_OnClientDisconnect(Event event, const char[] name, bool dontBroadcast){
-		/* Only record player detail if CVAR set */
-	if (g_SkipOnce){
-		g_SkipOnce = false;
-		return Plugin_Continue
-	}
-	g_SkipOnce = true;
-	if(GetConVarInt(sc_record_detail) != 1)
-		return Plugin_Continue
-	new client = GetClientOfUserId(GetEventInt(event, "userid"));
+public void OnMapStart(){
+	if(g_bCvarEnable == false)
+		return;
+
+	char map[128];
+	char msg[1024];
+	char date[21];
+	char time[21];
+	char logFile[100];
+
+	GetCurrentMap(map, sizeof(map));
+
+	/* The date may have rolled over, so update the logfile name here */
+	FormatTime(date, sizeof(date), "%Y_%m_%d", -1);
+	Format(logFile, sizeof(logFile), "/logs/chat/server_%s_chat_%s.log", sHostport, date);
+	BuildPath(Path_SM, chatFile, PLATFORM_MAX_PATH, logFile);
+
+	FormatTime(time, sizeof(time), "%d/%m/%Y %H:%M:%S", -1);
+	FormatEx(msg, sizeof(msg), "[%s] --- Map: %s ---", time, map);
+
+	SaveMessage("--=================================================================--");
+	SaveMessage(msg);
+	SaveMessage("--=================================================================--");
+}
+
+
+public void OnClientPostAdminCheck(int client)
+{
+	if(g_bCvarEnable == false)
+		return;
+
 	if(IsFakeClient(client)) 
-		return Plugin_Continue
+		return;
 
-	new String:msg[2048]
-	new String:country[3]
-	new String:steamID[128]
-	new String:playerIP[50]
+	static char msg[2048];
+	static char time[21];
+	static char country[3];
+	static char steamID[128];
+	static char playerIP[50];
 	
-	GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID))
-
-	/* Get 2 digit country code for current player */
+	GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID));
+	
 	if(GetClientIP(client, playerIP, sizeof(playerIP), true) == false) {
-		country   = "  "
+		//country   = "  "
 	} else {
 		if(GeoipCode2(playerIP, country) == false) {
-			country = "  "
+			//country = "  ";
 		}
 	}
-	bool isADM;
-	AdminId id = GetUserAdmin(client);
-	isADM = GetAdminFlag(id, Admin_Generic);
-
-	char reason[128];
-	event.GetString("reason", reason, sizeof(reason));
-
-	Format(msg, sizeof(msg), "[%s] %N 离开游戏 '%s' ('%s' | '%s'%s)",
-		country,
-		client,
-		reason,
+	
+	FormatTime(time, sizeof(time), "%H:%M:%S", -1);
+	FormatEx(msg, sizeof(msg), "[%s] (%-20s | %-15s) %-25N has joined.",
+		time,
 		steamID,
 		playerIP,
-		isADM ? " | 管理员" : ""
-		)
+		client);
 
-	log.info(msg)
-	player.info(msg)
-	return Plugin_Continue
-
+	SaveMessage(msg);
 }
-/*
- * Extract all relevant information and format 
- */
-public LogChat(client, args, bool:teamchat)
+
+void event_PlayerDisconnect(Event event, const char[] name, bool dontBroadcast) 
 {
-	new String:msg[2048]
-	new String:text[1024]
-	new String:country[3]
-	new String:playerIP[50]
-	new String:teamName[20]
+	if(g_bCvarEnable == false)
+		return;
 
-	GetCmdArgString(text, sizeof(text))
-	StripQuotes(text)
+	int client = GetClientOfUserId(event.GetInt("userid"));
 
-	if(client == 0) {
-		/* Don't try and obtain client country/team if this is a console message */
-		Format(country, sizeof(country), "  ")
-		Format(teamName, sizeof(teamName), "")
+	static char msg[2048];
+	static char time[21];
+	//static char country[3];
+	static char steamID[64];
+	static char playerIP[50];
+	static char reason[128];
+	event.GetString("reason", reason, sizeof(reason));
+	
+	if(client == 0 && strcmp(reason, "Connection closing", false) == 0)
+	{
+		static char playerName[128];
+		event.GetString("name", playerName, sizeof(playerName));
+
+		static char networkid[32];
+		event.GetString("networkid", networkid, sizeof(networkid));
+
+		FormatTime(time, sizeof(time), "%H:%M:%S", -1);
+		FormatEx(msg, sizeof(msg), "[%s] (%-20s | %-15s) %-25s has left (%s).",
+			time,
+			networkid,
+			"Unknown",
+			playerName,
+			reason);
+
+		SaveMessage(msg);
+		return;
+	}
+	
+	if( client && !IsFakeClient(client) )
+	{
+		GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID));
+		
+		if(GetClientIP(client, playerIP, sizeof(playerIP), true) == false) {
+			//country   = "  "
+		} else {
+			//if(GeoipCode2(playerIP, country) == false) {
+			//	//country = "  ";
+			//}
+		}
+		
+		FormatTime(time, sizeof(time), "%H:%M:%S", -1);
+		FormatEx(msg, sizeof(msg), "[%s] (%-20s | %-15s) %-25N has left (%s).",
+			time,
+			steamID,
+			playerIP,
+			client,
+			reason);
+
+		SaveMessage(msg);
+	}
+}
+
+void LogChat2(int client, const char[] sArgs, bool teamchat)
+{
+	static char Args[512];
+	static char msg[2048];
+	static char time[21];
+	static char country[3];
+	static char playerIP[50];
+	static char teamName[20];
+	static char steamID[128];
+	
+	if (client == 0 || !IsClientInGame(client)) {
+		country[0] = '\0';
+		teamName[0] = '\0';
+		playerIP[0] = '\0';
+		steamID[0] = '\0';
+	} else {
+		if(GetClientIP(client, playerIP, sizeof(playerIP), true) == false) {
+			//country   = "  ";
+		} else {
+			if(GeoipCode2(playerIP, country) == false) {
+				//country = "  ";
+			}
+		}
+		my_GetTeamName(GetClientTeam(client), teamName, sizeof(teamName));
+		GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID));
+	}
+	FormatTime(time, sizeof(time), "%H:%M:%S", -1);
+	FormatEx(Args, sizeof(Args), "%s", sArgs);
+	ReplaceString(Args, sizeof(Args), "%", "%%");
+
+	FormatEx(msg, sizeof(msg), "[%s] (%-20s | %-15s) [%s] %-25N : %s%s",
+		time,
+		steamID,
+		playerIP,
+		teamName,
+		client,
+		teamchat == true ? "(TEAM) " : "",
+		Args);
+
+	SaveMessage(msg);
+}
+
+void LogCommand(int client)
+{
+	static char cmd[64];
+	static char text[1024];
+
+	GetCmdArg(0, cmd, sizeof(cmd));
+	StringToLowerCase(cmd);
+	bool bTemp;
+	if( g_smIgnoreList.GetValue(cmd, bTemp) == true )
+	{
+		return;
+	}
+
+	GetCmdArgString(text, sizeof(text));
+	StripQuotes(text);
+
+	static char country[3];
+	static char playerIP[50];
+	static char teamName[20];
+	static char msg[2048];
+	static char time[21];
+	static char steamID[128];
+	
+	if (client == 0 || !IsClientInGame(client)) {
+		country[0] = '\0';
+		teamName[0] = '\0';
+		playerIP[0] = '\0';
+		steamID[0] = '\0';
 	} else {
 		/* Get 2 digit country code for current player */
 		if(GetClientIP(client, playerIP, sizeof(playerIP), true) == false) {
-			country   = "  "
+			//country   = "  ";
 		} else {
 			if(GeoipCode2(playerIP, country) == false) {
-				country = "  "
+				//country = "  ";
 			}
 		}
-		GetTeamName(GetClientTeam(client), teamName, sizeof(teamName))
+		my_GetTeamName(GetClientTeam(client), teamName, sizeof(teamName));
+		GetClientAuthId(client, AuthId_Steam2, steamID, sizeof(steamID));
 	}
+	FormatTime(time, sizeof(time), "%H:%M:%S", -1);
+	ReplaceString(text, sizeof(text), "%", "%%");
 
-	if(GetConVarInt(sc_record_detail) == 1) {
-		Format(msg, sizeof(msg), "[%s] [%s] %N :%s %s",
-			country,
-			teamName,
-			client,
-			teamchat == true ? " (TEAM)" : "",
-			text)
-	} else {
-		Format(msg, sizeof(msg), "[%s] %N :%s '%s'",
-			country,
-			client,
-			teamchat == true ? " (TEAM)" : "",
-			text)
-	}
+	FormatEx(msg, sizeof(msg), "[%s] (%-20s | %-15s) [%s] %-25N : (CMD) %s %s",
+		time,
+		steamID,
+		playerIP,
+		teamName,
+		client,
+		cmd,
+		text);
 
-
-	log.info(msg)
+	SaveMessage(msg);
 }
-/*
- * Log a map transition
- */
-public OnMapStart(){
-	new String:map[128]
-	char cfg[64];
-	ConVar config = FindConVar("l4d_ready_cfg_name");
-	GetConVarString(config != INVALID_HANDLE ? config : FindConVar("mp_gamemode"), cfg, sizeof(cfg))
-	GetCurrentMap(map, sizeof(map))
-	ConVar sname = FindConVar("hostname");
-	char name[64];
-	sname.GetString(name, sizeof(name));
-	log.lograw("--=================================================================--")
-	log.info(  "* >>> %s <<<", name)
-	log.info(  "* 地图 >>> '%s'   ", 		map);
-	log.info(  "* 配置文件: '%s'", 			cfg);
-	log.info(  "* 比分 %i : %i", 			L4D2Direct_GetVSCampaignScore(GameRules_GetProp("m_bAreTeamsFlipped")), L4D2Direct_GetVSCampaignScore(!GameRules_GetProp("m_bAreTeamsFlipped")));
-	log.lograw("----------------------------------")
 
-	player.lograw("--=================================================================--")
+void SaveMessage(const char[] message)
+{
+	fileHandle = OpenFile(chatFile, "a");  /* Append */
+	if(fileHandle == null)
+	{
+		CreateDirectory("/addons/sourcemod/logs/chat", 777);
+		fileHandle = OpenFile(chatFile, "a"); //open again
+		if(fileHandle == null)
+		{
+			LogError("Can not create chat file: %s", chatFile);
+			return;
+		}
+	}
+
+	WriteFileLine(fileHandle, message);
+	delete fileHandle;
+}
+
+void my_GetTeamName(int team, char[] sTeamName, int size)
+{
+	switch(team)
+	{
+		case 1:
+		{
+			FormatEx(sTeamName, size, "Spe");
+		}
+		case 2:
+		{
+			FormatEx(sTeamName, size, "Sur");
+		}
+		case 3:
+		{
+			FormatEx(sTeamName, size, "Inf");
+		}
+		case 4:
+		{
+			FormatEx(sTeamName, size, "NPC");
+		}
+		default:
+		{
+			FormatEx(sTeamName, size, "Unknown");
+		}
+	}
+}
+
+void StringToLowerCase(char[] input)
+{
+    for (int i = 0; i < strlen(input); i++)
+    {
+        input[i] = CharToLower(input[i]);
+    }
 }
