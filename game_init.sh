@@ -216,7 +216,27 @@ for dir in "\${directories[@]}"; do
         rm -rf "\$dir/cfg/stripper"
         
         # 复制新文件
-        cp -r "\$TARGET_DIR/\$REPO_NAME"/* "\$dir/"
+        echo "复制 addons 文件夹..."
+        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir/"
+        
+        echo "复制 cfg 文件夹..."
+        if [ ! -f "$dir/cfg/server.cfg" ]; then
+            mkdir -p "$dir/cfg"
+            touch "$dir/cfg/server.cfg"
+        fi
+        
+        mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
+        
+        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir/"
+        
+        mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
+        
+        echo "复制 scripts 文件夹..."
+        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir/"
+        
+        echo "复制配置文件..."
+        cp "$TARGET_DIR/$REPO_NAME/hana_host.txt" "$dir/" 2>/dev/null || true
+        cp "$TARGET_DIR/$REPO_NAME/hana_motd.txt" "$dir/" 2>/dev/null || true
         
         # 设置权限
         chmod -R 777 "\$dir/"
