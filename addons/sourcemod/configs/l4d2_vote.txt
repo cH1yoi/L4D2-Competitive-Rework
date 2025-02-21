@@ -141,10 +141,6 @@
 		{
 			"message" "致命货运站"
 		}
-		"changelevel l4d2_daybreak01_hotel"
-		{
-			"message" "黎明(v3)"
-		}
 		"changelevel hf01_theforest"
 		{
 			"message" "颤栗森林"
@@ -152,10 +148,6 @@
 		"changelevel l4d_ihm01_forest"
 		{
 			"message" "我恨山2"
-		}
-		"changelevel nmrm1_apartment"
-		{
-			"message" "毫不留情Rehab(C8改)"
 		}
 		"changelevel x1m1_cliffs"
 		{
@@ -165,49 +157,69 @@
 		{
 			"message" "跨越边境"
 		}
-		"changelevel uf1_boulevard"
-		{
-			"message" "城市航班"
-		}
 		"changelevel dcr_m1_hotel"
 		{
 			"message" "黑死亡中心(C1改黑)"
 		}
-		"changelevel dcr1_meetup_f"
+		"changelevel fos1m1_hill"
 		{
-			"message" "白死亡中心(C1改白)"
+			"message" "生还之锋"
 		}
-		"changelevel c5m1_darkwaterfront"
+		"changelevel tripday_new_m1"
 		{
-			"message" "黑暗教区"
+			"message" "旅行日"
 		}
 	}
 
 	"娱乐三方(Other Maps)"
 	{
-		"changelevel deepp_m1"
+		"changelevel l4d2_daybreak01_hotel"
 		{
-			"message" "深邃恐惧症"
+			"message" "黎明(v3)"
+		}
+		"changelevel nmrm1_apartment"
+		{
+			"message" "毫不留情Rehab(C8改)"
+		}
+		"changelevel dcr1_meetup_f"
+		{
+			"message" "白死亡中心(C1改白)"
+		}
+		"changelevel uf1_boulevard"
+		{
+			"message" "城市航班"
 		}
 		"changelevel pt2_m1"
 		{
 			"message" "传送门"
 		}
-		"changelevel bigwat_d1"
-		{
-			"message" "大佛寺"
-		}
 		"changelevel zc_m1"
 		{
 			"message" "广州增城"
 		}
-		"changelevel srocchurch"
+		"changelevel l4d_tbm_1"
 		{
-			"message" "巴塞罗那"
+			"message" "血腥荒野"
 		}
-		"changelevel l4d2_bts01_forest"
+		"changelevel cf_m1_town"
 		{
-			"message" "返校(Back To School)"
+			"message" "冷锋(Cold Front)"
+		}
+		"changelevel noecho_m1"
+		{
+			"message" "音讯全无(No Echo)"
+		}
+		"changelevel bmist_m1way_vs"
+		{
+			"message" "黑迷雾改"
+		}
+		"changelevel nanningcity_departure_m1"
+		{
+			"message" "南宁"
+		}
+		"changelevel dsr_m1"
+		{
+			"message" "死刑改"
 		}
 	}
 }

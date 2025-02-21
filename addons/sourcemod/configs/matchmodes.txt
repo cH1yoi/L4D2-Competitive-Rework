@@ -155,6 +155,10 @@
 		{
 			"name" "Advanced 8v8(进阶包)"
 		}
+		"zm_carplayplus"
+		{
+			"name" "好多铁哦(仅限官图)"
+		}
 		"advanced"
 		{
 			"name" "Advanced 进阶包抗"

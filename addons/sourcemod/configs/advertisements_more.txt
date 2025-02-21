@@ -1,0 +1,53 @@
+// Advertisements 2.1
+// by Tsunami
+//
+// Types
+// -----
+// center: Center message
+// chat: Chat message
+// hint: Hint message
+// menu: Menu message
+// top: Top message
+//
+//能用 default teamcolor lightgreen yellow green
+// Flags (optional)
+// -----
+// Accepts flags of admins that will not see the advertisement.
+// When omitted everyone will see the advertisement.
+// When left empty only admins will see the advertisement.
+
+"Advertisements"
+{
+    "1"
+    {
+        "chat"      "{green}❀ 吹水群:489962242, 有什么问题可以找HANA~"
+    }
+    "2"
+    {
+        "chat"      "[{green}!{default}] 输入/sur 加入生还者; 输入/inf 加入感染者"
+    }
+    "3"
+    {
+        "chat"      "{green}❀ 让我们感谢伟大的Sir.P喵~!"
+    }
+    "4"
+    {
+        "chat"      "[{green}!{default}] 本服禁止刷屏辱骂和作弊以及宏作弊喵"
+    }
+    "5"
+    {
+        "chat"      "[{green}!{default}] 本服对外挂0容忍,会时不时同步来源他服的封禁喵."
+    }
+    "6"
+    {
+        "chat"      "[{green}!{default}] 如果遇到该会话不可用,第8人进不来请使用!vote投票做掉大厅喵"
+    }
+    "7"
+    {
+        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /vote投票更换喵,有想玩的地图请联系HANA"
+    }
+    "8"
+    {
+        "chat"      "[{green}!{default}] NepKey:适度小透益脑,沉迷陀螺伤身。合理安排爹妈,敢开我就整你"
+    }
+}
