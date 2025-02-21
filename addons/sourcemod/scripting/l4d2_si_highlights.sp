@@ -8,9 +8,9 @@
 
 #define MAX_PINNED_DISPLAY 12
 #define TANK_CHECK_INTERVAL 0.3
-#define PINNED_ANNOUNCE_COOLDOWN 3.0
-#define PINNED_CHECK_INTERVAL 1.0
-#define PINNED_CHECK_THRESHOLD 0.5
+#define PINNED_ANNOUNCE_COOLDOWN 0.2
+#define PINNED_CHECK_INTERVAL 0.2
+#define PINNED_CHECK_THRESHOLD 0.1
 
 enum struct InfectedState {
     int victimCount;
@@ -25,19 +25,20 @@ InfectedState g_Tank[MAXPLAYERS+1];
 
 bool g_bIsCarryingSurvivor[MAXPLAYERS+1];
 
-static int g_iPreviousPinnedCount;
 static float g_fLastPinnedAnnounce;
 static float g_fLastPinnedCheck;
 
 Handle g_hPinnedCheckTimer = null;
 bool g_bIsCheckingPinned = false;
 
+static int g_iMaxPinnedCount;
+
 public Plugin myinfo = 
 {
     name = "L4D2 Special Infected Highlights",
     author = "Hana",
     description = "Announce special infected highlights",
-    version = "2.1",
+    version = "2.2",
     url = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -69,9 +70,9 @@ public void OnPluginStart()
     HookEvent("charger_carry_end", Event_PinnedEnd);
     HookEvent("charger_pummel_end", Event_PinnedEnd);
     
-    g_iPreviousPinnedCount = 0;
     g_fLastPinnedAnnounce = 0.0;
     g_fLastPinnedCheck = 0.0;
+    g_iMaxPinnedCount = 0;
 }
 
 public void OnMapStart()
@@ -101,9 +102,9 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         ResetClientStats(i);
     }
     
-    g_iPreviousPinnedCount = 0;
     g_fLastPinnedAnnounce = 0.0;
     g_fLastPinnedCheck = 0.0;
+    g_iMaxPinnedCount = 0;
 }
 
 void ResetClientStats(int client)
@@ -225,7 +226,6 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
     char weapon[64];
     event.GetString("weapon", weapon, sizeof(weapon));
-    int damage = event.GetInt("dmg_health");
     
     if (!attacker || !victim || !IsClientInGame(attacker) || !IsClientInGame(victim))
         return;
@@ -238,9 +238,8 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
             return;
         }
         
-        if (strcmp(weapon, "tank_claw") == 0 && damage > 0)
+        if (strcmp(weapon, "tank_claw") == 0)
         {
-            float currentTime = GetGameTime();
             if (!g_Tank[attacker].isActive)
             {
                 g_Tank[attacker].isActive = true;
@@ -358,46 +357,79 @@ public Action Timer_CheckPinned(Handle timer)
 
 void CheckPinnedCount()
 {
-    float currentTime = GetGameTime();
-    if (currentTime - g_fLastPinnedAnnounce < PINNED_ANNOUNCE_COOLDOWN)
-        return;
-        
     int pinned_count = 0;
+    int alive_count = 0;
     
     for (int i = 1; i <= MaxClients; i++)
     {
-        if (!IsClientInGame(i) || GetClientTeam(i) != 2 || !IsPlayerAlive(i))
+        if (!IsClientInGame(i) || GetClientTeam(i) != 2)
             continue;
             
-        if (GetEntPropEnt(i, Prop_Send, "m_tongueOwner") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_pounceAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_carryAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_pummelAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_jockeyAttacker") > 0)
+        if (IsPlayerAlive(i))
         {
-            pinned_count++;
+            alive_count++;
+            
+            if (GetEntPropEnt(i, Prop_Send, "m_tongueOwner") > 0 ||
+                GetEntPropEnt(i, Prop_Send, "m_pounceAttacker") > 0 ||
+                GetEntPropEnt(i, Prop_Send, "m_carryAttacker") > 0 ||
+                GetEntPropEnt(i, Prop_Send, "m_pummelAttacker") > 0 ||
+                GetEntPropEnt(i, Prop_Send, "m_jockeyAttacker") > 0)
+            {
+                pinned_count++;
+            }
         }
     }
 
-    if (pinned_count >= 2 && pinned_count != g_iPreviousPinnedCount)
+    if (pinned_count < 2)
     {
-        char stars[32];
-        stars[0] = '\0';
-        
-        for (int i = 0; i < pinned_count; i++)
+        g_iMaxPinnedCount = 0;
+        g_bIsCheckingPinned = false;
+        if (g_hPinnedCheckTimer != null)
         {
-            StrCat(stars, sizeof(stars), "★");
+            KillTimer(g_hPinnedCheckTimer);
+            g_hPinnedCheckTimer = null;
         }
-        
-        CPrintToChatAll("{red}%s {red}特感阵营达成 {olive}%d {red}控", stars, pinned_count);
-        
-        g_fLastPinnedAnnounce = currentTime;
-        g_iPreviousPinnedCount = pinned_count;
+        return;
     }
-    else if (pinned_count < 2)
+
+    if (pinned_count > g_iMaxPinnedCount)
     {
-        g_iPreviousPinnedCount = 0;
+        float currentTime = GetGameTime();
+        if (currentTime - g_fLastPinnedAnnounce >= PINNED_ANNOUNCE_COOLDOWN)
+        {
+            g_iMaxPinnedCount = pinned_count;
+            
+            char stars[32];
+            stars[0] = '\0';
+            
+            for (int i = 0; i < pinned_count; i++)
+            {
+                StrCat(stars, sizeof(stars), "★");
+            }
+            
+            CPrintToChatAll("{red}%s {red}特感阵营达成 {olive}%d {red}控", stars, pinned_count);
+            g_fLastPinnedAnnounce = currentTime;
+        }
     }
+
+    if (pinned_count == alive_count && alive_count > 0)
+    {
+        g_bIsCheckingPinned = false;
+        if (g_hPinnedCheckTimer != null)
+        {
+            KillTimer(g_hPinnedCheckTimer);
+            g_hPinnedCheckTimer = null;
+        }
+    }
+}
+
+public Action Timer_DelayedPinnedCheck(Handle timer)
+{
+    g_hPinnedCheckTimer = null;
+    g_bIsCheckingPinned = false;
+    
+    CheckPinnedCount();
+    return Plugin_Stop;
 }
 
 void RequestPinnedCheck()
@@ -419,44 +451,6 @@ void RequestPinnedCheck()
     }
     
     g_hPinnedCheckTimer = CreateTimer(PINNED_CHECK_INTERVAL, Timer_DelayedPinnedCheck);
-}
-
-public Action Timer_DelayedPinnedCheck(Handle timer)
-{
-    g_hPinnedCheckTimer = null;
-    g_bIsCheckingPinned = false;
-    
-    int pinned_count = 0;
-    
-    for (int i = 1; i <= MaxClients; i++)
-    {
-        if (!IsClientInGame(i) || GetClientTeam(i) != 2 || !IsPlayerAlive(i))
-            continue;
-            
-        if (GetEntPropEnt(i, Prop_Send, "m_tongueOwner") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_pounceAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_carryAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_pummelAttacker") > 0 ||
-            GetEntPropEnt(i, Prop_Send, "m_jockeyAttacker") > 0)
-        {
-            pinned_count++;
-        }
-    }
-
-    if (pinned_count >= 2)
-    {
-        char stars[32];
-        stars[0] = '\0';
-        
-        for (int i = 0; i < pinned_count; i++)
-        {
-            StrCat(stars, sizeof(stars), "★");
-        }
-        
-        CPrintToChatAll("{red}%s {red}特感阵营达成 {olive}%d {red}控", stars, pinned_count);
-    }
-    
-    return Plugin_Stop;
 }
 
 bool IsCharger(int client)
