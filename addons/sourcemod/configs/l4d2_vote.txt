@@ -2,7 +2,7 @@
 {
 	"服务器选项(server setting)"
 	{
-		"sv_allow_lobby_connect_only 0;sv_force_unreserved 1"
+		"sm_killlobbyres;sv_allow_lobby_connect_only 0;sv_force_unreserved 1"
 		{
 			"message" "移除大厅(kill lobbyres)"
 		}
