@@ -40,9 +40,6 @@ public Plugin myinfo =
 #define	CFG_DOUNOF			"disorderunofficial"
 #define	CFG_DOUNOF_ST		"douof"
 #define BUF_SZ   			64
-#define TEAM_SPECTATOR 1
-#define TEAM_SURVIVOR 2
-#define TEAM_INFECTED 3
 
 ConVar 	g_cvNextMapPrint,
 		g_cvMaxMapsNum,
@@ -363,7 +360,7 @@ public Action Timed_ContinueMixmap(Handle timer)
 // ----------------------------------------------------------
 
 // Loads a specified set of maps
-public Action ForceMixmap(int client, any args) 
+public Action ForceMixmap(int client, int args) 
 {
 	Format(cfg_exec, sizeof(cfg_exec), CFG_DEFAULT);
 	
@@ -404,7 +401,7 @@ public Action ForceMixmap(int client, any args)
 }
 
 // Load a specified set of maps
-public Action ManualMixmap(int client, any args) 
+public Action ManualMixmap(int client, int args) 
 {
 	if (args < 1) 
 	{
@@ -426,7 +423,7 @@ public Action ManualMixmap(int client, any args)
 	return Plugin_Handled;
 }
 
-public Action ShowAllMaps(int client, any Args)
+public Action ShowAllMaps(int client, int Args)
 {
 	CPrintToChat(client, "%t", "AllMaps_Official");
 	CPrintToChat(client, "c1m1_hotel,c1m2_streets,c1m3_mall,c1m4_atrium");
@@ -461,7 +458,7 @@ public void LeftStartArea_Event(Event event, const char[] name, bool dontBroadca
 	bLeftStartArea = true;
 } */
 
-public Action Mixmap_Cmd(int client, any args) 
+public Action Mixmap_Cmd(int client, int args) 
 {
 	if (IsClientAndInGame(client))
 	{
@@ -600,7 +597,7 @@ public Action Mixmap()
 }
 
 // Display current map list
-public Action Maplist(int client, any args) 
+public Action Maplist(int client, int args) 
 {
 	if (! g_bMaplistFinalized) 
 	{
@@ -641,7 +638,7 @@ public Action Maplist(int client, any args)
 }
 
 // Abort a currently loaded mapset
-public Action StopMixmap_Cmd(int client, any args) 
+public Action StopMixmap_Cmd(int client, int args) 
 {
 	if (!g_bMapsetInitialized ) 
 	{
@@ -743,7 +740,7 @@ public Action StartVoteStopMixmap_Timer(Handle timer)
 	return Plugin_Handled;
 }
 
-public Action StopMixmap(int client, any args) 
+public Action StopMixmap(int client, int args) 
 {
 	if (!g_bMapsetInitialized) 
 	{
@@ -900,7 +897,7 @@ public Action Timed_GiveThemTimeToReadTheMapList(Handle timer)
 }
 
 // Specifiy a rank for a given tag
-public Action TagRank(any args) {
+public Action TagRank(int args) {
 	if (args < 2) 
 	{
 		ReplyToCommand(0, "Syntax: sm_tagrank <tag> <map number>");
@@ -932,7 +929,7 @@ public Action TagRank(any args) {
 }
 
 // Add a map to the maplist under specified tags
-public Action AddMap(any args) 
+public Action AddMap(int args) 
 {
 	if (args < 2) 
 	{
