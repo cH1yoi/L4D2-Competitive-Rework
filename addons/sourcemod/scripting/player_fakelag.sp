@@ -222,6 +222,12 @@ public Action MyFakeLagCmd(int client, int args)
 
 public Action CancelEFakeLagVoteCmd(int client, int args)
 {
+	if (GetClientTeam(client) <= 1)
+    {
+        CPrintToChat(client, "%t", "spec_no_access");
+        return Plugin_Handled;
+    }
+
 	if (StartCancelEFakeLagVote(client))
 	{
 		CPrintToChatAllEx(client, "%t", "vote_to_cancel", client);
@@ -304,6 +310,12 @@ public void VoteCancelEFakelagResultHandler(Handle vote, int num_votes, int num_
 
 public Action EFakeLagVoteCmd(int client, int args)
 {
+	if (GetClientTeam(client) <= 1)
+    {
+        CPrintToChat(client, "%t", "spec_no_access");
+        return Plugin_Handled;
+    }
+
 	if (StartEFakeLagVote(client))
 	{
 		CPrintToChatAllEx(client, "%t", "vote_to_start", client);
@@ -447,6 +459,12 @@ public Action Timer_EqualizeFakelag(Handle timer)
 
 public Action TeamEFakeLagVoteCmd(int client, int args)
 {
+	if (GetClientTeam(client) <= 1)
+    {
+        CPrintToChat(client, "%t", "spec_no_access");
+        return Plugin_Handled;
+    }
+	
 	if (StartTeamEFakeLagVote(client))
 	{
 		CPrintToChatAllEx(client, "%t", "vote_to_team", client);
@@ -607,7 +625,7 @@ public Action Timer_TeamEqualizeFakelag(Handle timer)
 
 
 // DEBUG: See the value of s_FakeLag
-public Action PrintLagCmd(int client, int args) 
+Action PrintLagCmd(int client, int args) 
 {
 	for(int i = 1; i < MaxClients; i++) 
 	{
@@ -623,7 +641,7 @@ public Action PrintLagCmd(int client, int args)
 	return Plugin_Handled;
 }
 
-public void ClearAllPlayersFakelag()
+void ClearAllPlayersFakelag()
 {
 	for (int i = 1; i <= MaxClients; i++)
 	{
@@ -649,7 +667,7 @@ stock int GetClientAvgPing(int client)
 	return RoundFloat(GetClientAvgLatency(client, NetFlow_Both) * 1000);
 }
 
-public bool CheckPlayers() 
+bool CheckPlayers() 
 {
 	int count = 0;
 
