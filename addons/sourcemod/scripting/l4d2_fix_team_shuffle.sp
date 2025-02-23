@@ -1,22 +1,14 @@
 #include <sourcemod>
 #include <sdktools>
 #include <left4dhooks>
-#include <l4d2_ems_hud>
 
+#define TEAM_NOTIFY_FLAGS (FCVAR_NOTIFY)
 #define L4D2_TEAM_SPECTATOR 1
 #define L4D2_TEAM_SURVIVOR 2
 #define L4D2_TEAM_INFECTED 3
+float g_fTimerStart;
 const float COUNT_SPEED = 0.3;
 bool fixTeam = false;
-float time = 0.0;
-int symbol = 0;
-static char funsymbol[4][] = {
-    "◤",
-    "◥",
-    "◢",
-    "◣"
-};
-char text[192];
 ArrayList winners;
 ArrayList losers;
 
@@ -47,9 +39,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
 public int Native_isFixTeamShuffleRunning(Handle plugin, int numParams){
     return MustFixTheTeams();
 }
-public void OnMapStart(){
-    EnableHUD();
-}
+
 public void OnRoundIsLive()
 {
     DisableFixTeam();
@@ -105,33 +95,28 @@ Action EnableFixTeam_Timer(Handle timer)
 {
     EnableFixTeam();
     FixTeams();
-    time = 30.0;
+    g_fTimerStart = GetGameTime();
+    
+    PrintToChatAll("\x01[\x04!\x01] \x05防错位系统运行中，请等待\x0430\x05秒...");
+    
     CreateTimer(COUNT_SPEED, DisableFixTeam_Timer, _, TIMER_REPEAT);
-
     return Plugin_Continue;
 }
 
 Action DisableFixTeam_Timer(Handle timer)
 {
-    if (MustFixTheTeams()) {
-        Format(text, sizeof(text), "/// 防错位机制生效中... ///\n%s 剩余%.1f秒",funsymbol[symbol++], time);
-        HUDSetLayout(HUD_MID_BOX, HUD_FLAG_ALIGN_CENTER|HUD_FLAG_TEXT, text);
-        if (symbol >= sizeof(funsymbol)) symbol = 0;
-        time -= COUNT_SPEED;
-    }else{
-        Format(text, sizeof(text), "/// 防错位机制已结束... ///\n旁观者现在可以加入游戏了");
-        HUDSetLayout(HUD_MID_BOX, HUD_FLAG_ALIGN_CENTER|HUD_FLAG_TEXT, text);
-        time -= COUNT_SPEED * 2.0;
+    float timeLeft = 30.0 - (GetGameTime() - g_fTimerStart);
+    
+    if (timeLeft > 0.0)
+    {
+        return Plugin_Continue;
     }
-    HUDPlace(HUD_MID_BOX, 0.0, 0.00, 1.0, 0.06);
-    if (time > 0.0) return Plugin_Continue;
-    RequestFrame(CloseHud);
+    
+    PrintToChatAll("\x01[\x04!\x01] \x05防错位系统已结束，现在可以正常加入游戏");
     DisableFixTeam();
     return Plugin_Stop;
 }
-void CloseHud(){
-    if (HUDSlotIsUsed(HUD_MID_BOX)) RemoveHUD(HUD_MID_BOX);
-}
+
 public void SaveTeams()
 {
     ClearTeamsData();
@@ -190,9 +175,14 @@ void MoveToSpectatorWhoIsNotInTheTeam(ArrayList arrayList, int team)
         if (!IsClientInGame(client) || IsFakeClient(client) || GetClientTeam(client) != team)
             continue;
         
-        if (FindValueInArray(arrayList, client) == -1){
+        if (FindValueInArray(arrayList, client) == -1)
+        {
             MovePlayerToTeam(client, L4D2_TEAM_SPECTATOR);
-            PrintToChat(client,"为防止错位，你当前不能加入游戏，请等待一段时间后重试");
+            float timeLeft = 30.0 - (GetGameTime() - g_fTimerStart);
+            if (timeLeft > 0.0)
+            {
+                PrintToChat(client, "\x01[\x04!\x01] \x05防错位运行中，请等待\x04%.1f\x05秒后重试加入游戏", timeLeft);
+            }
         }
     }
 }
