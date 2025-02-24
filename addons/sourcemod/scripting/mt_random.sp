@@ -5,137 +5,94 @@
 #include <mix_team>
 
 
-public Plugin myinfo = { 
-	name = "MixTeamRandom",
-	author = "TouchMe",
-	description = "Adds random mix",
-	version = "build_0001",
-	url = "https://github.com/TouchMe-Inc/l4d2_mix_team"
+public Plugin myinfo = {
+    name        = "MixTeamRandom",
+    author      = "TouchMe",
+    description = "Adds random mix",
+    version     = "build_0005",
+    url         = "https://github.com/TouchMe-Inc/l4d2_mix_team"
 };
 
 
 #define TRANSLATIONS            "mt_random.phrases"
 
+#define TEAM_SURVIVOR           2
+#define TEAM_INFECTED           3
+
 #define MIN_PLAYERS             4
 
 
-/**
- * Loads dictionary files. On failure, stops the plugin execution.
- */
-void InitTranslations()
-{
-	char sPath[PLATFORM_MAX_PATH];
-	BuildPath(Path_SM, sPath, PLATFORM_MAX_PATH, "translations/" ... TRANSLATIONS ... ".txt");
-
-	if (FileExists(sPath)) {
-		LoadTranslations(TRANSLATIONS);
-	} else {
-		SetFailState("Path %s not found", sPath);
-	}
-}
+int g_iThisMixIndex = -1;
 
 /**
  * Called when the plugin is fully initialized and all known external references are resolved.
  */
 public void OnPluginStart() {
-	InitTranslations();
+    LoadTranslations(TRANSLATIONS);
 }
 
 public void OnAllPluginsLoaded() {
-	AddMix("random", MIN_PLAYERS, 0);
+    g_iThisMixIndex = AddMix(MIN_PLAYERS, 0);
 }
 
-public void GetVoteDisplayMessage(int iClient, char[] sTitle) {
-	Format(sTitle, DISPLAY_MSG_SIZE, "%T", "VOTE_DISPLAY_MSG", iClient);
+public Action OnDrawVoteTitle(int iMixIndex, int iClient, char[] sTitle, int iLength)
+{
+    if (iMixIndex != g_iThisMixIndex) {
+        return Plugin_Continue;
+    }
+
+    Format(sTitle, iLength, "%T", "VOTE_TITLE", iClient);
+
+    return Plugin_Stop;
 }
 
-public void GetVoteEndMessage(int iClient, char[] sMsg) {
-	Format(sMsg, VOTEEND_MSG_SIZE, "%T", "VOTE_END_MSG", iClient);
+public Action OnDrawMenuItem(int iMixIndex, int iClient, char[] sTitle, int iLength)
+{
+    if (iMixIndex != g_iThisMixIndex) {
+        return Plugin_Continue;
+    }
+
+    Format(sTitle, iLength, "%T", "MENU_ITEM", iClient);
+
+    return Plugin_Stop;
 }
 
 /**
  * Starting the mix.
  */
-public Action OnMixInProgress()
+public Action OnChangeMixState(int iMixIndex, MixState eOldState, MixState eNewState, bool bIsFail)
 {
-	// save current player / team setup
-	int g_iPreviousCount[4];
-	int g_iPreviousTeams[4][MAXPLAYERS + 1];
+    if (iMixIndex != g_iThisMixIndex || eNewState != MixState_InProgress) {
+        return Plugin_Continue;
+    }
 
-	for (int iClient = 1, iTeam; iClient <= MaxClients; iClient++)
-	{
-		if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsMixMember(iClient)) {
-			continue;
-		}
+    Handle hPlayers = CreateArray();
 
-		iTeam = GetLastTeam(iClient);
+    for (int iClient = 1; iClient <= MaxClients; iClient++)
+    {
+        if (!IsClientInGame(iClient) || IsFakeClient(iClient) || !IsMixMember(iClient)) {
+            continue;
+        }
 
-		g_iPreviousTeams[iTeam][g_iPreviousCount[iTeam]] = iClient;
-		g_iPreviousCount[iTeam]++;
-	}
+        PushArrayCell(hPlayers, iClient);
+    }
 
-	// if there are uneven players, move one to the other
-	if ((g_iPreviousCount[TEAM_SURVIVOR] + g_iPreviousCount[TEAM_INFECTED]) < (2 * MIN_PLAYERS))
-	{
-		int tmpDif = g_iPreviousCount[TEAM_SURVIVOR] - g_iPreviousCount[TEAM_INFECTED];
-		int iTeamA, iTeamB;
+    for (int iPlayers, iIndex, iClient;;)
+    {
+        iPlayers = GetArraySize(hPlayers);
 
-		while (tmpDif > 1 || tmpDif < -1) 
-		{
-			if (tmpDif > 1) {
-				iTeamA = TEAM_SURVIVOR;
-				iTeamB = TEAM_INFECTED;	
-			}
-			else if (tmpDif < -1) {
-				iTeamA = TEAM_INFECTED;
-				iTeamB = TEAM_SURVIVOR;	
-			}
+        if (!iPlayers) {
+            break;
+        }
 
-			g_iPreviousCount[iTeamA]--;
-			g_iPreviousTeams[iTeamB][g_iPreviousCount[iTeamB]] = g_iPreviousTeams[iTeamA][g_iPreviousCount[iTeamA]];
-			g_iPreviousCount[iTeamB]++;
+        iIndex = GetRandomInt(0, iPlayers - 1);
+        iClient = GetArrayCell(hPlayers, iIndex);
 
-			tmpDif = g_iPreviousCount[TEAM_SURVIVOR] - g_iPreviousCount[TEAM_INFECTED];
-		}
-	}
+        SetClientTeam(iClient, iPlayers % 2 == 0 ? TEAM_INFECTED : TEAM_SURVIVOR);
+        RemoveFromArray(hPlayers, iIndex);
+    }
 
-	// do shuffle: swap at least teamsize/2 rounded up players
-	bool bShuffled[MAXPLAYERS + 1];
-	int iShuffleCount = RoundToCeil(float(g_iPreviousCount[TEAM_INFECTED] > g_iPreviousCount[TEAM_SURVIVOR] ? g_iPreviousCount[TEAM_INFECTED] : g_iPreviousCount[TEAM_SURVIVOR]) / 2.0);
+    CloseHandle(hPlayers);
 
-	int pickA, pickB;
-	int spotA, spotB;
-
-	for (int j = 0; j < iShuffleCount; j++ )
-	{
-		pickA = -1;
-		pickB = -1;
-
-		while (pickA == -1 || bShuffled[pickA]) {
-			spotA = GetRandomInt(0, g_iPreviousCount[TEAM_SURVIVOR] - 1);
-			pickA = g_iPreviousTeams[TEAM_SURVIVOR][spotA];
-		}
-
-		while (pickB == -1 || bShuffled[pickB]) {
-			spotB = GetRandomInt(0, g_iPreviousCount[TEAM_INFECTED] - 1);
-			pickB = g_iPreviousTeams[TEAM_INFECTED][spotB];
-		}
-
-		bShuffled[pickA] = true;
-		bShuffled[pickB] = true;
-
-		g_iPreviousTeams[TEAM_SURVIVOR][spotA] = pickB;
-		g_iPreviousTeams[TEAM_INFECTED][spotB] = pickA;
-	}
-
-	// now place all the players in the teams according to previousteams (silly name now, but ok)
-	for (int iTeam = TEAM_SURVIVOR, iPrevious; iTeam <= TEAM_INFECTED; iTeam++)
-	{
-		for (iPrevious = 0; iPrevious < g_iPreviousCount[iTeam]; iPrevious++)
-		{
-			SetClientTeam(g_iPreviousTeams[iTeam][iPrevious], iTeam);
-		}
-	}
-
-	return Plugin_Continue;
+    return Plugin_Continue;
 }

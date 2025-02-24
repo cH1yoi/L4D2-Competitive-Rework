@@ -1,12 +1,14 @@
 "Phrases"
 {
-	"VOTE_DISPLAY_MSG"
+	"VOTE_TITLE"
 	{
-		"en"			"Start command mix randomly"
+		"en"			"Start randomly mixing teams"
+		"chi"			"开始Mix分队(随机分队)"
 	}
 
-	"VOTE_END_MSG"
+	"MENU_ITEM"
 	{
-		"en"			"Random command mixing in progress"
+		"en"			"Random mixing of teams"
+		"chi"			"Mix分队(随机分队)"
 	}
 }
