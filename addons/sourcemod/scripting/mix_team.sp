@@ -3,7 +3,7 @@
 
 #include <sourcemod>
 #include <sdktools>
-#include <nativevotes_rework>
+#include <nativevotes>
 #include <colors>
 
 #undef REQUIRE_PLUGIN
@@ -701,48 +701,48 @@ void RunVoteMix(int iInitiator)
  * @param iParam1           First action parameter.
  * @param iParam2           Second action parameter.
  */
-public Action HandlerVoteMix(NativeVote hVote, VoteAction tAction, int iParam1, int iParam2)
+public int HandlerVoteMix(NativeVote hVote, MenuAction action, int param1, int param2)
 {
-    switch (tAction)
+    switch (action)
     {
-        case VoteAction_Display:
+        case MenuAction_Display:
         {
             char sVoteDisplayMessage[128];
-
-            ExecuteForward_OnDrawVoteTitle(g_iMixIndex, iParam1, sVoteDisplayMessage, sizeof(sVoteDisplayMessage));
-
+            ExecuteForward_OnDrawVoteTitle(g_iMixIndex, param1, sVoteDisplayMessage, sizeof(sVoteDisplayMessage));
             hVote.SetDetails(sVoteDisplayMessage);
-
-            return Plugin_Changed;
+            return 0;
         }
 
-        case VoteAction_Cancel: {
-            hVote.DisplayFail();
-        }
-
-        case VoteAction_Finish:
+        case MenuAction_End: 
         {
-            if (iParam1 == NATIVEVOTES_VOTE_NO
+            hVote.Close();
+            return 0;
+        }
+
+        case MenuAction_VoteCancel: 
+        {
+            hVote.DisplayFail();
+            return 0;
+        }
+
+        case MenuAction_VoteEnd:
+        {
+            if (param1 == NATIVEVOTES_VOTE_NO
             || g_eMixState != MixState_Voting
             || IsRoundStarted())
             {
                 hVote.DisplayFail();
-
                 SetMixState(MixState_None);
                 g_iMixIndex = INVALID_INDEX;
-
-                return Plugin_Continue;
+                return 0;
             }
 
             hVote.DisplayPass();
-
             RunPlayerMix();
         }
-
-        case VoteAction_End: hVote.Close();
     }
 
-    return Plugin_Continue;
+    return 0;
 }
 
 void RunPlayerMix()
