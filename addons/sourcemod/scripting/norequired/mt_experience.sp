@@ -143,14 +143,15 @@ public Action OnChangeMixState(int iMixIndex, MixState eOldState, MixState eNewS
  */
 public void OnClientAuthorized(int iClient, const char[] sAuthId)
 {
+    if (!IsClientConnected(iClient) || !IsClientInGame(iClient)) {
+        return;
+    }
+    
     if (sAuthId[0] == 'B' || sAuthId[9] == 'L') {
         return;
     }
 
-    /*
-     * Get player stats.
-     */
-    SteamWorks_RequestStats(iClient, APP_L4D2);
+    RequestPlayerStats(iClient);
 }
 
 any[] GetPlayerStats(int iClient)
@@ -213,4 +214,18 @@ int SortPlayerByRating(int indexFirst, int indexSecond, Handle hArrayList, Handl
     }
 
     return 0;
+}
+
+void RequestPlayerStats(int iClient)
+{
+    if (!IsClientValid(iClient)) {
+        return;
+    }
+
+    SteamWorks_RequestStats(iClient, APP_L4D2);
+}
+
+bool IsClientValid(int iClient)
+{
+    return (iClient > 0 && iClient <= MaxClients && IsClientConnected(iClient) && IsClientInGame(iClient));
 }
