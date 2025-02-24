@@ -689,7 +689,16 @@ void RunVoteMix(int iInitiator)
     }
 
     NativeVote hVote = new NativeVote(HandlerVoteMix, NativeVotesType_Custom_YesNo);
+    
+    char sVoteDisplayMessage[128];
+    ExecuteForward_OnDrawVoteTitle(g_iMixIndex, iInitiator, sVoteDisplayMessage, sizeof(sVoteDisplayMessage));
+    
+    if(strlen(sVoteDisplayMessage) == 0) {
+        Format(sVoteDisplayMessage, sizeof(sVoteDisplayMessage), "%T", "VOTE_TITLE", iInitiator);
+    }
+    
     hVote.Initiator = iInitiator;
+    hVote.SetDetails(sVoteDisplayMessage);
     hVote.DisplayVote(iPlayers, iTotalPlayers, VOTE_TIME);
 }
 
@@ -737,7 +746,9 @@ public int HandlerVoteMix(NativeVote hVote, MenuAction action, int param1, int p
                 return 0;
             }
 
-            hVote.DisplayPass();
+            char sPassMessage[128];
+            Format(sPassMessage, sizeof(sPassMessage), "%T", "VOTE_PASS", LANG_SERVER);
+            hVote.DisplayPass(sPassMessage);
             RunPlayerMix();
         }
     }

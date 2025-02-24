@@ -81,4 +81,10 @@
 	{
 		"en"			"Start mix:"
 	}
+	
+	"VOTE_PASS"
+	{
+    	"en"        "Vote passed! Starting team mix..."
+    	"chi"       "投票通过! 开始mix分队..."
+	}
 }
