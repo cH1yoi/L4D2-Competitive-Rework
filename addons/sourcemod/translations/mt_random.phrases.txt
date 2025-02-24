@@ -9,6 +9,6 @@
 	"MENU_ITEM"
 	{
 		"en"			"Random mixing of teams"
-		"chi"			"Mix分队(随机分队)"
+		"chi"			"Random (随机分队)"
 	}
 }

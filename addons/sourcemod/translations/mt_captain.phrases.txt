@@ -9,7 +9,7 @@
 	"MENU_ITEM"
 	{
 		"en"			"Mixing teams with captains"
-		"chi"			"Mix分队(队长选人)"
+		"chi"			"Captain (队长选人)"
 	}
 
 	"NEW_FIRST_CAPITAN"

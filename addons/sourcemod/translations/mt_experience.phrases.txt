@@ -9,7 +9,7 @@
     "MENU_ITEM"
     {
         "en"        "Mix Teams by Experience"
-        "chi"       "Mix分队(EXP分队)"
+        "chi"       "Experience (EXP分队)"
     }
 
     "PLAYER_UNKNOWN_RATING"
