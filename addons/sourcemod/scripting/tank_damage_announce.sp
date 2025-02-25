@@ -12,7 +12,7 @@ public Plugin myinfo = {
     name        = "Tank Damage Stats",
     author      = "HANA",
     description = "瞅瞅集火,什么! 1%  √√√×",
-    version     = "1.2",
+    version     = "1.3",
     url         = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
@@ -20,6 +20,13 @@ enum struct TankDamageStats {
     int damage[MAXPLAYERS + 1];
     int userId[MAXPLAYERS + 1];
     int count;
+    ArrayList tanks;
+}
+
+enum struct TankInfo {
+    int health;
+    bool isAlive;
+    char name[MAX_NAME_LENGTH];
 }
 
 TankDamageStats g_TankDamage;
@@ -33,6 +40,7 @@ public void OnPluginStart()
     HookEvent("tank_spawn", Event_TankSpawn);
     HookEvent("round_start", Event_RoundStart, EventHookMode_PostNoCopy);
     HookEvent("round_end", Event_RoundEnd, EventHookMode_PostNoCopy);
+    g_TankDamage.tanks = new ArrayList(sizeof(TankInfo));
 }
 
 public void OnMapStart()
@@ -49,6 +57,7 @@ void ClearTankDamage()
         g_TankDamage.userId[i] = 0;
     }
     g_TankDamage.count = 0;
+    g_TankDamage.tanks.Clear();
     g_bIsTankInPlay = false;
 }
 
@@ -65,12 +74,22 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     if (!IsValidClient(client))
         return;
         
+    TankInfo tank;
+    tank.health = GetEntProp(client, Prop_Data, "m_iHealth");
+    tank.isAlive = true;
+    
     if (!IsFakeClient(client)) {
-        GetClientName(client, g_sLastHumanTankName, sizeof(g_sLastHumanTankName));
+        GetClientName(client, tank.name, MAX_NAME_LENGTH);
+        strcopy(g_sLastHumanTankName, sizeof(g_sLastHumanTankName), tank.name);
+    } else {
+        if (g_sLastHumanTankName[0] != '\0') {
+            Format(tank.name, MAX_NAME_LENGTH, "AI [%s]", g_sLastHumanTankName);
+        } else {
+            strcopy(tank.name, MAX_NAME_LENGTH, "AI");
+        }
     }
     
-    if (g_bIsTankInPlay) return;
-    
+    g_TankDamage.tanks.PushArray(tank);
     g_bIsTankInPlay = true;
 }
 
@@ -86,6 +105,24 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
         
     int damage = event.GetInt("dmg_health");
     AddTankDamage(attacker, damage);
+    
+    int currentHealth = GetEntProp(victim, Prop_Data, "m_iHealth");
+    int tanksCount = g_TankDamage.tanks.Length;
+    
+    for (int i = 0; i < tanksCount; i++) {
+        TankInfo tank;
+        g_TankDamage.tanks.GetArray(i, tank);
+        
+        char victimName[MAX_NAME_LENGTH];
+        GetClientName(victim, victimName, sizeof(victimName));
+        
+        if (strcmp(tank.name, victimName) == 0 || 
+            (IsFakeClient(victim) && StrContains(tank.name, "AI") != -1)) {
+            tank.health = currentHealth;
+            g_TankDamage.tanks.SetArray(i, tank);
+            break;
+        }
+    }
 }
 
 void AddTankDamage(int client, int damage)
@@ -205,6 +242,21 @@ public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     if (g_bIsTankInPlay) {
         DisplayTankDamage(GetTankClient());
+        
+        int tanksCount = g_TankDamage.tanks.Length;
+        for (int i = 0; i < tanksCount; i++) {
+            TankInfo tank;
+            g_TankDamage.tanks.GetArray(i, tank);
+            
+            if (tank.isAlive) {
+                for (int client = 1; client <= MaxClients; client++) {
+                    if (IsValidClient(client) && IsClientInGame(client)) {
+                        CPrintToChat(client, "{default}[{green}Tank{default}] {olive}%s{default} 剩余血量: {red}%d", 
+                            tank.name, tank.health);
+                    }
+                }
+            }
+        }
     }
     ClearTankDamage();
 }
