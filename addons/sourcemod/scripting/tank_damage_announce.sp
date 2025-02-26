@@ -241,19 +241,27 @@ void DisplayTankDamage(int tank)
 public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 {
     if (g_bIsTankInPlay) {
-        DisplayTankDamage(GetTankClient());
+        int currentTank = GetTankClient();
+        DisplayTankDamage(currentTank);
         
-        int tanksCount = g_TankDamage.tanks.Length;
-        for (int i = 0; i < tanksCount; i++) {
-            TankInfo tank;
-            g_TankDamage.tanks.GetArray(i, tank);
+        if (currentTank > 0) {
+            int currentHealth = GetEntProp(currentTank, Prop_Data, "m_iHealth");
+            char tankName[MAX_NAME_LENGTH];
             
-            if (tank.isAlive) {
-                for (int client = 1; client <= MaxClients; client++) {
-                    if (IsValidClient(client) && IsClientInGame(client)) {
-                        CPrintToChat(client, "{default}[{green}Tank{default}] {olive}%s{default} 剩余血量: {red}%d", 
-                            tank.name, tank.health);
-                    }
+            if (IsFakeClient(currentTank)) {
+                if (g_sLastHumanTankName[0] != '\0') {
+                    Format(tankName, sizeof(tankName), "AI [%s]", g_sLastHumanTankName);
+                } else {
+                    strcopy(tankName, sizeof(tankName), "AI");
+                }
+            } else {
+                GetClientName(currentTank, tankName, sizeof(tankName));
+            }
+            
+            for (int client = 1; client <= MaxClients; client++) {
+                if (IsValidClient(client) && IsClientInGame(client)) {
+                    CPrintToChat(client, "{default}[{green}Tank{default}] {olive}%s{default} 剩余血量: {red}%d", 
+                        tankName, currentHealth);
                 }
             }
         }
