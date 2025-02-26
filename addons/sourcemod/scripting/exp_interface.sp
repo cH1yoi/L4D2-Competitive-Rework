@@ -343,7 +343,7 @@ int Calculate_RP(PlayerInfo tPlayer)
     float rp = 
         0.25 * float(tPlayer.gametime) * (tPlayer.hour_per_round() > 5.73 ? 5.73 / tPlayer.hour_per_round() : 1.0) + 
         0.40 * float(tPlayer.gamesplayed) + 
-        float(tPlayer.tankrocks) * 0.75 * (tPlayer.rock_per_round() > 1.88 ? 1.88 / tPlayer.rock_per_round() : 1.0) + 
+        float(tPlayer.tankrocks) * 0.65 * (tPlayer.rock_per_round() > 1.88 ? 1.88 / tPlayer.rock_per_round() : 1.0) + 
         (float(killtotal) * 0.005 * (tPlayer.kill_per_round() > 570.0 ? 570.0 / tPlayer.kill_per_round() : 1.0) * (shotgunperc));
 
     if (rp > maxrp) rp = maxrp;
