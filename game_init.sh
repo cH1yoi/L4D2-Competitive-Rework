@@ -217,22 +217,45 @@ for dir in "\${directories[@]}"; do
         
         # 复制新文件
         echo "复制 addons 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir/"
+        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir" || {
+            echo "复制 addons 文件夹失败"
+            exit 1
+        }
         
         echo "复制 cfg 文件夹..."
-        if [ ! -f "$dir/cfg/server.cfg" ]; then
-            mkdir -p "$dir/cfg"
-            touch "$dir/cfg/server.cfg"
+        if [ ! -d "$dir/cfg" ]; then
+            mkdir -p "$dir/cfg" || {
+            echo "创建 cfg 目录失败"
+            exit 1
+        }
         fi
         
-        mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
+        if [ -f "$dir/cfg/server.cfg" ]; then
+            mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
+        fi
         
-        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir/"
+        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir" || {
+            echo "复制 cfg 文件夹失败"
+            exit 1
+        }
         
-        mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
+        if [ -f "$dir/cfg/server.cfg.temp" ]; then
+            mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
+        fi
         
         echo "复制 scripts 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir/"
+        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir" || {
+            echo "复制 scripts 文件夹失败"
+            exit 1
+        }
+        
+        echo "复制 sound 文件夹..."
+        if [ -d "$TARGET_DIR/$REPO_NAME/sound" ]; then
+            cp -r "$TARGET_DIR/$REPO_NAME/sound" "$dir" || {
+                echo "复制 sound 文件夹失败"
+                exit 1
+            }
+        fi
         
         echo "复制配置文件..."
         cp "$TARGET_DIR/$REPO_NAME/hana_host.txt" "$dir/" 2>/dev/null || true
