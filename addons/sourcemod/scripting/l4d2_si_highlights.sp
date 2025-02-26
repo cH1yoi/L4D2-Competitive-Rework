@@ -275,6 +275,9 @@ void Event_PlayerIncapacitated(Event event, const char[] name, bool dontBroadcas
     char weapon[64];
     event.GetString("weapon", weapon, sizeof(weapon));
     
+    if (!attacker || !IsClientInGame(attacker))
+        return;
+        
     if (!IsTank(attacker) || !IsSurvivor(victim))
         return;
         
