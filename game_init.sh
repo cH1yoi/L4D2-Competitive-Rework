@@ -180,75 +180,51 @@ else
     git pull --rebase
 fi
 
-# 复制插件到游戏目录
 directories=("$INSTALL_PATH/left4dead2")
 
-for dir in "\${directories[@]}"; do
-    if [ -d "\$dir" ]; then
-        echo "更新目录 | \$dir"
+for dir in "${directories[@]}"; do
+    if [ -d "$dir" ]; then
+        echo "更新目录 | $dir"
         
         # 删除需要更新的文件和目录
         echo "清理旧文件..."
         
         # 删除 sourcemod 特定目录
-        rm -rf "\$dir/addons/sourcemod/bin"
-        rm -rf "\$dir/addons/sourcemod/extensions"
-        rm -rf "\$dir/addons/sourcemod/plugins"
-        rm -rf "\$dir/addons/sourcemod/scripting"
-        rm -rf "\$dir/addons/sourcemod/translations"
+        rm -rf "$dir/addons/sourcemod/bin"
+        rm -rf "$dir/addons/sourcemod/extensions"
+        rm -rf "$dir/addons/sourcemod/plugins"
+        rm -rf "$dir/addons/sourcemod/scripting"
+        rm -rf "$dir/addons/sourcemod/translations"
         
         # 删除 addons 下的文件和目录
-        rm -rf "\$dir/addons/metamod"
-        rm -rf "\$dir/addons/stripper"
-        rm -f "\$dir/addons/l4dtoolz.dll"
-        rm -f "\$dir/addons/l4dtoolz.so"
-        rm -f "\$dir/addons/tickrate_enabler.dll"
-        rm -f "\$dir/addons/tickrate_enabler.so"
-        rm -f "\$dir/addons/tickrate_enabler.vdf"
-        rm -f "\$dir/addons/l4dtoolz.vdf"
-        rm -f "\$dir/addons/metamod.vdf"
+        rm -rf "$dir/addons/metamod"
+        rm -rf "$dir/addons/stripper"
+        rm -f "$dir/addons/l4dtoolz.dll"
+        rm -f "$dir/addons/l4dtoolz.so"
+        rm -f "$dir/addons/tickrate_enabler.dll"
+        rm -f "$dir/addons/tickrate_enabler.so"
+        rm -f "$dir/addons/tickrate_enabler.vdf"
+        rm -f "$dir/addons/l4dtoolz.vdf"
+        rm -f "$dir/addons/metamod.vdf"
         
         # 删除 cfg 目录下的所有指定内容
-        rm -rf "\$dir/cfg/cfgogl"
-        rm -rf "\$dir/cfg/mixmap"
-        rm -rf "\$dir/cfg/sourcemod"
-        rm -rf "\$dir/cfg/spcontrol_server"
-        rm -rf "\$dir/cfg/stripper"
+        rm -rf "$dir/cfg/cfgogl"
+        rm -rf "$dir/cfg/mixmap"
+        rm -rf "$dir/cfg/sourcemod"
+        rm -rf "$dir/cfg/spcontrol_server"
+        rm -rf "$dir/cfg/stripper"
         
         # 复制新文件
         echo "复制 addons 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir" || {
-            echo "复制 addons 文件夹失败"
-            exit 1
-        }
+        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir/"
         
         echo "复制 cfg 文件夹..."
-        if [ ! -d "$dir/cfg" ]; then
-            mkdir -p "$dir/cfg" || {
-            echo "创建 cfg 目录失败"
-            exit 1
-        }
+        # 如果目标目录不存在 server.cfg，先创建一个默认的
+        if [ ! -f "$dir/cfg/server.cfg" ]; then
+            mkdir -p "$dir/cfg"
+            touch "$dir/cfg/server.cfg"
         fi
-        
-        if [ -f "$dir/cfg/server.cfg" ]; then
-            mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
-        fi
-        
-        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir" || {
-            echo "复制 cfg 文件夹失败"
-            exit 1
-        }
-        
-        if [ -f "$dir/cfg/server.cfg.temp" ]; then
-            mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
-        fi
-        
-        echo "复制 scripts 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir" || {
-            echo "复制 scripts 文件夹失败"
-            exit 1
-        }
-        
+
         echo "复制 sound 文件夹..."
         if [ -d "$TARGET_DIR/$REPO_NAME/sound" ]; then
             cp -r "$TARGET_DIR/$REPO_NAME/sound" "$dir" || {
@@ -257,16 +233,29 @@ for dir in "\${directories[@]}"; do
             }
         fi
         
+        # 保存现有的 server.cfg
+        mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
+        
+        # 复制 cfg 文件夹
+        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir/"
+        
+        # 恢复原来的 server.cfg
+        mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
+        
+        echo "复制 scripts 文件夹..."
+        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir/"
+        
+        # 复制特定文本文件
         echo "复制配置文件..."
         cp "$TARGET_DIR/$REPO_NAME/hana_host.txt" "$dir/" 2>/dev/null || true
         cp "$TARGET_DIR/$REPO_NAME/hana_motd.txt" "$dir/" 2>/dev/null || true
         
         # 设置权限
-        chmod -R 777 "\$dir/"
+        chmod -R 777 "$dir/"
         
-        echo "更新完成 | \$dir"
+        echo "更新完成 | $dir"
     else
-        echo "不存在 | \$dir"
+        echo "不存在 | $dir"
     fi
 done
 
