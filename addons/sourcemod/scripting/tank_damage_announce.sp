@@ -260,7 +260,7 @@ public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
             
             for (int client = 1; client <= MaxClients; client++) {
                 if (IsValidClient(client) && IsClientInGame(client)) {
-                    CPrintToChat(client, "{default}[{green}Tank{default}] {olive}%s{default} 剩余血量: {red}%d", 
+                    CPrintToChat(client, "{default}<{green}Tank{default}> {olive}%s{default} 剩余血量: {red}%d", 
                         tankName, currentHealth);
                 }
             }
