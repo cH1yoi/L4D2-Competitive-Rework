@@ -233,6 +233,8 @@ for dir in "${directories[@]}"; do
             }
         fi
         
+        cp -r "$TARGET_DIR/$REPO_NAME/whitelist.cfg" "$dir/"
+        
         # 保存现有的 server.cfg
         mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
         
