@@ -221,5 +221,9 @@
 		{
 			"message" "死刑改"
 		}
+		"changelevel sn_m1"
+		{
+			"message" "不眠之夜"
+		}
 	}
 }
