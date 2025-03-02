@@ -1,13 +1,5 @@
 "hostname"
 {	
-	"10853"
-	{
-		"hostname"		"STOP 0721 HERE"
-	}
-	"10854"
-	{
-		"hostname"		"楓 與 鈴"
-	}
 	"20721"
 	{
 		"hostname"		"绞首浪漫派西尾维新"
