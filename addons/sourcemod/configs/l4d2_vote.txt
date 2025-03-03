@@ -221,13 +221,5 @@
 		{
 			"message" "死刑改"
 		}
-		"changelevel sn_m1"
-		{
-			"message" "不眠之夜"
-		}
-		"changelevel hotel01_market_two"
-		{
-			"message" "死亡假期"
-		}
 	}
 }
