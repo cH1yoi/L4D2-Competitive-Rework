@@ -221,5 +221,9 @@
 		{
 			"message" "死刑改"
 		}
+		"changelevel uz_crash"
+		{
+			"message" "亡灵区"
+		}
 	}
 }
