@@ -225,5 +225,13 @@
 		{
 			"message" "亡灵区"
 		}
+		"changelevel ld1dlc"
+		{
+			"message" "封锁2"
+		}
+		"changelevel l4d2_coast_01"
+		{
+			"message" "17号高速"
+		}
 	}
 }
