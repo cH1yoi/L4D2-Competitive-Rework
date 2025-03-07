@@ -28,22 +28,6 @@
     }
     "3"
     {
-        "chat"      "{green}❀ 让我们感谢伟大的Sir.P喵~!"
-    }
-    "4"
-    {
-        "chat"      "[{green}!{default}] 本服禁止刷屏辱骂和作弊以及宏作弊喵"
-    }
-    "5"
-    {
-        "chat"      "[{green}!{default}] 本服对外挂0容忍,会时不时同步来源他服的封禁喵."
-    }
-    "7"
-    {
-        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /vote投票更换喵,有想玩的地图请联系HANA"
-    }
-    "8"
-    {
-        "chat"      "[{green}!{default}] NepKey:适度小透益脑,沉迷陀螺伤身。合理安排爹妈,敢开我就整你"
+        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /maps投票更换喵,有想玩的地图请联系HANA"
     }
 }

@@ -24,41 +24,21 @@
     }
     "2"
     {
-        "chat"      "[{green}!{default}] 服主特别好说话,欢迎来玩喵"
+        "chat"      "[{green}!{default}] 本群服经常组织内战 8v8等项目游玩,加群暴打狗群友吧~群:489962242"
     }
     "3"
     {
-        "chat"      "[{green}!{default}] 本群服经常组织内战 8v8等项目游玩,加群暴打狗群友吧~群:489962242"
+        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /maps投票更换喵,有想玩的地图请联系群管理"
     }
     "4"
     {
-        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /vote投票更换喵,有想玩的地图请联系HANA"
+        "chat"      "[{green}!{default}] 本服严禁{green}外挂{default},{green}霸服{default},{green}辱骂等恶劣行为{default};逮到可就可就了"
     }
     "5"
     {
-        "chat"      "[{green}!{default}] 适度小透益脑,沉迷陀螺伤身。合理安排爹妈,敢开我就整你"
-    }
-    "6"
-    {
-        "chat"      "[{green}!{default}] 使用{green}/efl{default}平衡延迟,{green}/tefl{default}团队差值延迟平衡,{green}/cfl{default}恢复默认延迟\n[{green}!{default}] 使用{green}/myfl [0-400]{default}更改自己延迟"
-    }
-    "7"
-    {
-        "chat"      "[{green}!{default}] 本服严禁{green}外挂{default},{green}霸服{default},{green}辱骂等恶劣行为{default};逮到可就可就了"
-    }
-    "8"
-    {
         "chat"      "[{green}!{default}] 群不搞你求群烂梗,佬文化,纯纯打给木"
     }
-    "9"
-    {
-        "chat"      "[{green}!{default}] 本服由{yellow}HANA{default}维护,有什么问题请及时反馈:)P门~"
-    }
-    "10"
-    {
-        "chat"      "[{green}!{default}] 招募点无黑历史人好活多快乐管理~"
-    }
-    "11"
+    "6"
     {
         "chat"      "[{green}!{default}] Steam组别忘记加了喵~"
     }
