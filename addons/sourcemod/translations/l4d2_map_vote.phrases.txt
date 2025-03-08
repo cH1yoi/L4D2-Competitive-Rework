@@ -333,4 +333,34 @@
 		"en"	"Guangzhou-Zengcheng"
 		"chi"	"广州-增城"
 	}
+
+	"Last Breath"
+	{
+		"en"	"Last Breath"
+		"chi"	"一息尚存"
+	}
+
+	"Red Tide"
+	{
+		"en"	"Red Tide"
+		"chi"	"赤潮"
+	}
+
+	"Blood Tracks"
+	{
+		"en"	"Blood Tracks"
+		"chi"	"血之轨迹"
+	}
+
+	"Vox Aeterna"
+	{
+		"en"	"Vox Aeterna"
+		"chi"	"永恒之音"
+	}
+
+	"death invade"
+	{
+		"en"	"Death Invade"
+		"chi"	"幽灵侵袭"
+	}
 }
