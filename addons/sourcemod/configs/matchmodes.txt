@@ -151,6 +151,10 @@
 		{
 			"name" "ZoneMod 8v8"
 		}
+		"zonemod8v8allcharger"
+		{
+			"name" "ZoneMod 8v8牛牛冲刺"
+		}
 		"advanced8v8"
 		{
 			"name" "Advanced 8v8(进阶包)"
