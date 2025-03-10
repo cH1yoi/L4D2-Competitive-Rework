@@ -23,7 +23,7 @@ function install_dependencies() {
         echo "Unsupported operating system!"
     fi
 
-    sudo apt install -y wget curl screen unzip zip git
+    sudo apt install -y wget curl screen unzip zip git rsync lib32z1 p7zip-full p7zip-rar
 }
 
 install_dependencies

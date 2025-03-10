@@ -2,6 +2,13 @@
 
 clear
 
+RED='\e[1;31m'
+GREEN='\e[1;32m'
+YELLOW='\e[1;33m'
+BLUE='\e[1;34m'
+CYAN='\e[1;36m'
+NC='\e[0m'
+
 cat << 'EOF'
 ==============================================
        L4D2 Server Installation Script
@@ -14,18 +21,41 @@ This script will help you:
 2. Download and install plugins
 3. Create management scripts for easier management
 4. Customize server with a daily restart schedule
+5. Support multiple server management
 
 本脚本将帮助您：
 1. 安装Left 4 Dead 2 服务端
 2. 下载并安装插件
 3. 创建方便管理的脚本
 4. 自定义服务器的每日重启计划
+5. 支持多服务器管理
 
 Created by: HANA
 ==============================================
 EOF
 
 LANGUAGE="en"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+SERVER_PATHS=()
+
+check_root() {
+    if [ "$EUID" -eq 0 ]; then
+        echo -e "${RED}This script should NOT be run as root.${NC}"
+        echo -e "${RED}Please run as a normal user (preferably the steam user).${NC}"
+        echo -e "${RED}不要使用root权限运行此脚本。${NC}"
+        echo -e "${RED}请使用普通用户（最好是steam用户）运行。${NC}"
+        exit 1
+    fi
+}
+
+confirm() {
+    local response
+    read -r response
+    case "$response" in
+        [Yy]|[Yy][Ee][Ss]|"") return 0 ;;
+        *) return 1 ;;
+    esac
+}
 
 echo -e "\e[1;36m=== Language Selection ===\e[0m"
 echo -e "\e[1;33m1. English\e[0m"
@@ -52,30 +82,55 @@ function echo_section() {
     echo -e "\n\e[1;36m=== $en_msg / $zh_msg ===\e[0m"
 }
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+echo_section "Server Configuration" "服务器配置"
+echo_lang "Do you want to set up multiple servers? [Y/n]" "是否要设置多个服务器？[Y/n]"
+if confirm; then
+    echo_lang "How many servers do you want to set up?" "您想设置多少个服务器？"
+    read -r server_count
+    for ((i=1; i<=server_count; i++)); do
+        echo_lang "Enter installation path for server $i (e.g., /home/hana/l4d2_$i):" "请输入服务器 $i 的安装路径（例如 /home/hana/l4d2_$i）:"
+        read -r server_path
+        SERVER_PATHS+=("$(realpath "$server_path")")
+        mkdir -p "$server_path"
+    done
+else
+    echo_lang "Please enter the installation path (e.g., /home/hana/l4d2):" "请输入安装路径（例如 /home/hana/l4d2）:"
+    read -r INSTALL_PATH
+    SERVER_PATHS+=("$(realpath "$INSTALL_PATH")")
+    mkdir -p "$INSTALL_PATH"
+fi
 
-echo_section "Installation Path" "安装路径"
-echo_lang "Please enter the installation path (e.g., /home/hana/l4d2):" "请输入安装路径（例如 /home/hana/l4d2）:"
-read INSTALL_PATH
-export INSTALL_PATH=$(realpath "$INSTALL_PATH")
+for path in "${SERVER_PATHS[@]}"; do
+    echo_lang "Installation path set to: $path" "安装路径设置为: $path"
+done
 
-mkdir -p "$INSTALL_PATH"
-echo_lang "Installation path set to: $INSTALL_PATH" "安装路径设置为: $INSTALL_PATH"
+function setup_steamcmd() {
+    echo_section "SteamCMD Setup" "SteamCMD 设置"
+    
+    STEAMCMD_DIR="$HOME/steamcmd"
+    if [ ! -d "$STEAMCMD_DIR" ]; then
+        mkdir -p "$STEAMCMD_DIR"
+        cd "$STEAMCMD_DIR" || exit 1
+        
+        echo_lang "Downloading SteamCMD..." "正在下载 SteamCMD..."
+        curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
+    else
+        echo_lang "SteamCMD already installed, skipping download." "SteamCMD 已安装，跳过下载。"
+    fi
+}
 
 function setup_server() {
     echo_section "Server Installation" "服务端安装"
     
-    mkdir -p ~/steamcmd
-    cd ~/steamcmd
-
-    echo_lang "Downloading SteamCMD..." "正在下载 SteamCMD..."
-    wget https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz
-    tar -xvzf steamcmd_linux.tar.gz
-    rm steamcmd_linux.tar.gz
-
-    echo_lang "Creating installation script..." "正在创建安装脚本..."
-    cat << STEAMCMD_EOF > ~/steamcmd/Left4Dead2_Server.txt
-force_install_dir $INSTALL_PATH
+    setup_steamcmd
+    STEAMCMD_DIR="$HOME/steamcmd"
+    
+    for server_path in "${SERVER_PATHS[@]}"; do
+        echo_lang "Installing L4D2 Server to: $server_path" "正在安装 L4D2 服务端到: $server_path"
+        
+        echo_lang "Creating installation script..." "正在创建安装脚本..."
+        cat << STEAMCMD_EOF > "$STEAMCMD_DIR/Left4Dead2_Server.txt"
+force_install_dir $server_path
 login anonymous
 @sSteamCmdForcePlatformType windows
 app_update 222860 validate
@@ -84,19 +139,18 @@ app_update 222860 validate
 quit
 STEAMCMD_EOF
 
-    echo_lang "Installing L4D2 Server..." "正在安装 L4D2 服务端..."
-    ./steamcmd.sh +runscript ~/steamcmd/Left4Dead2_Server.txt
-
-    echo_lang "Server installation completed!" "服务端安装完成！"
+        cd "$STEAMCMD_DIR" || exit 1
+        ./steamcmd.sh +runscript "$STEAMCMD_DIR/Left4Dead2_Server.txt"
+        
+        echo_lang "Server installation completed for: $server_path" "服务端安装完成：$server_path"
+    done
 }
 
 function download_plugins() {
     echo_section "Plugin Installation" "插件安装"
     
-    echo_lang "Do you want to download plugins? (y/n)" "是否下载插件？(y/n)"
-    read DOWNLOAD_PLUGINS
-
-    if [ "$DOWNLOAD_PLUGINS" == "y" ]; then
+    echo_lang "Do you want to download plugins? [Y/n]" "是否下载插件？[Y/n]"
+    if confirm; then
         echo_lang "Please select a plugin repository:" "请选择一个插件库:"
         echo_lang "1. Hana Competitive" "1. Hana Competitive"
         echo_lang "2. Sir.P 0721 Server" "2. Sir.P 的0721服务器"
@@ -124,7 +178,7 @@ function download_plugins() {
                 ;;
             6)
                 echo_lang "Please enter the custom repository URL:" "请输入自定义库地址:"
-                read PLUGIN_REPO_URL
+                read -r PLUGIN_REPO_URL
                 ;;
             *)
                 echo_lang "Invalid choice, skipping plugin download." "无效选择，跳过插件下载。"
@@ -134,22 +188,24 @@ function download_plugins() {
 
         REPO_NAME=$(basename "$PLUGIN_REPO_URL" .git)
         echo_lang "Downloading plugins..." "正在下载插件..."
-        cd "$SCRIPT_DIR"
+        cd "$SCRIPT_DIR" || exit 1
         git clone "$PLUGIN_REPO_URL" "$REPO_NAME"
 
         if [ -d "$REPO_NAME" ]; then
-            mkdir -p "$INSTALL_PATH/left4dead2"
-            chmod 777 -R "$INSTALL_PATH/left4dead2"
-            
-            cp -r "$REPO_NAME"/* "$INSTALL_PATH/left4dead2/"
-            
-            echo_lang "Plugins installed successfully." "插件安装成功。"
+            for server_path in "${SERVER_PATHS[@]}"; do
+                mkdir -p "$server_path/left4dead2"
+                chmod 775 -R "$server_path/left4dead2"
+                
+                cp -r "$REPO_NAME"/* "$server_path/left4dead2/"
+                
+                echo_lang "Plugins installed successfully for: $server_path" "插件安装成功：$server_path"
+            done
 
             create_plugin_update_script
             
             echo_lang "Plugin update script created successfully." "插件更新脚本创建成功。"
         else
-            echo_lang "Failed to clone the repository, please check the repository URL and permissions." "克隆仓库失败，请检查仓库地址和权限。"
+            echo_lang "Failed to clone the repository." "克隆仓库失败。"
         fi
     fi
 }
@@ -157,114 +213,206 @@ function download_plugins() {
 function create_plugin_update_script() {
     echo_lang "Creating plugin update script..." "正在创建插件更新脚本..."
     
-    cat << PLUGIN_UPDATE_EOF > "$SCRIPT_DIR/update_plugins.sh"
+    cat << 'PLUGIN_UPDATE_EOF' > "$SCRIPT_DIR/update_plugins.sh"
 #!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "$SCRIPT_DIR/server_config.sh"
+
+RED='\e[1;31m'
+GREEN='\e[1;32m'
+YELLOW='\e[1;33m'
+NC='\e[0m'
+
 echo "==================Plugin Update Time=================="
 TZ=UTC-8 date
 echo "==================Starting Update=================="
 
-# 仓库信息
-PLUGIN_REPO_URL="$PLUGIN_REPO_URL"
-REPO_NAME=\$(basename "\$PLUGIN_REPO_URL" .git)
+SPECIAL_FOLDERS=("configs" "data" "gamedata")
 
-# 目标目录
-TARGET_DIR="\$HOME"  # 将插件克隆到脚本所在目录
-
-# 克隆或更新代码
-if [ ! -d "\$TARGET_DIR/\$REPO_NAME" ]; then
-    echo "克隆仓库..."
-    git clone "\$PLUGIN_REPO_URL" "\$TARGET_DIR/\$REPO_NAME"
+if [ ! -d "$SCRIPT_DIR/$REPO_NAME" ]; then
+    echo -e "${YELLOW}Cloning repository...${NC}"
+    cd "$SCRIPT_DIR" || exit 1
+    git clone "$PLUGIN_REPO_URL" "$REPO_NAME" || {
+        echo -e "${RED}ERROR: Failed to clone repository.${NC}"
+        exit 1
+    }
 else
-    echo "更新仓库..."
-    cd "\$TARGET_DIR/\$REPO_NAME" || { echo "无法进入目录"; exit 1; }
-    git pull --rebase
+    echo -e "${YELLOW}Updating repository...${NC}"
+    cd "$SCRIPT_DIR/$REPO_NAME" || {
+        echo -e "${RED}ERROR: Cannot enter repository directory.${NC}"
+        exit 1
+    }
+    
+    OLD_COMMIT=$(git rev-parse HEAD)
+    
+    git pull --rebase || {
+        echo -e "${RED}ERROR: Failed to update repository.${NC}"
+        exit 1
+    }
+    
+    NEW_COMMIT=$(git rev-parse HEAD)
+    
+    if [ "$OLD_COMMIT" == "$NEW_COMMIT" ]; then
+        echo -e "${GREEN}Already up to date. No changes detected.${NC}"
+    fi
 fi
 
-directories=("$INSTALL_PATH/left4dead2")
-
-for dir in "${directories[@]}"; do
-    if [ -d "$dir" ]; then
-        echo "更新目录 | $dir"
+process_special_folders() {
+    local repo_dir=$1
+    local server_dir=$2
+    local temp_dir=$3
+    
+    echo -e "${YELLOW}Processing special folders...${NC}"
+    
+    for folder in "${SPECIAL_FOLDERS[@]}"; do
+        local repo_folder="$repo_dir/addons/sourcemod/$folder"
+        local server_folder="$server_dir/addons/sourcemod/$folder"
         
-        # 删除需要更新的文件和目录
-        echo "清理旧文件..."
-        
-        # 删除 sourcemod 特定目录
-        rm -rf "$dir/addons/sourcemod/bin"
-        rm -rf "$dir/addons/sourcemod/extensions"
-        rm -rf "$dir/addons/sourcemod/plugins"
-        rm -rf "$dir/addons/sourcemod/scripting"
-        rm -rf "$dir/addons/sourcemod/translations"
-        
-        # 删除 addons 下的文件和目录
-        rm -rf "$dir/addons/metamod"
-        rm -rf "$dir/addons/stripper"
-        rm -f "$dir/addons/l4dtoolz.dll"
-        rm -f "$dir/addons/l4dtoolz.so"
-        rm -f "$dir/addons/tickrate_enabler.dll"
-        rm -f "$dir/addons/tickrate_enabler.so"
-        rm -f "$dir/addons/tickrate_enabler.vdf"
-        rm -f "$dir/addons/l4dtoolz.vdf"
-        rm -f "$dir/addons/metamod.vdf"
-        
-        # 删除 cfg 目录下的所有指定内容
-        rm -rf "$dir/cfg/cfgogl"
-        rm -rf "$dir/cfg/mixmap"
-        rm -rf "$dir/cfg/sourcemod"
-        rm -rf "$dir/cfg/spcontrol_server"
-        rm -rf "$dir/cfg/stripper"
-        
-        # 复制新文件
-        echo "复制 addons 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/addons" "$dir/"
-        
-        echo "复制 cfg 文件夹..."
-        # 如果目标目录不存在 server.cfg，先创建一个默认的
-        if [ ! -f "$dir/cfg/server.cfg" ]; then
-            mkdir -p "$dir/cfg"
-            touch "$dir/cfg/server.cfg"
+        if [ -d "$repo_folder" ]; then
+            if [ ! -d "$server_folder" ]; then
+                echo "Creating $folder folder..."
+                mkdir -p "$server_folder"
+                rsync -a "$repo_folder/" "$server_folder/"
+            else
+                mkdir -p "$temp_dir/repo/$folder" "$temp_dir/server/$folder"
+                rsync -a "$repo_folder/" "$temp_dir/repo/$folder/"
+                rsync -a "$server_folder/" "$temp_dir/server/$folder/"
+                
+                if ! diff -r "$temp_dir/repo/$folder" "$temp_dir/server/$folder" &>/dev/null; then
+                    echo "Folder $folder has changes, updating..."
+                    rsync -a --update "$repo_folder/" "$server_folder/"
+                else
+                    echo "Folder $folder is up to date, no changes needed"
+                fi
+            fi
         fi
+    done
+}
 
-        echo "复制 sound 文件夹..."
-        if [ -d "$TARGET_DIR/$REPO_NAME/sound" ]; then
-            cp -r "$TARGET_DIR/$REPO_NAME/sound" "$dir" || {
-                echo "复制 sound 文件夹失败"
-                exit 1
+backup_special_folders() {
+    local server_dir=$1
+    local temp_dir=$2
+    
+    echo -e "${YELLOW}Backing up special folders...${NC}"
+    
+    for folder in "${SPECIAL_FOLDERS[@]}"; do
+        local source_dir="$server_dir/addons/sourcemod/$folder"
+        if [ -d "$source_dir" ]; then
+            echo "Backing up $folder folder..."
+            mkdir -p "$temp_dir/backup/$folder"
+            rsync -a "$source_dir/" "$temp_dir/backup/$folder/"
+        fi
+    done
+}
+
+for server_dir in "${SERVER_PATHS[@]}"; do
+    if [ -d "$server_dir" ]; then
+        echo -e "\n${GREEN}=== Updating server: $server_dir ===${NC}"
+        
+        TEMP_DIR=$(mktemp -d)
+        trap 'rm -rf "$TEMP_DIR"' EXIT
+        
+        L4D2_DIR="$server_dir/left4dead2"
+        if [ ! -d "$L4D2_DIR" ]; then
+            echo "Creating left4dead2 directory..."
+            mkdir -p "$L4D2_DIR"
+        fi
+        
+        backup_special_folders "$L4D2_DIR" "$TEMP_DIR"
+        
+        if [ -f "$L4D2_DIR/cfg/server.cfg" ]; then
+            echo "Backing up server.cfg..."
+            mkdir -p "$TEMP_DIR"
+            cp "$L4D2_DIR/cfg/server.cfg" "$TEMP_DIR/server.cfg.backup"
+        fi
+        
+        echo -e "${YELLOW}Cleaning up old files...${NC}"
+        
+        mkdir -p "$L4D2_DIR/addons/sourcemod"
+        mkdir -p "$L4D2_DIR/cfg"
+        
+        if [ -d "$L4D2_DIR/addons/sourcemod" ]; then
+            for dir in "bin" "extensions" "plugins" "scripting" "translations"; do
+                if [ -d "$L4D2_DIR/addons/sourcemod/$dir" ]; then
+                    echo "Removing $dir directory..."
+                    rm -rf "$L4D2_DIR/addons/sourcemod/$dir"
+                fi
+            done
+        fi
+        
+        for item in "metamod" "stripper" "l4dtoolz.dll" "l4dtoolz.so" "tickrate_enabler.dll" "tickrate_enabler.so" "tickrate_enabler.vdf" "l4dtoolz.vdf" "metamod.vdf"; do
+            if [ -e "$L4D2_DIR/addons/$item" ]; then
+                echo "Removing $item..."
+                rm -rf "$L4D2_DIR/addons/$item"
+            fi
+        done
+        
+        for dir in "cfgogl" "mixmap" "sourcemod" "spcontrol_server" "stripper"; do
+            if [ -d "$L4D2_DIR/cfg/$dir" ]; then
+                echo "Removing cfg/$dir directory..."
+                rm -rf "$L4D2_DIR/cfg/$dir"
+            fi
+        done
+        
+        echo -e "${YELLOW}Copying new files...${NC}"
+        
+        if [ -d "$SCRIPT_DIR/$REPO_NAME/addons" ]; then
+            echo "Copying addons folder..."
+            mkdir -p "$L4D2_DIR/addons"
+            rsync -a --exclude="sourcemod/configs" --exclude="sourcemod/data" --exclude="sourcemod/gamedata" "$SCRIPT_DIR/$REPO_NAME/addons/" "$L4D2_DIR/addons/"
+        else
+            echo -e "${RED}Warning: addons folder not found in repository${NC}"
+        fi
+        
+        process_special_folders "$SCRIPT_DIR/$REPO_NAME" "$L4D2_DIR" "$TEMP_DIR"
+        
+        if [ -d "$SCRIPT_DIR/$REPO_NAME/cfg" ]; then
+            echo "Copying cfg folder..."
+            rsync -a "$SCRIPT_DIR/$REPO_NAME/cfg/" "$L4D2_DIR/cfg/"
+        else
+            echo -e "${RED}Warning: cfg folder not found in repository${NC}"
+        fi
+        
+        if [ -f "$TEMP_DIR/server.cfg.backup" ]; then
+            echo "Restoring server.cfg..."
+            cp "$TEMP_DIR/server.cfg.backup" "$L4D2_DIR/cfg/server.cfg"
+        fi
+        
+        if [ -d "$SCRIPT_DIR/$REPO_NAME/scripts" ]; then
+            echo "Copying scripts folder..."
+            mkdir -p "$L4D2_DIR/scripts"
+            rsync -a "$SCRIPT_DIR/$REPO_NAME/scripts/" "$L4D2_DIR/scripts/"
+        fi
+        
+        if [ -d "$SCRIPT_DIR/$REPO_NAME/sound" ]; then
+            echo "Copying sound folder..."
+            mkdir -p "$L4D2_DIR/sound"
+            rsync -a "$SCRIPT_DIR/$REPO_NAME/sound/" "$L4D2_DIR/sound/" || {
+                echo -e "${RED}Failed to copy sound folder${NC}"
             }
         fi
         
-        cp -r "$TARGET_DIR/$REPO_NAME/whitelist.cfg" "$dir/"
+        echo "Copying config files..."
+        for file in "hana_host.txt" "hana_motd.txt" "whitelist.cfg"; do
+            if [ -f "$SCRIPT_DIR/$REPO_NAME/$file" ]; then
+                cp "$SCRIPT_DIR/$REPO_NAME/$file" "$L4D2_DIR/" || true
+            fi
+        done
         
-        # 保存现有的 server.cfg
-        mv "$dir/cfg/server.cfg" "$dir/cfg/server.cfg.temp"
+        echo "Setting permissions..."
+        chmod -R 775 "$L4D2_DIR/"
         
-        # 复制 cfg 文件夹
-        cp -r "$TARGET_DIR/$REPO_NAME/cfg" "$dir/"
-        
-        # 恢复原来的 server.cfg
-        mv "$dir/cfg/server.cfg.temp" "$dir/cfg/server.cfg"
-        
-        echo "复制 scripts 文件夹..."
-        cp -r "$TARGET_DIR/$REPO_NAME/scripts" "$dir/"
-        
-        # 复制特定文本文件
-        echo "复制配置文件..."
-        cp "$TARGET_DIR/$REPO_NAME/hana_host.txt" "$dir/" 2>/dev/null || true
-        cp "$TARGET_DIR/$REPO_NAME/hana_motd.txt" "$dir/" 2>/dev/null || true
-        
-        # 设置权限
-        chmod -R 777 "$dir/"
-        
-        echo "更新完成 | $dir"
+        echo -e "${GREEN}Update complete for $server_dir${NC}"
     else
-        echo "不存在 | $dir"
+        echo -e "${RED}Directory not found: $server_dir${NC}"
     fi
 done
 
-echo "==================当前commit=================="
-cd "\$TARGET_DIR/\$REPO_NAME" || exit 1
+echo "==================Current Commit=================="
+cd "$SCRIPT_DIR/$REPO_NAME" || exit 1
 git log -1
-echo "================== 运行结束 =================="
+echo "==================Update Complete=================="
 PLUGIN_UPDATE_EOF
     chmod +x "$SCRIPT_DIR/update_plugins.sh"
 }
@@ -272,96 +420,292 @@ PLUGIN_UPDATE_EOF
 function create_game_update_script() {
     echo_lang "Creating update scripts..." "正在创建更新脚本..."
     
-    cat << GAME_UPDATE_EOF > "$SCRIPT_DIR/update_game.sh"
+    cat << 'GAME_UPDATE_EOF' > "$SCRIPT_DIR/update_game.sh"
 #!/bin/bash
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "$SCRIPT_DIR/server_config.sh"
+
 echo "==================Game Update Time=================="
 TZ=UTC-8 date
 echo "==================Starting Update=================="
 
-cd ~/steamcmd
-./steamcmd.sh +runscript ~/steamcmd/Left4Dead2_Server.txt
+STEAMCMD_DIR="$HOME/steamcmd"
+if [ ! -d "$STEAMCMD_DIR" ]; then
+    echo "SteamCMD not found, installing..."
+    mkdir -p "$STEAMCMD_DIR"
+    cd "$STEAMCMD_DIR"
+    curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
+fi
+
+for server_path in "${SERVER_PATHS[@]}"; do
+    echo "Updating server: $server_path"
+    cd "$STEAMCMD_DIR"
+    ./steamcmd.sh +login anonymous +force_install_dir "$server_path" +app_update 222860 validate +quit
+done
 
 echo "==================Update Complete=================="
 GAME_UPDATE_EOF
     chmod +x "$SCRIPT_DIR/update_game.sh"
 }
 
+function create_server_config() {
+    echo_lang "Creating server configuration..." "正在创建服务器配置..."
+    
+    echo_lang "Enter the hour (0-23) for daily restart:" "请输入每日重启的小时（0-23）:"
+    read -r RESTART_HOUR
+    
+    if ! [[ "$RESTART_HOUR" =~ ^[0-9]+$ ]] || [ "$RESTART_HOUR" -lt 0 ] || [ "$RESTART_HOUR" -gt 23 ]; then
+        echo_lang "Invalid hour, setting default to 4" "无效的小时数，设置默认值为4点"
+        RESTART_HOUR=4
+    fi
+    
+    if [ -z "$PLUGIN_REPO_URL" ] || [ -z "$REPO_NAME" ]; then
+        PLUGIN_REPO_URL="https://github.com/cH1yoi/L4D2-Competitive-Rework.git"
+        REPO_NAME="L4D2-Competitive-Rework"
+    fi
+    
+    cat << EOF > "$SCRIPT_DIR/server_config.sh"
+#!/bin/bash
+
+# ==================================================================
+# L4D2服务器配置文件 / L4D2 Server Configuration File
+# ==================================================================
+# 使用说明 / Instructions:
+# 1. 修改服务器实例配置 / Modify server instance configuration
+# 2. 保存文件后重启服务器 / Save and restart servers after modification
+# 3. 使用 ./start_servers.sh 管理服务器 / Use ./start_servers.sh to manage servers
+# ==================================================================
+
+# 语言设置 / Language setting (en/zh)
+LANGUAGE="${LANGUAGE}"
+
+# 插件仓库信息 / Plugin repository information
+PLUGIN_REPO_URL="${PLUGIN_REPO_URL}"
+REPO_NAME="${REPO_NAME}"
+
+# 服务器路径配置 / Server paths configuration
+SERVER_PATHS=(
+EOF
+
+    for path in "${SERVER_PATHS[@]}"; do
+        echo "    \"$path\"" >> "$SCRIPT_DIR/server_config.sh"
+    done
+
+    cat << 'EOF' >> "$SCRIPT_DIR/server_config.sh"
+)
+
+# ==================================================================
+# 服务器实例配置 / Server Instance Configuration
+# ==================================================================
+# 格式说明 / Format description:
+# ["端口"]="实例名称:服务器路径"
+# ["port"]="instance_name:server_path"
+# ==================================================================
+
+declare -A SERVERS=(
+    # 示例配置 / Example configurations:
+    
+    # 对抗服务器示例 / Versus server examples
+    #["27015"]="versus1:/home/hana/versus"    # 对抗服务器1 / Versus server 1
+    #["27016"]="coop1:/home/hana/coop"        # 对抗服务器2 / Versus server 2
+    
+    
+    # 当前配置 / Current configuration
+EOF
+
+    local port=27015
+    for path in "${SERVER_PATHS[@]}"; do
+        local basename=$(basename "$path")
+        echo "    [\"$port\"]=\"${basename}1:$path\"    # ${basename} 实例1" >> "$SCRIPT_DIR/server_config.sh"
+        ((port++))
+    done
+
+    cat << EOF >> "$SCRIPT_DIR/server_config.sh"
+)
+
+# ==================================================================
+# 启动参数配置 / Startup Parameters Configuration
+# ==================================================================
+# 可根据需要修改以下参数 / Modify these parameters as needed
+
+# 基础启动参数 / Basic startup parameters
+BASE_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout 10 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+
+# ==================================================================
+# 自动重启配置 / Auto Restart Configuration
+# ==================================================================
+# 每日重启时间（24小时制）/ Daily restart time (24-hour format)
+# 可以修改此值来更改重启时间（0-23）/ You can modify this value to change restart time (0-23)
+# 例如：RESTART_HOUR=4  表示每天凌晨4点重启 / Example: RESTART_HOUR=4 means restart at 4 AM
+# 修改后需要重新运行脚本以更新crontab / After modification, re-run the script to update crontab
+RESTART_HOUR=${RESTART_HOUR}
+EOF
+
+    chmod +x "$SCRIPT_DIR/server_config.sh"
+
+    echo_lang "Setting up automatic daily restart..." "正在设置每日自动重启..."
+    (crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR/start_servers.sh restart"; echo "0 $RESTART_HOUR * * * $SCRIPT_DIR/start_servers.sh restart") | crontab -
+
+    if [ "$LANGUAGE" == "zh" ]; then
+        echo -e "${GREEN}配置文件已生成：$SCRIPT_DIR/server_config.sh${NC}"
+        echo -e "${YELLOW}请编辑此文件来配置您的服务器实例${NC}"
+        echo -e "${YELLOW}文件中包含了详细的配置示例和说明${NC}"
+        echo -e "${YELLOW}如需修改重启时间，请修改 RESTART_HOUR 的值（0-23）${NC}"
+        echo -e "${YELLOW}配置完成后使用 ./start_servers.sh 来管理服务器${NC}"
+    else
+        echo -e "${GREEN}Configuration file generated: $SCRIPT_DIR/server_config.sh${NC}"
+        echo -e "${YELLOW}Please edit this file to configure your server instances${NC}"
+        echo -e "${YELLOW}The file includes detailed examples and instructions${NC}"
+        echo -e "${YELLOW}To change restart time, modify the RESTART_HOUR value (0-23)${NC}"
+        echo -e "${YELLOW}After configuration, use ./start_servers.sh to manage servers${NC}"
+    fi
+}
+
 function create_server_start_script() {
     echo_lang "Creating server start script..." "正在创建服务器启动脚本..."
     
-    cat << SERVER_START_EOF > "$SCRIPT_DIR/start_servers.sh"
+    cat << 'SERVER_START_EOF' > "$SCRIPT_DIR/start_servers.sh"
 #!/bin/bash
 
-DIR="$INSTALL_PATH"
-DAEMON="\$DIR/srcds_run"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
+source "$SCRIPT_DIR/server_config.sh"
 
-# 本脚本支持一端多开,自行添加or减少
-declare -A SERVERS=(
-    ["20721"]="Server1"
-    ["30721"]="Server2"
-)
-
-# 基础启动参数
-BASE_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout 10 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+RED='\e[1;31m'
+GREEN='\e[1;32m'
+YELLOW='\e[1;33m'
+NC='\e[0m'
 
 function start_server() {
-    local PORT=\$1
-    local NAME=\$2
-    if ! screen -ls | grep -q "\$NAME"; then
-        echo "Starting L4D2 \$NAME on port \$PORT"
-        cd \$DIR
-        screen -dmS \$NAME \$DAEMON \$BASE_PARAMS -port \$PORT
+    local PORT=$1
+    local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+    local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
+    
+    if ! screen -ls | grep -q "$NAME"; then
+        echo -e "${GREEN}Starting L4D2 $NAME on port $PORT${NC}"
+        cd "$DIR" || exit 1
+        screen -dmS "$NAME" ./srcds_run $BASE_PARAMS -port "$PORT"
     else
-        echo "\$NAME is already running!"
+        echo -e "${YELLOW}$NAME is already running!${NC}"
     fi
 }
 
 function stop_server() {
-    local NAME=\$1
-    if screen -ls | grep -q "\$NAME"; then
-        echo "Stopping \$NAME"
-        screen -X -S \$NAME quit
+    local NAME=$1
+    if screen -ls | grep -q "$NAME"; then
+        echo -e "${YELLOW}Stopping $NAME${NC}"
+        screen -X -S "$NAME" quit
     else
-        echo "\$NAME is not running"
+        echo -e "${RED}$NAME is not running${NC}"
     fi
 }
 
 function restart_server() {
-    local PORT=\$1
-    local NAME=\$2
-    stop_server "\$NAME"
+    local PORT=$1
+    local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+    stop_server "$NAME"
     sleep 2
-    start_server "\$PORT" "\$NAME"
+    start_server "$PORT"
 }
 
-case "\$1" in
-    start)
-        for PORT in "\${!SERVERS[@]}"; do
-            start_server "\$PORT" "\${SERVERS[\$PORT]}"
+function show_status() {
+    echo -e "${YELLOW}Server Status:${NC}"
+    for PORT in "${!SERVERS[@]}"; do
+        local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+        local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
+        echo -e "\nServer: ${GREEN}$(basename "$DIR")${NC}"
+        echo -e "Instance: ${YELLOW}$NAME${NC}"
+        echo -e "Port: ${YELLOW}$PORT${NC}"
+        if screen -ls | grep -q "$NAME"; then
+            echo -e "Status: ${GREEN}RUNNING${NC}"
+        else
+            echo -e "Status: ${RED}STOPPED${NC}"
+        fi
+    done
+}
+
+function show_help() {
+    if [ "$LANGUAGE" == "zh" ]; then
+        echo "用法: $0 {命令} [端口]"
+        echo
+        echo "命令:"
+        echo "  start [端口]     启动指定端口的服务器，不指定则启动所有"
+        echo "  stop [端口]       停止指定端口的服务器，不指定则停止所有"
+        echo "  restart [端口]    重启指定端口的服务器，不指定则重启所有"
+        echo "  status          显示所有服务器状态"
+        echo
+        echo "当前配置的服务器:"
+        for PORT in "${!SERVERS[@]}"; do
+            local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+            local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
+            echo "  端口: $PORT, 名称: $NAME, 目录: $DIR"
         done
+    else
+        echo "Usage: $0 {command} [port]"
+        echo
+        echo "Commands:"
+        echo "  start [port]     Start server on specified port, or all if not specified"
+        echo "  stop [port]      Stop server on specified port, or all if not specified"
+        echo "  restart [port]   Restart server on specified port, or all if not specified"
+        echo "  status          Show status of all servers"
+        echo
+        echo "Configured servers:"
+        for PORT in "${!SERVERS[@]}"; do
+            local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+            local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
+            echo "  Port: $PORT, Name: $NAME, Dir: $DIR"
+        done
+    fi
+}
+
+case "$1" in
+    start)
+        if [ -n "$2" ]; then
+            if [ -n "${SERVERS[$2]}" ]; then
+                start_server "$2"
+            else
+                echo -e "${RED}Invalid port: $2${NC}"
+                show_help
+            fi
+        else
+            for PORT in "${!SERVERS[@]}"; do
+                start_server "$PORT"
+            done
+        fi
         ;;
     stop)
-        for NAME in "\${SERVERS[@]}"; do
-            stop_server "\$NAME"
-        done
+        if [ -n "$2" ]; then
+            if [ -n "${SERVERS[$2]}" ]; then
+                stop_server "$(echo "${SERVERS[$2]}" | cut -d: -f1)"
+            else
+                echo -e "${RED}Invalid port: $2${NC}"
+                show_help
+            fi
+        else
+            for PORT in "${!SERVERS[@]}"; do
+                stop_server "$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
+            done
+        fi
         ;;
     restart)
-        for PORT in "\${!SERVERS[@]}"; do
-            restart_server "\$PORT" "\${SERVERS[\$PORT]}"
-        done
+        if [ -n "$2" ]; then
+            if [ -n "${SERVERS[$2]}" ]; then
+                restart_server "$2"
+            else
+                echo -e "${RED}Invalid port: $2${NC}"
+                show_help
+            fi
+        else
+            for PORT in "${!SERVERS[@]}"; do
+                restart_server "$PORT"
+            done
+        fi
         ;;
     status)
-        echo "Server Status:"
-        for NAME in "\${SERVERS[@]}"; do
-            if screen -ls | grep -q "\$NAME"; then
-                echo "\$NAME is RUNNING"
-            else
-                echo "\$NAME is STOPPED"
-            fi
-        done
+        show_status
         ;;
     *)
-        echo "Usage: \$0 {start|stop|restart|status}"
+        show_help
         exit 1
         ;;
 esac
@@ -369,41 +713,34 @@ esac
 exit 0
 SERVER_START_EOF
     chmod +x "$SCRIPT_DIR/start_servers.sh"
+}
 
-    echo_lang "Do you want to set up automatic daily restart? (y/n)" "是否设置每日自动重启？(y/n)"
-    read AUTO_RESTART
-
-    if [ "$AUTO_RESTART" == "y" ]; then
-        echo_lang "Enter the hour (0-23) for daily restart:" "请输入每日重启的小时（0-23）:"
-        read RESTART_HOUR
-        
-        if [[ "$RESTART_HOUR" =~ ^[0-9]+$ ]] && [ "$RESTART_HOUR" -ge 0 ] && [ "$RESTART_HOUR" -le 23 ]; then
-            echo_lang "Setting up automatic restart..." "正在设置自动重启..."
-            (crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR/start_servers.sh restart"; echo "0 $RESTART_HOUR * * * $SCRIPT_DIR/start_servers.sh restart") | crontab -
-            echo_lang "Automatic restart set to $RESTART_HOUR:00 daily." "自动重启设置为每天 $RESTART_HOUR:00。"
-        else
-            echo_lang "Invalid hour, automatic restart will not be set." "无效的小时数，自动重启未设置。"
-        fi
+function show_final_message() {
+    echo_section "Installation Complete" "安装完成"
+    
+    if [ "$LANGUAGE" == "zh" ]; then
+        echo -e "${GREEN}安装已完成！${NC}"
+        echo -e "${YELLOW}请按照以下步骤操作：${NC}"
+        echo "1. 编辑 server_config.sh 配置服务器实例"
+        echo "2. 使用 start_servers.sh 管理服务器"
+        echo -e "${YELLOW}以下辅助脚本已生成：${NC}"
+        echo "- update_plugins.sh：更新服务器插件"
+        echo "- update_game.sh：更新游戏文件"
     else
-        echo_lang "Automatic restart will not be set." "未设置自动重启。"
+        echo -e "${GREEN}Installation completed!${NC}"
+        echo -e "${YELLOW}Please follow these steps:${NC}"
+        echo "1. Edit server_config.sh to configure server instances"
+        echo "2. Use start_servers.sh to manage servers"
+        echo -e "${YELLOW}The following utility scripts have been generated:${NC}"
+        echo "- update_plugins.sh: Update server plugins"
+        echo "- update_game.sh: Update game files"
     fi
 }
 
+check_root
 setup_server
+create_server_config
 create_game_update_script
 create_server_start_script
 download_plugins
-
-echo_section "Installation Complete" "安装完成"
-echo_lang "All tasks completed successfully!" "所有任务已完成！"
-echo_lang "You can now use the following scripts:" "您现在可以使用以下脚本："
-echo -e "\e[1;33m- ./update_game.sh\e[0m    (Update game files / 更新游戏文件)"
-if [ "$DOWNLOAD_PLUGINS" == "y" ]; then
-    echo -e "\e[1;33m- ./update_plugins.sh\e[0m  (Update plugins / 更新插件)"
-fi
-echo -e "\e[1;33m- ./start_servers.sh\e[0m   (Manage servers / 管理服务器)"
-echo
-
-if [ "$AUTO_RESTART" == "y" ] && [ -n "$RESTART_HOUR" ]; then
-    echo_lang "Server will automatically restart at $RESTART_HOUR:00 every day." "服务器将在每天 $RESTART_HOUR:00 自动重启。"
-fi
+show_final_message
