@@ -216,30 +216,39 @@ function create_plugin_update_script() {
     cat << 'PLUGIN_UPDATE_EOF' > "$SCRIPT_DIR/update_plugins.sh"
 #!/bin/bash
 
+# 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 source "$SCRIPT_DIR/server_config.sh"
 
+# 颜色定义
 RED='\e[1;31m'
 GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
+BLUE='\e[1;34m'
 NC='\e[0m'
 
-echo "==================Plugin Update Time=================="
+echo -e "${BLUE}==================Plugin Update Time==================${NC}"
 TZ=UTC-8 date
-echo "==================Starting Update=================="
+echo -e "${BLUE}==================Starting Update==================${NC}"
 
-SPECIAL_FOLDERS=("configs" "data" "gamedata")
+if [ -z "$PLUGIN_REPO_URL" ] || [ -z "$REPO_NAME" ]; then
+    echo -e "${RED}Error: Repository information is missing in server_config.sh${NC}"
+    echo -e "${RED}Please check your configuration file.${NC}"
+    exit 1
+fi
 
-if [ ! -d "$SCRIPT_DIR/$REPO_NAME" ]; then
-    echo -e "${YELLOW}Cloning repository...${NC}"
-    cd "$SCRIPT_DIR" || exit 1
-    git clone "$PLUGIN_REPO_URL" "$REPO_NAME" || {
+USER_HOME="$HOME"
+USER_REPO_DIR="$USER_HOME/$REPO_NAME"
+
+if [ ! -d "$USER_REPO_DIR" ]; then
+    echo -e "${YELLOW}Cloning repository to $USER_REPO_DIR...${NC}"
+    git clone "$PLUGIN_REPO_URL" "$USER_REPO_DIR" || {
         echo -e "${RED}ERROR: Failed to clone repository.${NC}"
         exit 1
     }
 else
-    echo -e "${YELLOW}Updating repository...${NC}"
-    cd "$SCRIPT_DIR/$REPO_NAME" || {
+    echo -e "${YELLOW}Updating repository in $USER_REPO_DIR...${NC}"
+    cd "$USER_REPO_DIR" || {
         echo -e "${RED}ERROR: Cannot enter repository directory.${NC}"
         exit 1
     }
@@ -254,36 +263,39 @@ else
     NEW_COMMIT=$(git rev-parse HEAD)
     
     if [ "$OLD_COMMIT" == "$NEW_COMMIT" ]; then
-        echo -e "${GREEN}Already up to date. No changes detected.${NC}"
+        echo -e "${GREEN}Already up to date. No updates detected.${NC}"
     fi
 fi
 
-process_special_folders() {
+# 要特殊处理的文件夹
+SPECIAL_FOLDERS=("data" "configs" "gamedata")
+
+check_special_folders() {
     local repo_dir=$1
     local server_dir=$2
     local temp_dir=$3
     
-    echo -e "${YELLOW}Processing special folders...${NC}"
+    echo -e "${YELLOW}Checking special folders...${NC}"
     
     for folder in "${SPECIAL_FOLDERS[@]}"; do
-        local repo_folder="$repo_dir/addons/sourcemod/$folder"
-        local server_folder="$server_dir/addons/sourcemod/$folder"
+        REPO_FOLDER="$repo_dir/addons/sourcemod/$folder"
+        SERVER_FOLDER="$server_dir/addons/sourcemod/$folder"
         
-        if [ -d "$repo_folder" ]; then
-            if [ ! -d "$server_folder" ]; then
-                echo "Creating $folder folder..."
-                mkdir -p "$server_folder"
-                rsync -a "$repo_folder/" "$server_folder/"
+        if [ -d "$REPO_FOLDER" ]; then
+            if [ ! -d "$SERVER_FOLDER" ]; then
+                echo -e "${GREEN}Folder $folder does not exist in server, creating...${NC}"
+                mkdir -p "$SERVER_FOLDER"
+                rsync -a "$REPO_FOLDER/" "$SERVER_FOLDER/"
             else
                 mkdir -p "$temp_dir/repo/$folder" "$temp_dir/server/$folder"
-                rsync -a "$repo_folder/" "$temp_dir/repo/$folder/"
-                rsync -a "$server_folder/" "$temp_dir/server/$folder/"
+                rsync -a "$REPO_FOLDER/" "$temp_dir/repo/$folder/"
+                rsync -a "$SERVER_FOLDER/" "$temp_dir/server/$folder/"
                 
                 if ! diff -r "$temp_dir/repo/$folder" "$temp_dir/server/$folder" &>/dev/null; then
-                    echo "Folder $folder has changes, updating..."
-                    rsync -a --update "$repo_folder/" "$server_folder/"
+                    echo -e "${YELLOW}Folder $folder has updates in repository, syncing changes...${NC}"
+                    rsync -a --update "$REPO_FOLDER/" "$SERVER_FOLDER/"
                 else
-                    echo "Folder $folder is up to date, no changes needed"
+                    echo -e "${GREEN}Folder $folder has no changes, keeping as is${NC}"
                 fi
             fi
         fi
@@ -299,120 +311,145 @@ backup_special_folders() {
     for folder in "${SPECIAL_FOLDERS[@]}"; do
         local source_dir="$server_dir/addons/sourcemod/$folder"
         if [ -d "$source_dir" ]; then
-            echo "Backing up $folder folder..."
+            echo -e "${GREEN}Backing up $folder folder...${NC}"
             mkdir -p "$temp_dir/backup/$folder"
             rsync -a "$source_dir/" "$temp_dir/backup/$folder/"
         fi
     done
 }
 
-for server_dir in "${SERVER_PATHS[@]}"; do
-    if [ -d "$server_dir" ]; then
-        echo -e "\n${GREEN}=== Updating server: $server_dir ===${NC}"
-        
-        TEMP_DIR=$(mktemp -d)
-        trap 'rm -rf "$TEMP_DIR"' EXIT
-        
-        L4D2_DIR="$server_dir/left4dead2"
-        if [ ! -d "$L4D2_DIR" ]; then
-            echo "Creating left4dead2 directory..."
-            mkdir -p "$L4D2_DIR"
-        fi
-        
-        backup_special_folders "$L4D2_DIR" "$TEMP_DIR"
-        
-        if [ -f "$L4D2_DIR/cfg/server.cfg" ]; then
-            echo "Backing up server.cfg..."
-            mkdir -p "$TEMP_DIR"
-            cp "$L4D2_DIR/cfg/server.cfg" "$TEMP_DIR/server.cfg.backup"
-        fi
-        
-        echo -e "${YELLOW}Cleaning up old files...${NC}"
-        
-        mkdir -p "$L4D2_DIR/addons/sourcemod"
-        mkdir -p "$L4D2_DIR/cfg"
-        
-        if [ -d "$L4D2_DIR/addons/sourcemod" ]; then
-            for dir in "bin" "extensions" "plugins" "scripting" "translations"; do
-                if [ -d "$L4D2_DIR/addons/sourcemod/$dir" ]; then
-                    echo "Removing $dir directory..."
-                    rm -rf "$L4D2_DIR/addons/sourcemod/$dir"
-                fi
-            done
-        fi
-        
-        for item in "metamod" "stripper" "l4dtoolz.dll" "l4dtoolz.so" "tickrate_enabler.dll" "tickrate_enabler.so" "tickrate_enabler.vdf" "l4dtoolz.vdf" "metamod.vdf"; do
-            if [ -e "$L4D2_DIR/addons/$item" ]; then
-                echo "Removing $item..."
-                rm -rf "$L4D2_DIR/addons/$item"
+for server_path in "${SERVER_PATHS[@]}"; do
+    L4D2_DIR="$server_path/left4dead2"
+    
+    if [ ! -d "$server_path" ]; then
+        echo -e "${RED}Error: Server directory $server_path does not exist${NC}"
+        echo -e "${RED}Skipping this server...${NC}"
+        continue
+    fi
+    
+    echo -e "\n${BLUE}==================Processing Server: $server_path==================${NC}"
+    
+    if [ ! -d "$L4D2_DIR" ]; then
+        echo -e "${YELLOW}Creating left4dead2 directory...${NC}"
+        mkdir -p "$L4D2_DIR"
+    fi
+    
+    TEMP_DIR=$(mktemp -d)
+    trap 'rm -rf "$TEMP_DIR"' EXIT
+    
+    backup_special_folders "$L4D2_DIR" "$TEMP_DIR"
+    
+    if [ -f "$L4D2_DIR/cfg/server.cfg" ]; then
+        echo -e "${GREEN}Backing up server.cfg...${NC}"
+        mkdir -p "$TEMP_DIR"
+        cp "$L4D2_DIR/cfg/server.cfg" "$TEMP_DIR/server.cfg.backup"
+    fi
+    
+    echo -e "${YELLOW}Cleaning up old files...${NC}"
+    
+    mkdir -p "$L4D2_DIR/addons/sourcemod"
+    mkdir -p "$L4D2_DIR/cfg"
+    
+    if [ -d "$L4D2_DIR/addons/sourcemod" ]; then
+        for dir in "bin" "extensions" "plugins" "scripting" "translations"; do
+            if [ -d "$L4D2_DIR/addons/sourcemod/$dir" ]; then
+                echo -e "${YELLOW}Removing directory: addons/sourcemod/$dir${NC}"
+                rm -rf "$L4D2_DIR/addons/sourcemod/$dir"
             fi
         done
-        
-        for dir in "cfgogl" "mixmap" "sourcemod" "spcontrol_server" "stripper"; do
-            if [ -d "$L4D2_DIR/cfg/$dir" ]; then
-                echo "Removing cfg/$dir directory..."
-                rm -rf "$L4D2_DIR/cfg/$dir"
-            fi
-        done
-        
-        echo -e "${YELLOW}Copying new files...${NC}"
-        
-        if [ -d "$SCRIPT_DIR/$REPO_NAME/addons" ]; then
-            echo "Copying addons folder..."
-            mkdir -p "$L4D2_DIR/addons"
-            rsync -a --exclude="sourcemod/configs" --exclude="sourcemod/data" --exclude="sourcemod/gamedata" "$SCRIPT_DIR/$REPO_NAME/addons/" "$L4D2_DIR/addons/"
-        else
-            echo -e "${RED}Warning: addons folder not found in repository${NC}"
+    fi
+    
+    for item in "metamod" "stripper" "l4dtoolz.dll" "l4dtoolz.so" "tickrate_enabler.dll" "tickrate_enabler.so" "tickrate_enabler.vdf" "l4dtoolz.vdf" "metamod.vdf"; do
+        if [ -e "$L4D2_DIR/addons/$item" ]; then
+            echo -e "${YELLOW}Removing: addons/$item${NC}"
+            rm -rf "$L4D2_DIR/addons/$item"
         fi
-        
-        process_special_folders "$SCRIPT_DIR/$REPO_NAME" "$L4D2_DIR" "$TEMP_DIR"
-        
-        if [ -d "$SCRIPT_DIR/$REPO_NAME/cfg" ]; then
-            echo "Copying cfg folder..."
-            rsync -a "$SCRIPT_DIR/$REPO_NAME/cfg/" "$L4D2_DIR/cfg/"
-        else
-            echo -e "${RED}Warning: cfg folder not found in repository${NC}"
+    done
+    
+    for dir in "cfgogl" "mixmap" "sourcemod" "spcontrol_server" "stripper"; do
+        if [ -d "$L4D2_DIR/cfg/$dir" ]; then
+            echo -e "${YELLOW}Removing directory: cfg/$dir${NC}"
+            rm -rf "$L4D2_DIR/cfg/$dir"
         fi
-        
-        if [ -f "$TEMP_DIR/server.cfg.backup" ]; then
-            echo "Restoring server.cfg..."
-            cp "$TEMP_DIR/server.cfg.backup" "$L4D2_DIR/cfg/server.cfg"
-        fi
-        
-        if [ -d "$SCRIPT_DIR/$REPO_NAME/scripts" ]; then
-            echo "Copying scripts folder..."
-            mkdir -p "$L4D2_DIR/scripts"
-            rsync -a "$SCRIPT_DIR/$REPO_NAME/scripts/" "$L4D2_DIR/scripts/"
-        fi
-        
-        if [ -d "$SCRIPT_DIR/$REPO_NAME/sound" ]; then
-            echo "Copying sound folder..."
-            mkdir -p "$L4D2_DIR/sound"
-            rsync -a "$SCRIPT_DIR/$REPO_NAME/sound/" "$L4D2_DIR/sound/" || {
-                echo -e "${RED}Failed to copy sound folder${NC}"
+    done
+    
+    echo -e "${GREEN}Copying addons folder...${NC}"
+    if [ -d "$USER_REPO_DIR/addons" ]; then
+        mkdir -p "$L4D2_DIR/addons"
+        rsync -a --exclude="sourcemod/configs" --exclude="sourcemod/data" --exclude="sourcemod/gamedata" "$USER_REPO_DIR/addons/" "$L4D2_DIR/addons/" || {
+            echo -e "${RED}Failed to copy addons folder${NC}"
+        }
+    else
+        echo -e "${RED}Warning: addons folder not found in repository${NC}"
+    fi
+    
+    check_special_folders "$USER_REPO_DIR" "$L4D2_DIR" "$TEMP_DIR"
+    
+    echo -e "${GREEN}Copying cfg folder...${NC}"
+    if [ -d "$USER_REPO_DIR/cfg" ]; then
+        rsync -a "$USER_REPO_DIR/cfg/" "$L4D2_DIR/cfg/" || {
+            echo -e "${RED}Failed to copy cfg folder${NC}"
+        }
+    else
+        echo -e "${RED}Warning: cfg folder not found in repository${NC}"
+    fi
+    
+    # 恢复原来的 server.cfg
+    if [ -f "$TEMP_DIR/server.cfg.backup" ]; then
+        echo -e "${GREEN}Restoring server.cfg...${NC}"
+        cp "$TEMP_DIR/server.cfg.backup" "$L4D2_DIR/cfg/server.cfg"
+    fi
+    
+    echo -e "${GREEN}Copying scripts folder...${NC}"
+    if [ -d "$USER_REPO_DIR/scripts" ]; then
+        mkdir -p "$L4D2_DIR/scripts"
+        rsync -a "$USER_REPO_DIR/scripts/" "$L4D2_DIR/scripts/" || {
+            echo -e "${RED}Failed to copy scripts folder${NC}"
+        }
+    else
+        echo -e "${YELLOW}Note: scripts folder not found in repository, skipping${NC}"
+    fi
+    
+    echo -e "${GREEN}Copying sound folder...${NC}"
+    if [ -d "$USER_REPO_DIR/sound" ]; then
+        mkdir -p "$L4D2_DIR/sound"
+        rsync -a "$USER_REPO_DIR/sound/" "$L4D2_DIR/sound/" || {
+            echo -e "${RED}Failed to copy sound folder${NC}"
+        }
+    else
+        echo -e "${YELLOW}Note: sound folder not found in repository, skipping${NC}"
+    fi
+    
+    for extra_folder in "materials" "models"; do
+        if [ -d "$USER_REPO_DIR/$extra_folder" ]; then
+            echo -e "${GREEN}Copying $extra_folder folder...${NC}"
+            mkdir -p "$L4D2_DIR/$extra_folder"
+            rsync -a "$USER_REPO_DIR/$extra_folder/" "$L4D2_DIR/$extra_folder/" || {
+                echo -e "${RED}Failed to copy $extra_folder folder${NC}"
             }
         fi
-        
-        echo "Copying config files..."
-        for file in "hana_host.txt" "hana_motd.txt" "whitelist.cfg"; do
-            if [ -f "$SCRIPT_DIR/$REPO_NAME/$file" ]; then
-                cp "$SCRIPT_DIR/$REPO_NAME/$file" "$L4D2_DIR/" || true
-            fi
-        done
-        
-        echo "Setting permissions..."
-        chmod -R 775 "$L4D2_DIR/"
-        
-        echo -e "${GREEN}Update complete for $server_dir${NC}"
-    else
-        echo -e "${RED}Directory not found: $server_dir${NC}"
-    fi
+    done
+    
+    echo -e "${GREEN}Copying configuration files...${NC}"
+    for file in "hana_host.txt" "hana_motd.txt" "whitelist.cfg"; do
+        if [ -f "$USER_REPO_DIR/$file" ]; then
+            echo -e "${GREEN}Copying $file...${NC}"
+            cp "$USER_REPO_DIR/$file" "$L4D2_DIR/" || {
+                echo -e "${RED}Failed to copy $file${NC}"
+            }
+        fi
+    done
+    
+    echo -e "${YELLOW}Setting permissions...${NC}"
+    chmod -R 775 "$L4D2_DIR/"
+    
+    echo -e "${GREEN}Update complete for server: $server_path${NC}"
 done
 
-echo "==================Current Commit=================="
-cd "$SCRIPT_DIR/$REPO_NAME" || exit 1
+echo -e "${BLUE}==================Current Commit==================${NC}"
+cd "$USER_REPO_DIR" || exit 1
 git log -1
-echo "==================Update Complete=================="
+echo -e "${BLUE}==================Update Complete==================${NC}"
 PLUGIN_UPDATE_EOF
     chmod +x "$SCRIPT_DIR/update_plugins.sh"
 }
@@ -423,28 +460,44 @@ function create_game_update_script() {
     cat << 'GAME_UPDATE_EOF' > "$SCRIPT_DIR/update_game.sh"
 #!/bin/bash
 
+# 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 source "$SCRIPT_DIR/server_config.sh"
 
-echo "==================Game Update Time=================="
-TZ=UTC-8 date
-echo "==================Starting Update=================="
+RED='\e[1;31m'
+GREEN='\e[1;32m'
+YELLOW='\e[1;33m'
+BLUE='\e[1;34m'
+NC='\e[0m'
 
-STEAMCMD_DIR="$HOME/steamcmd"
+echo -e "${BLUE}==================Game Update Time==================${NC}"
+TZ=UTC-8 date
+echo -e "${BLUE}==================Starting Update==================${NC}"
+
+# 使用当前用户的home目录
+USER_HOME="$HOME"
+STEAMCMD_DIR="$USER_HOME/steamcmd"
+
 if [ ! -d "$STEAMCMD_DIR" ]; then
-    echo "SteamCMD not found, installing..."
+    echo -e "${YELLOW}SteamCMD not found, installing...${NC}"
     mkdir -p "$STEAMCMD_DIR"
-    cd "$STEAMCMD_DIR"
+    cd "$STEAMCMD_DIR" || exit 1
     curl -sqL "https://steamcdn-a.akamaihd.net/client/installer/steamcmd_linux.tar.gz" | tar zxvf -
 fi
 
 for server_path in "${SERVER_PATHS[@]}"; do
-    echo "Updating server: $server_path"
-    cd "$STEAMCMD_DIR"
+    if [ ! -d "$server_path" ]; then
+        echo -e "${RED}Error: Server directory $server_path does not exist${NC}"
+        echo -e "${RED}Skipping this server...${NC}"
+        continue
+    fi
+    
+    echo -e "${GREEN}Updating server: $server_path${NC}"
+    cd "$STEAMCMD_DIR" || exit 1
     ./steamcmd.sh +login anonymous +force_install_dir "$server_path" +app_update 222860 validate +quit
 done
 
-echo "==================Update Complete=================="
+echo -e "${BLUE}==================Update Complete==================${NC}"
 GAME_UPDATE_EOF
     chmod +x "$SCRIPT_DIR/update_game.sh"
 }
@@ -545,7 +598,7 @@ EOF
     chmod +x "$SCRIPT_DIR/server_config.sh"
 
     echo_lang "Setting up automatic daily restart..." "正在设置每日自动重启..."
-    (crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR/start_servers.sh restart"; echo "0 $RESTART_HOUR * * * $SCRIPT_DIR/start_servers.sh restart") | crontab -
+    (crontab -l 2>/dev/null | grep -v "$SCRIPT_DIR/start_servers.sh restart"; echo "0 $RESTART_HOUR * * * $SCRIPT_DIR/start_servers.sh restart # L4D2_AUTO_RESTART_$(whoami)") | crontab -
 
     if [ "$LANGUAGE" == "zh" ]; then
         echo -e "${GREEN}配置文件已生成：$SCRIPT_DIR/server_config.sh${NC}"
@@ -568,6 +621,7 @@ function create_server_start_script() {
     cat << 'SERVER_START_EOF' > "$SCRIPT_DIR/start_servers.sh"
 #!/bin/bash
 
+# 获取脚本所在目录的绝对路径
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
 source "$SCRIPT_DIR/server_config.sh"
 
@@ -576,9 +630,12 @@ GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
 NC='\e[0m'
 
+# 获取当前用户名作为screen会话前缀，避免多用户冲突
+USER_PREFIX="$(whoami)_"
+
 function start_server() {
     local PORT=$1
-    local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+    local NAME="${USER_PREFIX}$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
     local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
     
     if ! screen -ls | grep -q "$NAME"; then
@@ -602,7 +659,7 @@ function stop_server() {
 
 function restart_server() {
     local PORT=$1
-    local NAME=$(echo "${SERVERS[$PORT]}" | cut -d: -f1)
+    local NAME="${USER_PREFIX}$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
     stop_server "$NAME"
     sleep 2
     start_server "$PORT"
@@ -616,7 +673,7 @@ function show_status() {
         echo -e "\nServer: ${GREEN}$(basename "$DIR")${NC}"
         echo -e "Instance: ${YELLOW}$NAME${NC}"
         echo -e "Port: ${YELLOW}$PORT${NC}"
-        if screen -ls | grep -q "$NAME"; then
+        if screen -ls | grep -q "${USER_PREFIX}$NAME"; then
             echo -e "Status: ${GREEN}RUNNING${NC}"
         else
             echo -e "Status: ${RED}STOPPED${NC}"
