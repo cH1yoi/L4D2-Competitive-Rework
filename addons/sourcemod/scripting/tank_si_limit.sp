@@ -2,13 +2,14 @@
 #pragma newdecls required
 
 #include <sourcemod>
+#include <sdktools>
 
 public Plugin myinfo = 
 {
     name = "TankSpawn SI Limit Manager",
     author = "HANA",
     description = "给克局设定其他特感数量",
-    version = "1.0",
+    version = "1.1",
     url = "https://github.com/cH1yoi"
 };
 
@@ -33,16 +34,17 @@ ConVar g_hEnablePlugin;
 
 bool g_bTankIsAlive = false;
 int g_iTankClient = 0;
+bool g_bOriginalValuesStored = false;
 
 public void OnPluginStart()
 {
-    g_hEnablePlugin = CreateConVar("tank_si_manager_enable", "0", "Enable/disable the Tank SI Limit Manager plugin", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+    g_hEnablePlugin = CreateConVar("tank_si_manager_enable", "1", "Enable/disable the Tank SI Limit Manager plugin", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 
-    g_hCustomHunterLimit = CreateConVar("tank_hunter_limit", "2", "Hunter limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 3.0);
-    g_hCustomBoomerLimit = CreateConVar("tank_boomer_limit", "1", "Boomer limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 3.0);
-    g_hCustomSmokerLimit = CreateConVar("tank_smoker_limit", "2", "Smoker limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 3.0);
-    g_hCustomJockeyLimit = CreateConVar("tank_jockey_limit", "2", "Jockey limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 3.0);
-    g_hCustomChargerLimit = CreateConVar("tank_charger_limit", "4", "Charger limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 3.0);
+    g_hCustomHunterLimit = CreateConVar("tank_hunter_limit", "2", "Hunter limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+    g_hCustomBoomerLimit = CreateConVar("tank_boomer_limit", "1", "Boomer limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+    g_hCustomSmokerLimit = CreateConVar("tank_smoker_limit", "2", "Smoker limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+    g_hCustomJockeyLimit = CreateConVar("tank_jockey_limit", "2", "Jockey limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 4.0);
+    g_hCustomChargerLimit = CreateConVar("tank_charger_limit", "3", "Charger limit when tank is active", FCVAR_NOTIFY, true, 0.0, true, 4.0);
     
     g_hHunterLimit = FindConVar("z_versus_hunter_limit");
     g_hBoomerLimit = FindConVar("z_versus_boomer_limit");
@@ -50,18 +52,18 @@ public void OnPluginStart()
     g_hJockeyLimit = FindConVar("z_versus_jockey_limit");
     g_hChargerLimit = FindConVar("z_versus_charger_limit");
     
-    StoreOriginalValues();
+    CreateTimer(5.0, Timer_StoreOriginalValues);
     
     HookEvent("tank_spawn", Event_TankSpawn);
     HookEvent("player_death", Event_PlayerDeath);
     HookEvent("round_start", Event_RoundStart);
     HookEvent("round_end", Event_RoundEnd);
-    
-    HookConVarChange(g_hHunterLimit, ConVarChanged_SILimit);
-    HookConVarChange(g_hBoomerLimit, ConVarChanged_SILimit);
-    HookConVarChange(g_hSmokerLimit, ConVarChanged_SILimit);
-    HookConVarChange(g_hJockeyLimit, ConVarChanged_SILimit);
-    HookConVarChange(g_hChargerLimit, ConVarChanged_SILimit);
+}
+
+public Action Timer_StoreOriginalValues(Handle timer)
+{
+    StoreOriginalValues();
+    return Plugin_Continue;
 }
 
 public void OnPluginEnd()
@@ -74,11 +76,16 @@ public void OnPluginEnd()
 
 public void OnMapStart()
 {
-    StoreOriginalValues();
+    CreateTimer(3.0, Timer_OnMapStartDelay);
+}
+
+public Action Timer_OnMapStartDelay(Handle timer)
+{
     g_bTankIsAlive = false;
     g_iTankClient = 0;
     
-    RestoreOriginalLimits();
+    StoreOriginalValues();
+    return Plugin_Continue;
 }
 
 public void OnClientDisconnect_Post(int client)
@@ -90,49 +97,48 @@ public void OnClientDisconnect_Post(int client)
 
 void StoreOriginalValues()
 {
-    if (!g_bTankIsAlive)
-    {
-        g_iOriginalHunterLimit = g_hHunterLimit.IntValue;
-        g_iOriginalBoomerLimit = g_hBoomerLimit.IntValue;
-        g_iOriginalSmokerLimit = g_hSmokerLimit.IntValue;
-        g_iOriginalJockeyLimit = g_hJockeyLimit.IntValue;
-        g_iOriginalChargerLimit = g_hChargerLimit.IntValue;
-    }
+    if (g_bTankIsAlive) return;
+    
+    g_iOriginalHunterLimit = g_hHunterLimit.IntValue;
+    g_iOriginalBoomerLimit = g_hBoomerLimit.IntValue;
+    g_iOriginalSmokerLimit = g_hSmokerLimit.IntValue;
+    g_iOriginalJockeyLimit = g_hJockeyLimit.IntValue;
+    g_iOriginalChargerLimit = g_hChargerLimit.IntValue;
+    
+    g_bOriginalValuesStored = true;
 }
 
 void SetCustomLimits()
 {
-    if (!g_hEnablePlugin.BoolValue) return;
+    if (!g_hEnablePlugin.BoolValue) 
+    {
+        return;
+    }
     
-    g_hHunterLimit.IntValue = g_hCustomHunterLimit.IntValue;
-    g_hBoomerLimit.IntValue = g_hCustomBoomerLimit.IntValue;
-    g_hSmokerLimit.IntValue = g_hCustomSmokerLimit.IntValue;
-    g_hJockeyLimit.IntValue = g_hCustomJockeyLimit.IntValue;
-    g_hChargerLimit.IntValue = g_hCustomChargerLimit.IntValue;
+    if (!g_bOriginalValuesStored)
+    {
+        StoreOriginalValues();
+    }
+    
+    SetConVarInt(g_hHunterLimit, g_hCustomHunterLimit.IntValue);
+    SetConVarInt(g_hBoomerLimit, g_hCustomBoomerLimit.IntValue);
+    SetConVarInt(g_hSmokerLimit, g_hCustomSmokerLimit.IntValue);
+    SetConVarInt(g_hJockeyLimit, g_hCustomJockeyLimit.IntValue);
+    SetConVarInt(g_hChargerLimit, g_hCustomChargerLimit.IntValue);
 }
 
 void RestoreOriginalLimits()
 {
-    if (g_hHunterLimit.IntValue != g_iOriginalHunterLimit || 
-        g_hBoomerLimit.IntValue != g_iOriginalBoomerLimit ||
-        g_hSmokerLimit.IntValue != g_iOriginalSmokerLimit ||
-        g_hJockeyLimit.IntValue != g_iOriginalJockeyLimit ||
-        g_hChargerLimit.IntValue != g_iOriginalChargerLimit)
+    if (!g_bOriginalValuesStored)
     {
-        g_hHunterLimit.IntValue = g_iOriginalHunterLimit;
-        g_hBoomerLimit.IntValue = g_iOriginalBoomerLimit;
-        g_hSmokerLimit.IntValue = g_iOriginalSmokerLimit;
-        g_hJockeyLimit.IntValue = g_iOriginalJockeyLimit;
-        g_hChargerLimit.IntValue = g_iOriginalChargerLimit;
+        return;
     }
-}
-
-public void ConVarChanged_SILimit(ConVar convar, const char[] oldValue, const char[] newValue)
-{
-    if (!g_bTankIsAlive)
-    {
-        StoreOriginalValues();
-    }
+    
+    SetConVarInt(g_hHunterLimit, g_iOriginalHunterLimit);
+    SetConVarInt(g_hBoomerLimit, g_iOriginalBoomerLimit);
+    SetConVarInt(g_hSmokerLimit, g_iOriginalSmokerLimit);
+    SetConVarInt(g_hJockeyLimit, g_iOriginalJockeyLimit);
+    SetConVarInt(g_hChargerLimit, g_iOriginalChargerLimit);
 }
 
 public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
@@ -140,7 +146,10 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     int client = GetClientOfUserId(event.GetInt("userid"));
     g_iTankClient = client;
     
-    if (g_bTankIsAlive) return;
+    if (g_bTankIsAlive) 
+    {
+        return;
+    }
     
     g_bTankIsAlive = true;
     SetCustomLimits();
@@ -158,7 +167,10 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
 
 public Action Timer_CheckTank(Handle timer, any oldTankClient)
 {
-    if (g_iTankClient != oldTankClient) return Plugin_Continue;
+    if (g_iTankClient != oldTankClient) 
+    {
+        return Plugin_Continue;
+    }
     
     int tankClient = FindTankClient();
     if (tankClient && tankClient != oldTankClient)
@@ -179,6 +191,11 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
     g_bTankIsAlive = false;
     g_iTankClient = 0;
     
+    CreateTimer(3.0, Timer_StoreOriginalValuesOnRoundStart);
+}
+
+public Action Timer_StoreOriginalValuesOnRoundStart(Handle timer)
+{
     StoreOriginalValues();
     
     int tankClient = FindTankClient();
@@ -188,6 +205,8 @@ public void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
         g_iTankClient = tankClient;
         SetCustomLimits();
     }
+    
+    return Plugin_Continue;
 }
 
 public void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
