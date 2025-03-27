@@ -797,15 +797,18 @@ public Action Timed_PostMapSet(Handle timer)
 
 // Returns a handle to the first array which is found to contain the specified mapname
 // (should be the first and only one)
-stock Handle GetPoolThatContainsMap(char[] map, int index, char[] tag) 
+stock Handle GetPoolThatContainsMap(char[] map, int &index, char[] tag) 
 {
 	Handle hArrayMapPool;
+	int tempIndex;
 
 	for (int i = 0; i < GetArraySize(g_hArrayTags); i++) 
 	{
 		GetArrayString(g_hArrayTags, i, tag, BUF_SZ);
 		GetTrieValue(g_hTriePools, tag, hArrayMapPool);
-		if ((index = FindStringInArray(hArrayMapPool, map)) >= 0) {
+		tempIndex = FindStringInArray(hArrayMapPool, map);
+		if (tempIndex >= 0) {
+			index = tempIndex;
 			return hArrayMapPool;
 		}
 	}
@@ -814,6 +817,15 @@ stock Handle GetPoolThatContainsMap(char[] map, int index, char[] tag)
 
 stock void SelectRandomMap() 
 {
+	if (g_hArrayTagOrder == INVALID_HANDLE || GetArraySize(g_hArrayTagOrder) <= 0)
+	{
+		LogError("Tag order array is empty in SelectRandomMap. Cannot select maps.");
+		CPrintToChatAll("%t", "Fail_Load_Preset");
+		g_bMapsetInitialized = false;
+		g_bMaplistFinalized = false;
+		return;
+	}
+
 	g_bMaplistFinalized = true;
 	SetRandomSeed(view_as<int>(GetEngineTime()));
 
@@ -882,6 +894,15 @@ public Action Timed_GiveThemTimeToReadTheMapList(Handle timer)
 	}
 	if (g_bServerForceStart) g_bServerForceStart = false;
 	g_hCountDownTimer = null;
+
+	if (g_hArrayMapOrder == INVALID_HANDLE || GetArraySize(g_hArrayMapOrder) <= 0)
+	{
+		LogError("Map order array is empty in Timed_GiveThemTimeToReadTheMapList. Aborting map transition.");
+		CPrintToChatAll("%t", "Fail_Load_Preset");
+		g_bMapsetInitialized = false;
+		g_bMaplistFinalized = false;
+		return Plugin_Handled;
+	}
 
 	// call starting forward
 	char buffer[BUF_SZ];
