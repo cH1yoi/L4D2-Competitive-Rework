@@ -144,6 +144,10 @@ Action Timer_ClientInGame(Handle hTimer, int iClientId)
     char sClientName[MAX_NAME_LENGTH];
     GetClientNameFixed(iClient, sClientName, sizeof(sClientName), MAX_SHOTR_NAME_LENGTH);
 
+    if (strncmp(sClientName, "(S)", 3) == 0) {
+        strcopy(sClientName, sizeof(sClientName), sClientName[3]);
+    }
+
     char sSteamID[32];
     GetClientAuthId(iClient, AuthId_Steam2, sSteamID, sizeof(sSteamID));
     
@@ -153,10 +157,10 @@ Action Timer_ClientInGame(Handle hTimer, int iClientId)
     int iHours = GetClientHours(iClient);
     
     if (iExp > 0) {
-        CPrintToChatAll("%s%s{default}({olive}%s{default}) 已加入游戏 - 时长: {olive}%d{default}小时 - EXP: {olive}%d [%s]", 
+        CPrintToChatAll("%s%s{default}({olive}%s{default}) 加入 - 时长: {olive}%d{default}h - EXP: {olive}%d [%s]", 
             g_szTeamColor[iClientTeam], sClientName, sSteamID, iHours, iExp, EXPRankNames[iExpRank]);
     } else {
-        CPrintToChatAll("%s%s{default}({olive}%s{default}) 已加入游戏 - 时长: {olive}%d{default}小时 - EXP: 未知", 
+        CPrintToChatAll("%s%s{default}({olive}%s{default}) 加入 - 时长: {olive}%d{default}h - EXP: 未知", 
             g_szTeamColor[iClientTeam], sClientName, sSteamID, iHours);
     }
 
