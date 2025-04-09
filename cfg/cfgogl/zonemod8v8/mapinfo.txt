@@ -3086,7 +3086,41 @@
 			"pain_pills"    "8"
 		}
 	}
-
+//=============== Salvation Falls Rework 瀑布改
+	"salvation_fall_m1"
+	{
+		"tank_ban_flow"
+		{
+			"final"
+			{
+				"min"		"80"
+				"max"		"100"
+			}
+		}
+	}
+	"salvation_fall_m3"
+	{
+		"tank_ban_flow"
+		{
+			"early"
+			{
+				"min" "0"
+				"max" "60"
+			}
+			"final"
+			{
+				"min" "77"
+				"max" "100"
+			}
+		}
+	}
+	"salvation_fall_m4"
+	{
+		"ItemLimits"
+		{
+			"pain_pills"    "5"
+		}
+	}
 
 
 
