@@ -3045,10 +3045,81 @@
 		"start_extra_dist"	"150.000000"
 		"end_dist"			"150.000000"
 	}
-	
+//=============== Salvation Falls Rework 瀑布改
+	"salvation_fall_m1"
+	{
+		"tank_ban_flow"
+		{
+			"final"
+			{
+				"min"		"80"
+				"max"		"100"
+			}
+		}
+	}
+	"salvation_fall_m3"
+	{
+		"tank_ban_flow"
+		{
+			"early"
+			{
+				"min" "0"
+				"max" "60"
+			}
+			"final"
+			{
+				"min" "77"
+				"max" "100"
+			}
+		}
+	}
+	"salvation_fall_m4"
+	{
+		"ItemLimits"
+		{
+			"pain_pills"    "5"
+		}
+	}
+//=============== SnowDen Rework 雪巢改
+	"snowden_m2"
+	{
+		"ItemLimits"
+		{
+			"pain_pills"	"3"
+		}
+	}
+	"snowden_m3"
+	{
+		"tank_ban_flow"
+		{
+			"stairs"
+			{
+				"min"        "25"
+				"max"        "30"
+			}
+			"late"
+			{
+				"min"        "67"
+				"max"        "100"
+			}
+		}
+	}
+	"snowden_m4"
+	{
+		"tank_ban_flow"
+		{
+			"near the event"
+			{
+				"min"        "67"
+				"max"        "100"
+			}
+		}
+		"ItemLimits"
+		{
+			"pain_pills"    "5"
+		}
+	}
 //-------- ↓↓↓ you can add custom info here ↓↓↓
-
-
 
 
 
