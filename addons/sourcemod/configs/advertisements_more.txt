@@ -20,7 +20,7 @@
 {
     "1"
     {
-        "chat"      "{green}❀ 吹水群:489962242, 有什么问题可以找HANA~"
+        "chat"      "[{green}!{default}] 本服标签为hana,防止失联的最好方法是加群加组~:489962242"
     }
     "2"
     {
@@ -28,6 +28,22 @@
     }
     "3"
     {
-        "chat"      "[{green}!{default}] 本服提供三方地图对抗 /maps投票更换喵,有想玩的地图请联系HANA"
+        "chat"      "[{green}!{default}] /maps投票更换喵,可以自助上传~!"
+    }
+    "4"
+    {
+        "chat"      "[{green}!{default}] 本服严禁{green}外挂{default},{green}霸服{default},{green}辱骂等恶劣行为{default};逮到可就可就了"
+    }
+    "5"
+    {
+        "chat"      "[{green}!{default}] 群不搞你求群烂梗,佬文化,纯纯打给木"
+    }
+    "6"
+    {
+        "chat"      "[{green}!{default}] 本服目前为电信单线600G防,由于运营商问题联通在晚高峰期间丢包"
+    }
+    "7"
+    {
+        "chat"      "[{green}!{default}] 本群组服可提供内战/混野/赛事支持~!"
     }
 }
