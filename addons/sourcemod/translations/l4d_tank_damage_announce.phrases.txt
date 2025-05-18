@@ -10,17 +10,17 @@
 	"RemainingHealth_Frustrated"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"chi"		""
+		"en"		""
 	}
 	"RemainingHealth_AI"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"chi"		""
+		"en"		""
 	}
 	"RemainingHealth_HumanControlled"
 	{
 		"#format"	"{1:s},{2:d},{3:d}"
-		"chi"		""
+		"en"		""
 	}
 	
 	
@@ -33,17 +33,17 @@
 	"DamageDealt_Frustrated"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		""
+		"en"		""
 	}
 	"DamageDealt_AI"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		""
+		"en"		""
 	}
 	"DamageDealt_HumanControlled"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		""
+		"en"		""
 	}
 	
 	
@@ -62,22 +62,22 @@
 	"DamageToTank"
 	{
 		"#format"	"{1:d},{2:d},{3:s}"
-		"chi"		""
+		"en"		""
 	}
 	"DamageToTank_Combined"
 	{
 		"#format"	"{1:d},{2:d},{3:s},{4:d},{5:d},{6:d},{7:d}"
-		"chi"		""
+		"en"		""
 	}
 	"DamageToTank_Friendly"
 	{
 		"#format"	"{1:d},{2:d}"
-		"chi"		""
+		"en"		""
 	}
 	"DamageToTank_Unknown"
 	{
 		"#format"	"{1:d},{2:d}"
-		"chi"		""
+		"en"		""
 	}
 	
 	
@@ -90,17 +90,17 @@
 	"FactsTitle_Frustrated"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		"┌{blue}坦克 {default}({olive}AI [{1}]{default}) {blue}数据{default}统计:"
+		"en"		"┌{blue}Facts {default}of the {blue}Tank {default}({olive}AI [{1}]{default})"
 	}
 	"FactsTitle_AI"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		"┌{blue}坦克 {default}({olive}AI{default}) {blue}数据{default}统计:"
+		"en"		"┌{blue}Facts {default}of the {blue}Tank {default}({olive}AI{default})"
 	}
 	"FactsTitle_HumanControlled"
 	{
 		"#format"	"{1:s},{2:d}"
-		"chi"		"┌{blue}坦克 {default}({olive}{1}{default}) {blue}数据{default}统计:"
+		"en"		"┌{blue}Facts {default}of the {blue}Tank {default}({olive}{1}{default})"
 	}
 	
 	
@@ -118,7 +118,7 @@
 	"Announce_TankAttack"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"chi"		"├{red}坦克{green}> {default}拳: {red}{1} {green}/ {default}饼: {red}{2} {green}/ {default}铁: {red}{3}"
+		"en"		"├{red}{green}> {default}Punch: {red}{1} {green}/ {default}Rock: {red}{2} {green}/ {default}Hittable: {red}{3}"
 	}
 	
 	/**
@@ -130,7 +130,7 @@
 	"Announce_AttackResult"
 	{
 		"#format"	"{1:d},{2:d}"
-		"chi"		"├{blue}生还{blue}{green}> {default}倒地: {olive}{1} {green}/ {default}死亡: {olive}{2}"
+		"en"		"├{blue}{blue}{green}> {default}Incap: {olive}{1} {green}/ {default}Death: {olive}{2} {default}from {blue}Survivors"
 	}
 	
 	/**
@@ -143,7 +143,7 @@
 	"Announce_Summary_WithMinute"
 	{
 		"#format"	"{1:d},{2:d},{3:d}"
-		"chi"		"└{green}坦克{default}存活时间: {lightgreen}{1}分钟 {2}秒 {green}/ {default}造成伤害: {lightgreen}{3}"
+		"en"		"└{lightgreen}{lightgreen}{lightgreen}{green}> {default}Duration: {lightgreen}{1}min {2}s {green}/ {default}Total damage: {lightgreen}{3}"
 	}
 	
 	/**
@@ -155,6 +155,6 @@
 	"Announce_Summary_WithoutMinute"
 	{
 		"#format"	"{1:d},{2:d}"
-		"chi"		"└{green}坦克{default}存活时间: {lightgreen}{1}秒 {green}/ {default}造成伤害: {lightgreen}{2}"
+		"en"		"└{lightgreen}{lightgreen}{lightgreen}{green}> {default}Duration: {lightgreen}{1}s {green}/ {default}Total damage: {lightgreen}{2}"
 	}
 }
