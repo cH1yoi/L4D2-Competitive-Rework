@@ -227,8 +227,8 @@ public int Menu_VoteHandler(Handle menu, MenuAction action, int param1, int para
                     delete menu;
                     CreateVoteKickMenu(param1);
                 }
-                Format(g_sCfg, sizeof(g_sCfg), "sm_kick %s", Info);
-                Format(Buffer, sizeof(Buffer), "踢出玩家： %s ", Buffer);
+                Format(g_sCfg, sizeof(g_sCfg), "sm_kick #%s", Info);
+                Format(Buffer, sizeof(Buffer), "踢出玩家： %s", Buffer);
             }
             case (view_as<voteType>(spec)):
             {
@@ -372,6 +372,7 @@ bool StartVote(int client, const char[] cfgname)
                 continue;
             }
             if (GetClientTeam(i) == 1) continue;
+
             iPlayers[iNumPlayers++] = i;
         }
         
@@ -415,7 +416,19 @@ public void VoteResultHandler(Handle vote, int num_votes, int num_clients, const
 			{
 				if (vote == g_hVote)
 				{
-					DisplayBuiltinVotePass(vote, "Loading cfg file...");
+                    if (g_voteType == view_as<voteType>(kick))
+                    {
+                        DisplayBuiltinVotePass(vote, "正在踢出玩家...");
+                    }
+                    else if (g_voteType == view_as<voteType>(spec))
+                    {
+                        DisplayBuiltinVotePass(vote, "正在移动玩家到旁观...");
+                    }
+                    else 
+                    {
+                        DisplayBuiltinVotePass(vote, "正在执行配置...");
+                    }
+                    
 					ServerCommand("%s", g_sCfg);
 					return;
 				}
