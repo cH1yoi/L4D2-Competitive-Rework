@@ -12,25 +12,21 @@ public Plugin myinfo = {
     name        = "Tank Damage Stats",
     author      = "HANA",
     description = "瞅瞅集火,什么! 1%  √√√×",
-    version     = "1.4",
+    version     = "1.3",
     url         = "https://steamcommunity.com/profiles/76561197983870853/"
 };
 
 enum struct TankDamageStats {
-    int damage[MAXPLAYERS + 1]; 
+    int damage[MAXPLAYERS + 1];
     int userId[MAXPLAYERS + 1];
     int count;
     ArrayList tanks;
-    bool hadTankControl[MAXPLAYERS + 1];
 }
 
 enum struct TankInfo {
     int health;
-    int worldDamage;
-    int teamDamage;
     bool isAlive;
     char name[MAX_NAME_LENGTH];
-    int controlHistory[MAXPLAYERS + 1];
 }
 
 TankDamageStats g_TankDamage;
@@ -82,10 +78,6 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     tank.health = GetEntProp(client, Prop_Data, "m_iHealth");
     tank.isAlive = true;
     
-    for(int i = 1; i <= MaxClients; i++) {
-        tank.controlHistory[i] = 0;
-    }
-    
     if (!IsFakeClient(client)) {
         GetClientName(client, tank.name, MAX_NAME_LENGTH);
         strcopy(g_sLastHumanTankName, sizeof(g_sLastHumanTankName), tank.name);
@@ -107,29 +99,30 @@ public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
     
     int victim = GetClientOfUserId(event.GetInt("userid"));
     int attacker = GetClientOfUserId(event.GetInt("attacker"));
-    int damage = event.GetInt("dmg_health");
     
-    if (!IsValidClient(victim) || !IsTank(victim))
+    if (!IsValidClient(victim) || !IsValidClient(attacker) || !IsTank(victim))
         return;
-    
-    int tanksCount = g_TankDamage.tanks.Length;
-    if (tanksCount == 0) return;
-    
-    TankInfo tank;
-    g_TankDamage.tanks.GetArray(tanksCount-1, tank);
         
-    if (!IsValidClient(attacker)) {
-        tank.worldDamage += damage;
-    }
-    else if (GetClientTeam(attacker) == TEAM_INFECTED) {
-        tank.teamDamage += damage;
-    }
-    else if (GetClientTeam(attacker) == TEAM_SURVIVOR) {
-        AddTankDamage(attacker, damage);
-    }
+    int damage = event.GetInt("dmg_health");
+    AddTankDamage(attacker, damage);
     
-    tank.health = GetEntProp(victim, Prop_Data, "m_iHealth");
-    g_TankDamage.tanks.SetArray(tanksCount-1, tank);
+    int currentHealth = GetEntProp(victim, Prop_Data, "m_iHealth");
+    int tanksCount = g_TankDamage.tanks.Length;
+    
+    for (int i = 0; i < tanksCount; i++) {
+        TankInfo tank;
+        g_TankDamage.tanks.GetArray(i, tank);
+        
+        char victimName[MAX_NAME_LENGTH];
+        GetClientName(victim, victimName, sizeof(victimName));
+        
+        if (strcmp(tank.name, victimName) == 0 || 
+            (IsFakeClient(victim) && StrContains(tank.name, "AI") != -1)) {
+            tank.health = currentHealth;
+            g_TankDamage.tanks.SetArray(i, tank);
+            break;
+        }
+    }
 }
 
 void AddTankDamage(int client, int damage)
@@ -138,16 +131,6 @@ void AddTankDamage(int client, int damage)
         return;
         
     int userId = GetClientUserId(client);
-    
-    g_TankDamage.hadTankControl[client] = true;
-    
-    int tanksCount = g_TankDamage.tanks.Length;
-    if(tanksCount > 0) {
-        TankInfo tank;
-        g_TankDamage.tanks.GetArray(tanksCount-1, tank);
-        tank.controlHistory[client] += damage;
-        g_TankDamage.tanks.SetArray(tanksCount-1, tank);
-    }
     
     for (int i = 1; i <= g_TankDamage.count; i++) {
         if (g_TankDamage.userId[i] == userId) {
@@ -221,20 +204,6 @@ void DisplayTankDamage(int tank)
         totalDamage += g_TankDamage.damage[i];
     }
     
-    int totalWorldDamage = 0;
-    int totalTeamDamage = 0;
-    
-    // 计算所有其他来源的伤害
-    for(int k = 0; k < g_TankDamage.tanks.Length; k++) {
-        TankInfo tankInfo;
-        g_TankDamage.tanks.GetArray(k, tankInfo);
-        totalWorldDamage += tankInfo.worldDamage;
-        totalTeamDamage += tankInfo.teamDamage;
-    }
-    
-    // 计算总伤害时加入其他伤害
-    totalDamage += totalWorldDamage + totalTeamDamage;
-    
     if (totalDamage <= 0)
         return;
     
@@ -246,44 +215,26 @@ void DisplayTankDamage(int tank)
             
         CPrintToChat(i, "┌ <{green}Tank{default}> {olive}%s{default} 受到的伤害:", displayName);
         
-        for (int j = 1; j <= MaxClients; j++) {
-            if(!g_TankDamage.hadTankControl[j]) continue;
+        for (int j = 1; j <= g_TankDamage.count; j++) {
+            int client = GetClientOfUserId(g_TankDamage.userId[j]);
             
-            int totalControlDamage = 0;
-            
-            for(int k = 0; k < g_TankDamage.tanks.Length; k++) {
-                TankInfo tankInfo;
-                g_TankDamage.tanks.GetArray(k, tankInfo);
-                totalControlDamage += tankInfo.controlHistory[j];
-            }
-            
-            if(totalControlDamage > 0) {
-                int percentage = RoundToNearest((float(totalControlDamage) / float(totalDamage)) * 100.0);
-                char spaces[8];
-                Format(spaces, sizeof(spaces), "%s", (totalControlDamage < 1000) ? "  " : "");
+            if (client <= 0 || !IsClientInGame(client))
+                continue;
                 
+            int damage = g_TankDamage.damage[j];
+            int percentage = RoundToNearest((float(damage) / float(totalDamage)) * 100.0);
+            
+            char spaces[8];
+            Format(spaces, sizeof(spaces), "%s", (damage < 1000) ? "  " : "");
+            
+            if (j == g_TankDamage.count) {
+                CPrintToChat(i, "└ %s{olive}%4d{default} [{green}%3d%%{default}] {blue}%N{default}", 
+                    spaces, damage, percentage, client);
+            } else {
                 CPrintToChat(i, "├ %s{olive}%4d{default} [{green}%3d%%{default}] {blue}%N{default}", 
-                    spaces, totalControlDamage, percentage, j);
+                    spaces, damage, percentage, client);
             }
         }
-        
-        if(totalWorldDamage > 0) {
-            int percentage = RoundToNearest((float(totalWorldDamage) / float(totalDamage)) * 100.0);
-            char spaces[8];
-            Format(spaces, sizeof(spaces), "%s", (totalWorldDamage < 1000) ? "  " : "");
-            CPrintToChat(i, "├ %s{olive}%4d{default} [{green}%3d%%{default}] {olive}Other{default}", 
-                spaces, totalWorldDamage, percentage);
-        }
-        
-        if(totalTeamDamage > 0) {
-            int percentage = RoundToNearest((float(totalTeamDamage) / float(totalDamage)) * 100.0);
-            char spaces[8];
-            Format(spaces, sizeof(spaces), "%s", (totalTeamDamage < 1000) ? "  " : "");
-            CPrintToChat(i, "├ %s{olive}%4d{default} [{green}%3d%%{default}] {red}Team{default}", 
-                spaces, totalTeamDamage, percentage);
-        }
-        
-        CPrintToChat(i, "└ {olive}总伤害: %d", totalDamage);
     }
 }
 
