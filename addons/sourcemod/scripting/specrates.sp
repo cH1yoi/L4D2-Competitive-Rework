@@ -3,6 +3,7 @@
 
 #include <sourcemod>
 #include <sdktools>
+#include <autoexecconfig>
 
 #undef REQUIRE_PLUGIN
 #include <caster_system>
@@ -40,7 +41,8 @@ ConVar
 	sv_minrate,
 	sv_maxrate,
 	sv_client_min_interp_ratio,
-	sv_client_max_interp_ratio;
+	sv_client_max_interp_ratio,
+	g_cAdminFlag;
 
 char
 	g_sNetVars[8][8];
@@ -51,9 +53,9 @@ Player
 public Plugin myinfo =
 {
 	name		= "Lightweight Spectating",
-	author		= "Visor, lechuga",
+	author		= "Visor, lechuga, heize",
 	description = "Forces low rates on spectators",
-	version		= "1.3",
+	version		= "1.5",
 	url			= "https://github.com/SirPlease/L4D2-Competitive-Rework"
 };
 
@@ -86,6 +88,13 @@ public void OnLibraryAdded(const char[] name)
 
 public void OnPluginStart()
 {
+	//AutoExecConfig_SetFile("lightweight_spectating");
+
+	g_cAdminFlag = AutoExecConfig_CreateConVar("sm_specrates_admin_flag", "z", "Admin flag required to not have specrates locked at 30. Leave empty to cap all players.", FCVAR_NONE);
+
+	AutoExecConfig_ExecuteFile();
+	AutoExecConfig_CleanFile();
+
 	sv_mincmdrate			   = FindConVar("sv_mincmdrate");
 	sv_maxcmdrate			   = FindConVar("sv_maxcmdrate");
 	sv_minupdaterate		   = FindConVar("sv_minupdaterate");
@@ -157,8 +166,19 @@ void AdjustRates(int client)
 		g_Players[client].LastAdjusted = GetEngineTime();
 
 		L4DTeam team = L4D_GetClientTeam(client);
-		if (team == L4DTeam_Survivor || team == L4DTeam_Infected || (g_bCasterSystem && IsClientCaster(client)))
+
+		char adminFlagString[32];
+		GetConVarString(g_cAdminFlag, adminFlagString, sizeof(adminFlagString));
+
+		bool allowAllPlayers = StrEqual(adminFlagString, "", false);
+		int requiredFlag = ReadFlagString(adminFlagString);
+		int clientFlags = GetUserFlagBits(client);
+
+		if (team == L4DTeam_Survivor || team == L4DTeam_Infected || (g_bCasterSystem && IsClientCaster(client)) ||
+			(team == L4DTeam_Spectator && (allowAllPlayers || (clientFlags & requiredFlag) == requiredFlag)))
+		{
 			ResetRates(client);
+		}
 		else if (team == L4DTeam_Spectator)
 		{
 			if (g_Players[client].Status == RatesLimit)
