@@ -14,6 +14,8 @@
 #define IS_VALID_INFECTED(%1)   (IsClientInGame(%1) && IS_INFECTED(%1))
 #define IS_VALID_SPECTATOR(%1)  (IsClientInGame(%1) && IS_SPECTATOR(%1))
 
+int g_iTankControlPass[MAXPLAYERS + 1] = { 1, ... };
+
 ArrayList h_whosHadTank;
 ArrayList h_tankQueue;
 
@@ -52,6 +54,7 @@ public APLRes AskPluginLoad2(Handle myself, bool late, char[] error, int err_max
     CreateNative("GetTankQueue", Native_GetTankQueue);
     CreateNative("AddToTankQueue", Native_AddToTankQueue);
     CreateNative("RemoveFromTankQueue", Native_RemoveFromTankQueue);
+    CreateNative("GetTankPassedCount", Native_GetTankPassedCount);
 
     CreateGlobalForward("OnTankControlReset", ET_Ignore);
     CreateGlobalForward("OnChooseTank", ET_Event, Param_String);
@@ -69,9 +72,9 @@ int Native_GetTankSelection(Handle plugin, int numParams) { return getInfectedPl
 public Plugin myinfo = 
 {
     name = "L4D2 Tank Control",
-    author = "arti, (Contributions by: Sheo, Sir, Altair-Sossai, Hana)",
+    author = "arti, (Contributions by: Sheo, Sir, Altair-Sossai, Hana, Nepkey(技))",
     description = "Distributes the role of the tank evenly throughout the team, allows for overrides. (Includes forwards)",
-    version = "0.0.28",
+    version = "0.0.29",
     url = "https://github.com/SirPlease/L4D2-Competitive-Rework"
 }
 
@@ -110,6 +113,13 @@ public void OnPluginStart()
     hTankDebug  = CreateConVar("tankcontrol_debug", "0", "Whether or not to debug to console");
 }
 
+public void OnMapStart()
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        g_iTankControlPass[i] = 1;
+    }
+}
 
 /*=========================================================================
 |                            Left4Dhooks                                  |
@@ -121,13 +131,11 @@ public void L4D2_OnTankPassControl(int iOldTank, int iNewTank, int iPassCount)
     /*
     * As the Player switches to AI on disconnect/team switch, we have to make sure we're only checking this if the old Tank was AI.
     * Then apply the previous' Tank's Frustration and Grace Period (if it still had Grace)
-    * We'll also be keeping the same Tank pass, which resolves Tanks that dc on 1st pass resulting into the Tank instantly going to 2nd pass.
     */
     if (dcedTankFrustration != -1 && IsFakeClient(iOldTank))
     {
         SetTankFrustration(iNewTank, dcedTankFrustration);
         CTimer_Start(GetFrustrationTimer(iNewTank), fTankGrace);
-        L4D2Direct_SetTankPassedCount(L4D2Direct_GetTankPassedCount() - 1);
     }
 
     gotTankAt = GetGameTime();
@@ -143,22 +151,29 @@ public Action L4D_OnTryOfferingTankBot(int tank_index, bool &enterStatis)
     // Reset the tank's frustration if need be
     if (!IsFakeClient(tank_index)) 
     {
-        PrintHintText(tank_index, "%t", "HintText");
-        for (int i = 1; i <= MaxClients; i++) 
+        if (g_iTankControlPass[tank_index] < 2)
         {
-            if (!IS_VALID_INFECTED(i) && !IS_VALID_SPECTATOR(i))
-                continue;
+            PrintHintText(tank_index, "%t", "HintText");
+            for (int i = 1; i <= MaxClients; i++) 
+            {
+                if (!IS_VALID_INFECTED(i) && !IS_VALID_SPECTATOR(i))
+                    continue;
 
-            if (tank_index == i) 
-                CPrintToChat(i, "%t %t", "TagRage", "RefilledBot");
-            else 
-                CPrintToChat(i, "%t %t", "TagRage", "Refilled", tank_index);
+                if (tank_index == i) 
+                    CPrintToChat(i, "%t %t", "TagRage", "RefilledBot");
+                else 
+                    CPrintToChat(i, "%t %t", "TagRage", "Refilled", tank_index);
+            }
+            
+            SetTankFrustration(tank_index, 100);
+            g_iTankControlPass[tank_index]++;
+            return Plugin_Handled;
         }
-        
-        SetTankFrustration(tank_index, 100);
-        L4D2Direct_SetTankPassedCount(L4D2Direct_GetTankPassedCount() + 1);
-
-        return Plugin_Handled;
+        else
+        {
+            L4D_ReplaceWithBot(tank_index);
+            return Plugin_Handled;
+        }
     }
 
     // Allow third party plugins to override tank selection
@@ -227,7 +242,6 @@ void L4D_OnLeaveStasis_Post(int userid)
         PrintToConsoleAll("[TC] Assigned tank to %N.", newTank);
 
     L4D_ReplaceTank(tank, newTank);
-    L4D2Direct_SetTankPassedCount(1); // Otherwise the Tank gets 3 controls.
 }
 
 /*=========================================================================
@@ -1035,6 +1049,13 @@ public int Native_RemoveFromTankQueue(Handle plugin, int numParams)
     Call_StartForward(g_hForwardOnQueueChanged);
     Call_Finish();
     return true;
+}
+
+public int Native_GetTankPassedCount(Handle plugin, int numParams)
+{
+    int client = GetNativeCell(1);
+    if (IsFakeClient(client)) return 0;
+    return g_iTankControlPass[client];
 }
 
 void CleanTankQueue()

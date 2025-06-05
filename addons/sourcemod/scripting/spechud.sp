@@ -39,6 +39,17 @@ public Plugin myinfo =
 // ======================================================================
 //  Plugin Vars
 // ======================================================================
+enum struct TankAttack_s {
+    int Punch;
+    int Rock;
+    int Hittable;
+    int TotalDamage;
+    
+    void Init() {
+        this.Punch = this.Rock = this.Hittable = this.TotalDamage = 0;
+    }
+}
+
 int g_Gamemode;
 
 //int storedClass[MAXPLAYERS+1];
@@ -81,6 +92,12 @@ bool bStaticTank, bStaticWitch;
 bool bSpecHudActive[MAXPLAYERS+1], bTankHudActive[MAXPLAYERS+1];
 bool bSpecHudHintShown[MAXPLAYERS+1], bTankHudHintShown[MAXPLAYERS+1];
 
+#define MAX_TANKS 8
+ArrayList g_hTankStats;
+StringMap g_hTankClients;
+
+static int g_iPlayerLastHealth[MAXPLAYERS+1];
+
 /**********************************************************************************************/
 
 // ======================================================================
@@ -89,6 +106,9 @@ bool bSpecHudHintShown[MAXPLAYERS+1], bTankHudHintShown[MAXPLAYERS+1];
 public void OnPluginStart()
 {
 	LoadPluginTranslations();
+
+	g_hTankStats = new ArrayList(sizeof(TankAttack_s));
+	g_hTankClients = new StringMap();
 	
 	(	survivor_limit			= FindConVar("survivor_limit")			).AddChangeHook(GameConVarChanged);
 	(	versus_boss_buffer		= FindConVar("versus_boss_buffer")		).AddChangeHook(GameConVarChanged);
@@ -111,6 +131,10 @@ public void OnPluginStart()
 	HookEvent("player_death",		Event_PlayerDeath,		EventHookMode_Post);
 	HookEvent("witch_killed",		Event_WitchDeath,		EventHookMode_PostNoCopy);
 	HookEvent("player_team",		Event_PlayerTeam,		EventHookMode_Post);
+
+	HookEvent("tank_spawn", Event_TankSpawn);
+	HookEvent("player_hurt", Event_PlayerHurt);
+	HookEvent("player_incapacitated", Event_PlayerIncapacitated);
 	
 	for (int i = 1; i <= MaxClients; ++i)
 	{
@@ -306,6 +330,35 @@ Action SetFinaleExceptionMap(int args)
 	return Plugin_Handled;
 }
 
+Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, int &damagetype)
+{
+    if (!IsValidEntity(inflictor))
+        return Plugin_Continue;
+    
+    if (victim < 1 || victim > MaxClients || !IsClientInGame(victim) || !IsSurvivor(victim))
+        return Plugin_Continue;
+        
+    int realAttacker = attacker;
+    if (realAttacker == 0)
+    {
+        realAttacker = GetEntPropEnt(inflictor, Prop_Send, "m_hOwnerEntity");
+    }
+    
+    if (realAttacker < 1 || realAttacker > MaxClients || !IsClientInGame(realAttacker))
+        return Plugin_Continue;
+        
+    if (!IsTank(realAttacker))
+        return Plugin_Continue;
+        
+    int playerHealth = GetClientHealth(victim) + GetSurvivorTemporaryHealth(victim);
+    if (RoundToFloor(damage) >= playerHealth)
+    {
+        g_iPlayerLastHealth[victim] = playerHealth;
+    }
+    
+    return Plugin_Continue;
+}
+
 /**********************************************************************************************/
 
 // ======================================================================
@@ -313,8 +366,17 @@ Action SetFinaleExceptionMap(int args)
 // ======================================================================
 public void OnClientDisconnect(int client)
 {
-	bSpecHudHintShown[client] = false;
-	bTankHudHintShown[client] = false;
+    bSpecHudHintShown[client] = false;
+    bTankHudHintShown[client] = false;
+    
+    SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
+    
+    g_iPlayerLastHealth[client] = 0;
+}
+
+public void OnClientPutInServer(int client)
+{
+    SDKHook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 }
 
 public void OnMapStart() { bRoundLive = false; }
@@ -393,7 +455,9 @@ public void OnRoundIsLive()
 // ======================================================================
 void Event_RoundStart(Event event, const char[] name, bool dontBroadcast)
 {
-	bRoundLive = false;
+    bRoundLive = false;
+    if (g_hTankStats != null) g_hTankStats.Clear();
+    if (g_hTankClients != null) g_hTankClients.Clear();
 }
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
@@ -403,14 +467,18 @@ void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast)
 
 void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast)
 {
-	int client = GetClientOfUserId(event.GetInt("userid"));
-	if (!client || !IsInfected(client)) return;
-	
-	if (GetInfectedClass(client) == L4D2Infected_Tank)
-	{
-		if (iTankCount > 0) iTankCount--;
-		if (!RoundHasFlowTank()) bFlowTankActive = false;
-	}
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    if (!client || !IsInfected(client)) return;
+    
+    if (GetInfectedClass(client) == L4D2Infected_Tank)
+    {
+        char sKey[8];
+        IntToString(client, sKey, sizeof(sKey));
+        g_hTankClients.Remove(sKey);
+        
+        if (iTankCount > 0) iTankCount--;
+        if (!RoundHasFlowTank()) bFlowTankActive = false;
+    }
 }
 
 void Event_WitchDeath(Event event, const char[] name, bool dontBroadcast)
@@ -1012,97 +1080,162 @@ void FillInfectedInfo(Panel hSpecHud)
 
 bool FillTankInfo(Panel hSpecHud, bool bTankHUD = false)
 {
-	int tank = FindTankClient(-1);
-	if (tank == -1 || !IsPlayerAlive(tank))
-		return false;
+    bool hasTank = false;
+    
+    for (int tank = 1; tank <= MaxClients; tank++)
+    {
+        if (tank < 1 || !IsClientConnected(tank) || !IsClientInGame(tank))
+            continue;
+            
+        if (GetClientTeam(tank) != 3 || GetInfectedClass(tank) != L4D2Infected_Tank)
+            continue;
+            
+        if (!IsPlayerAlive(tank))
+            continue;
 
-	static char info[64];
-	static char name[MAX_NAME_LENGTH];
+        static char info[64];
+        static char name[MAX_NAME_LENGTH];
 
-	if (bTankHUD)
-	{
-		FormatEx(info, sizeof(info), "%s :: Tank HUD", sReadyCfgName);
-		ValvePanel_ShiftInvalidString(info, sizeof(info));
-		DrawPanelText(hSpecHud, info);
-		
-		int len = strlen(info);
-		for (int i = 0; i < len; ++i) info[i] = '_';
-		DrawPanelText(hSpecHud, info);
-	}
-	else
-	{
-		DrawPanelText(hSpecHud, " ");
-		DrawPanelText(hSpecHud, "->3. Tank");
-	}
+        if (!hasTank)
+        {
+            if (bTankHUD)
+            {
+                FormatEx(info, sizeof(info), "%s :: Tank HUD", sReadyCfgName);
+                ValvePanel_ShiftInvalidString(info, sizeof(info));
+                DrawPanelText(hSpecHud, info);
+                
+                int len = strlen(info);
+                for (int i = 0; i < len; ++i) info[i] = '_';
+                DrawPanelText(hSpecHud, info);
+            }
+            else
+            {
+                DrawPanelText(hSpecHud, " ");
+                DrawPanelText(hSpecHud, "->3. Tank");
+            }
+        }
 
-	// Draw owner & pass counter
-	int passCount = L4D2Direct_GetTankPassedCount();
-	switch (passCount)
-	{
-		case 0: FormatEx(info, sizeof(info), "native");
-		case 1: FormatEx(info, sizeof(info), "%ist", passCount);
-		case 2: FormatEx(info, sizeof(info), "%ind", passCount);
-		case 3: FormatEx(info, sizeof(info), "%ird", passCount);
-		default: FormatEx(info, sizeof(info), "%ith", passCount);
-	}
+        char sKey[8];
+        IntToString(tank, sKey, sizeof(sKey));
+        
+        int index;
+        if (g_hTankClients.GetValue(sKey, index))
+        {
+            TankAttack_s attack;
+            g_hTankStats.GetArray(index, attack);
 
-	if (!IsFakeClient(tank))
-	{
-		GetClientFixedName(tank, name, sizeof(name));
-		Format(info, sizeof(info), "Control : %s (%s)", name, info);
-	}
-	else
-	{
-		Format(info, sizeof(info), "Control : AI (%s)", info);
-	}
-	DrawPanelText(hSpecHud, info);
+            FormatEx(info, sizeof(info), "拳 : %d  |  饼 : %d  |  铁 : %d", 
+                attack.Punch, attack.Rock, attack.Hittable);
+            DrawPanelText(hSpecHud, info);
 
-	// Draw health
-	int health = GetClientHealth(tank);
-	int maxhealth = GetEntProp(tank, Prop_Send, "m_iMaxHealth");
-	float healthPercent = L4D2Util_IntToPercentFloat(health, maxhealth); // * 100 already
-	
-	if (health <= 0 || IsIncapacitated(tank))
-	{
-		info = "Health  : Dead";
-	}
-	else
-	{
-		FormatEx(info, sizeof(info), "Health  : %i / %i%%", health, L4D2Util_GetMax(1, RoundFloat(healthPercent)));
-	}
-	DrawPanelText(hSpecHud, info);
+            FormatEx(info, sizeof(info), "          总伤害 : %d", attack.TotalDamage);
+            DrawPanelText(hSpecHud, info);
+        }
 
-	// Draw frustration
-	if (!IsFakeClient(tank))
-	{
-		FormatEx(info, sizeof(info), "Frustr.  : %d%%", GetTankFrustration(tank));
-	}
-	else
-	{
-		info = "Frustr.  : AI";
-	}
-	DrawPanelText(hSpecHud, info);
+        if (bTankHUD)
+        {
+            static char titleInfo[64];
+            FormatEx(titleInfo, sizeof(titleInfo), "%s :: Tank HUD", sReadyCfgName);
+            int len = strlen(titleInfo);
+            for (int i = 0; i < len; ++i) titleInfo[i] = '_';
+            DrawPanelText(hSpecHud, titleInfo);
+        }
 
-	// Draw network
-	if (!IsFakeClient(tank))
-	{
-		FormatEx(info, sizeof(info), "Network: %ims / %.1f", RoundToNearest(GetClientAvgLatency(tank, NetFlow_Both) * 1000.0), LM_GetLerpTime(tank) * 1000.0);
-	}
-	else
-	{
-		info = "Network: AI";
-	}
-	DrawPanelText(hSpecHud, info);
+        // Draw owner & pass counter
+        int passCount = GetTankPassedCount(tank);
+        switch (passCount)
+        {
+            case 0: FormatEx(info, sizeof(info), "native");
+            case 1: FormatEx(info, sizeof(info), "%ist", passCount);
+            case 2: FormatEx(info, sizeof(info), "%ind", passCount);
+            case 3: FormatEx(info, sizeof(info), "%ird", passCount);
+            default: FormatEx(info, sizeof(info), "%ith", passCount);
+        }
 
-	// Draw fire status
-	if (GetEntityFlags(tank) & FL_ONFIRE)
-	{
-		int timeleft = RoundToCeil(healthPercent / 100.0 * fTankBurnDuration);
-		FormatEx(info, sizeof(info), "On Fire : %is", timeleft);
-		DrawPanelText(hSpecHud, info);
-	}
-	
-	return true;
+        if (!IsFakeClient(tank))
+        {
+            GetClientFixedName(tank, name, sizeof(name));
+            Format(info, sizeof(info), "控制者 : %s (%s)", name, info);
+        }
+        else
+        {
+            Format(info, sizeof(info), "控制者 : AI (%s)", info);
+        }
+        DrawPanelText(hSpecHud, info);
+
+        // Draw health
+        int health = GetClientHealth(tank);
+        int maxhealth = GetEntProp(tank, Prop_Send, "m_iMaxHealth");
+        float healthPercent = L4D2Util_IntToPercentFloat(health, maxhealth);
+        
+        if (health <= 0 || IsIncapacitated(tank))
+        {
+            info = "生命值 : 死亡";
+        }
+        else
+        {
+            FormatEx(info, sizeof(info), "生命值 : %i / %i%%", health, L4D2Util_GetMax(1, RoundFloat(healthPercent)));
+        }
+        DrawPanelText(hSpecHud, info);
+
+        // Draw frustration
+        if (!IsFakeClient(tank))
+        {
+            FormatEx(info, sizeof(info), "控制权 : %d%%", GetTankFrustration(tank));
+        }
+        else
+        {
+            info = "控制权 : AI";
+        }
+        DrawPanelText(hSpecHud, info);
+
+        // Draw network
+        if (!IsFakeClient(tank))
+        {
+            FormatEx(info, sizeof(info), "网　络 : %ims / %.1f", 
+                RoundToNearest(GetClientAvgLatency(tank, NetFlow_Both) * 1000.0), 
+                LM_GetLerpTime(tank) * 1000.0);
+        }
+        else
+        {
+            info = "网　络 : AI";
+        }
+        DrawPanelText(hSpecHud, info);
+
+        // Draw fire status
+        if (GetEntityFlags(tank) & FL_ONFIRE)
+        {
+            int timeleft = RoundToCeil(healthPercent / 100.0 * fTankBurnDuration);
+            FormatEx(info, sizeof(info), "燃烧中 : %d秒", timeleft);
+            DrawPanelText(hSpecHud, info);
+        }
+        
+        hasTank = true;
+
+        if (tank < MaxClients)
+        {
+            bool hasMoreTank = false;
+            for (int nextTank = tank + 1; nextTank <= MaxClients; nextTank++)
+            {
+                if (IsClientInGame(nextTank) && IsTank(nextTank) && IsPlayerAlive(nextTank))
+                {
+                    hasMoreTank = true;
+                    break;
+                }
+            }
+            
+            if (hasMoreTank)
+            {
+                static char titleInfo[64];
+                FormatEx(titleInfo, sizeof(titleInfo), "%s :: Tank HUD", sReadyCfgName);
+                int len = strlen(titleInfo);
+                for (int i = 0; i < len; ++i) titleInfo[i] = '_';
+                DrawPanelText(hSpecHud, titleInfo);
+            }
+        }
+    }
+    
+    return hasTank;
 }
 
 void FillGameInfo(Panel hSpecHud)
@@ -1191,6 +1324,125 @@ void FillGameInfo(Panel hSpecHud)
 	}
 }
 
+void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
+{
+    int client = GetClientOfUserId(event.GetInt("userid"));
+    
+    if (client < 1 || client > MaxClients || !IsClientConnected(client))
+        return;
+        
+    if (!IsClientInGame(client) || GetClientTeam(client) != 3)
+        return;
+        
+    if (GetInfectedClass(client) != L4D2Infected_Tank)
+        return;
+        
+    char sKey[8];
+    IntToString(client, sKey, sizeof(sKey));
+    
+    int index;
+    if (!g_hTankClients.GetValue(sKey, index))
+    {
+        TankAttack_s attack;
+        attack.Init();
+        
+        index = g_hTankStats.PushArray(attack);
+        g_hTankClients.SetValue(sKey, index);
+    }
+}
+
+void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
+{
+    int victim = GetClientOfUserId(event.GetInt("userid"));
+    int attacker = GetClientOfUserId(event.GetInt("attacker"));
+    
+    if (victim < 1 || victim > MaxClients || !IsClientConnected(victim) || !IsSurvivor(victim))
+        return;
+        
+    if (attacker < 1 || attacker > MaxClients || !IsClientConnected(attacker))
+        return;
+        
+    if (!IsClientInGame(attacker) || GetClientTeam(attacker) != 3)
+        return;
+        
+    if (GetInfectedClass(attacker) != L4D2Infected_Tank)
+        return;
+        
+    char sKey[8];
+    IntToString(attacker, sKey, sizeof(sKey));
+    
+    int index;
+    if (!g_hTankClients.GetValue(sKey, index))
+        return;
+        
+    TankAttack_s attack;
+    g_hTankStats.GetArray(index, attack);
+    
+    char weapon[64];
+    event.GetString("weapon", weapon, sizeof(weapon));
+    
+    int damage = event.GetInt("dmg_health");
+    if (damage <= 0)
+        return;
+        
+    if (StrEqual(weapon, "tank_claw"))
+        attack.Punch++;
+    else if (StrEqual(weapon, "tank_rock"))
+        attack.Rock++;
+        
+    attack.TotalDamage += damage;
+    g_hTankStats.SetArray(index, attack);
+}
+
+void Event_PlayerIncapacitated(Event event, const char[] name, bool dontBroadcast)
+{
+    int victim = GetClientOfUserId(event.GetInt("userid"));
+    int attacker = GetClientOfUserId(event.GetInt("attacker"));
+    
+    if (victim < 1 || victim > MaxClients || !IsClientConnected(victim) || !IsSurvivor(victim))
+        return;
+        
+    if (attacker < 1 || attacker > MaxClients || !IsClientConnected(attacker))
+        return;
+        
+    if (!IsClientInGame(attacker) || GetClientTeam(attacker) != 3)
+        return;
+        
+    if (GetInfectedClass(attacker) != L4D2Infected_Tank)
+        return;
+        
+    char weapon[64];
+    event.GetString("weapon", weapon, sizeof(weapon));
+    
+    char sKey[8];
+    IntToString(attacker, sKey, sizeof(sKey));
+    
+    int index;
+    if (!g_hTankClients.GetValue(sKey, index))
+        return;
+        
+    TankAttack_s attack;
+    g_hTankStats.GetArray(index, attack);
+    
+    if (strcmp(weapon, "prop_physics") == 0)
+    {
+        attack.Hittable++;
+        attack.TotalDamage += g_iPlayerLastHealth[victim];
+    }
+    else if (strcmp(weapon, "tank_claw") == 0)
+    {
+        attack.Punch++;
+        attack.TotalDamage += g_iPlayerLastHealth[victim];
+    }
+    else if (strcmp(weapon, "tank_rock") == 0)
+    {
+        attack.Rock++;
+        attack.TotalDamage += g_iPlayerLastHealth[victim];
+    }
+    
+    g_hTankStats.SetArray(index, attack);
+    g_iPlayerLastHealth[victim] = 0;
+}
 /**
  *	Stocks
 **/

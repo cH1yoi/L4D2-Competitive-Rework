@@ -71,6 +71,14 @@ native bool AddToTankQueue(const char[] steamId, int position = 0);
 native bool RemoveFromTankQueue(const char[] steamId);
 
 /**
+ * @brief Get the number of passes of Tank.
+ *
+ * @param client    client Target player index
+ * @return         Number of passes of Tank(1=first control,2=second control)
+ */
+native int GetTankPassedCount(int client);
+
+/**
 * @brief Called when plugin tries to offer tank to a bot
 * 
 * @param sQueuedTank    Steam ID of queued tank
@@ -131,5 +139,6 @@ public void __pl_l4d_tank_control_eq_SetNTVOptional()
 	MarkNativeAsOptional("RemoveFromTankQueue");
 	MarkNativeAsOptional("GetTankPool");
 	MarkNativeAsOptional("SetTank");
+	MarkNativeAsOptional("GetTankPassedCount");
 }
 #endif
