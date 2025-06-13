@@ -4,6 +4,10 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+  packages: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -36,12 +40,15 @@ jobs:
       shell: pwsh
       run: |
         $TAG_VERSION = $env:GITHUB_REF.Replace('refs/tags/', '')
-        $FILENAME = "zonemod-$TAG_VERSION.zip"
+        $FILENAME = "0721zonemod-$TAG_VERSION.zip"
+        Write-Host "Creating zip file: $FILENAME"
         Compress-Archive -Path "build/*" -DestinationPath $FILENAME
+        Write-Host "Zip file created successfully"
+        Get-ChildItem -Path .
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v1
+      if: startsWith(github.ref, 'refs/tags/')
       with:
         files: 0721zonemod-*.zip
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        token: ${{ secrets.GITHUB_TOKEN }}
