@@ -630,12 +630,10 @@ GREEN='\e[1;32m'
 YELLOW='\e[1;33m'
 NC='\e[0m'
 
-# 获取当前用户名作为screen会话前缀，避免多用户冲突
-USER_PREFIX="$(whoami)_"
 
 function start_server() {
     local PORT=$1
-    local NAME="${USER_PREFIX}$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
+    local NAME="$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
     local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
     
     if ! screen -ls | grep -q "$NAME"; then
@@ -659,7 +657,7 @@ function stop_server() {
 
 function restart_server() {
     local PORT=$1
-    local NAME="${USER_PREFIX}$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
+    local NAME="$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
     stop_server "$NAME"
     sleep 2
     start_server "$PORT"
@@ -673,7 +671,7 @@ function show_status() {
         echo -e "\nServer: ${GREEN}$(basename "$DIR")${NC}"
         echo -e "Instance: ${YELLOW}$NAME${NC}"
         echo -e "Port: ${YELLOW}$PORT${NC}"
-        if screen -ls | grep -q "${USER_PREFIX}$NAME"; then
+        if screen -ls | grep -q "$NAME"; then
             echo -e "Status: ${GREEN}RUNNING${NC}"
         else
             echo -e "Status: ${RED}STOPPED${NC}"
