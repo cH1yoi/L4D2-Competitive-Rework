@@ -35,8 +35,9 @@ jobs:
     - name: Create ZIP archive
       shell: pwsh
       run: |
-        $VERSION = $env:GITHUB_REF -replace 'refs/tags/', ''
-        Compress-Archive -Path "build/*" -DestinationPath "0721zonemod-$VERSION.zip"
+        $TAG_VERSION = $env:GITHUB_REF.Replace('refs/tags/', '')
+        $FILENAME = "zonemod-$TAG_VERSION.zip"
+        Compress-Archive -Path "build/*" -DestinationPath $FILENAME
 
     - name: Upload Release Asset
       uses: softprops/action-gh-release@v1
