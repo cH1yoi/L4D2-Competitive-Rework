@@ -294,4 +294,16 @@
 	"l4d2_mimp4"			"不可能完成的任务_m4"
 	"l4d2_mimp5"			"不可能完成的任务_m5"
 	"l4d2_mimp6"			"不可能完成的任务_m6"
+
+	"uz_crash"				"亡灵区_m1"
+	"uz_town"				"亡灵区_m2"
+	"uz_desert"				"亡灵区_m3"
+	"uz_bunker"				"亡灵区_m4"
+	"uz_escape"				"亡灵区_m5"
+
+	"noecho_m1"				"音讯全无_m1"
+	"noecho_m2"				"音讯全无_m2"
+	"noecho_m3"				"音讯全无_m3"
+	"noecho_m4"				"音讯全无_m4"
+	"noecho_m5"				"音讯全无_m5"
 }
