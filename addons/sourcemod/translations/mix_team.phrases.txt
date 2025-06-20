@@ -81,6 +81,12 @@
 	{
 		"en"			"Start mix:"
 	}
+
+	"MENU_ABORT"
+	{
+		"en"            "Abort mix\n "
+		"chi"           "中止Mix\n "
+	}
 	
 	"VOTE_PASS"
 	{

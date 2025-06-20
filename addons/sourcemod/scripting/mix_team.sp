@@ -15,7 +15,7 @@ public Plugin myinfo = {
     name        = "MixTeam",
     author      = "TouchMe",
     description = "Adds an API for mix in versus mode",
-    version     = "build_0009",
+    version     = "build_0011",
     url         = "https://github.com/TouchMe-Inc/l4d2_mix_team"
 };
 
@@ -30,12 +30,17 @@ public Plugin myinfo = {
  */
 #define GAMEMODE_VERSUS         "versus"
 #define GAMEMODE_VERSUS_REALISM "mutation12"
-#define GAMEMODE_SCAVENGE "scavenge"
+#define GAMEMODE_SCAVENGE       "scavenge"
 
-// Other
+/**
+ * Phrases.
+ */
 #define TRANSLATIONS            "mix_team.phrases"
-#define VOTE_TIME               15
 
+/**
+ * Timers.
+ */
+#define VOTE_TIME               15
 
 /**
  * Teams.
@@ -288,7 +293,6 @@ public void OnPluginStart()
 
     // Player Commands.
     RegConsoleCmd("sm_mix", Cmd_RunMix, "Start Team Mix Voting");
-    RegConsoleCmd("sm_unmix", Cmd_AbortMix, "Cancel the current Mix");
     RegAdminCmd("sm_fmix", Cmd_ForceMix, ADMFLAG_BAN, "Run forced Mix");
 
     // Hook change team <KEY_M>.
@@ -298,25 +302,10 @@ public void OnPluginStart()
 }
 
 /**
- * Called when a console variable value is changed.
- *
- * @param convar            Ignored.
- * @param sOldGameMode      Ignored.
- * @param sNewGameMode      String containing new gamemode.
+ * Called when a gamemode variable value is changed.
  */
 void OnGamemodeChanged(ConVar hConVar, const char[] sOldGameMode, const char[] sNewGameMode) {
     g_bGamemodeAvailable = IsAvaibleMode(sNewGameMode);
-}
-
-/**
- * Called when the map has loaded, servercfgfile (server.cfg) has been executed, and all
- * plugin configs are done executing. This will always be called once and only once per map.
- * It will be called after OnMapStart().
-*/
-public void OnConfigsExecuted()
-{
-    char sGameMode[16]; GetConVarString(g_cvGameMode, sGameMode, sizeof(sGameMode));
-    g_bGamemodeAvailable = IsAvaibleMode(sGameMode);
 }
 
 /**
@@ -489,12 +478,6 @@ Action Cmd_RunMix(int iClient, int iArgs)
         return Plugin_Handled;
     }
 
-    if (IsMixStateInProgress())
-    {
-        CReplyToCommand(iClient, "%T%T", "TAG", iClient, "ALREADY_IN_PROGRESS", iClient);
-        return Plugin_Handled;
-    }
-
     if (!GetArraySize(g_hMixList))
     {
         CReplyToCommand(iClient, "%T%T", "TAG", iClient, "NOT_FOUND", iClient);
@@ -512,15 +495,19 @@ void ShowMixMenu(int iClient, bool bForce)
 
     SetMenuTitle(hMenu, "%T", bForce ? "MENU_TITLE_FORCE" : "MENU_TITLE", iClient);
 
-    char sItemCode[8], sItemName[64];
+    char szItemData[8], szItemName[64];
+
+    FormatEx(szItemData, sizeof(szItemData), "%d -1", bForce);
+    FormatEx(szItemName, sizeof(szItemName), "%T", "MENU_ABORT", iClient);
+    AddMenuItem(hMenu, szItemData, szItemName, IsMixStateInProgress() ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 
     int iArraySize = GetArraySize(g_hMixList);
 
     for (int iIndex = 0; iIndex < iArraySize; iIndex ++)
     {
-        FormatEx(sItemCode, sizeof(sItemCode), "%d %d", bForce, iIndex);
-        ExecuteForward_OnDrawMenuItem(iIndex, iClient, sItemName, sizeof(sItemName));
-        AddMenuItem(hMenu, sItemCode, sItemName);
+        FormatEx(szItemData, sizeof(szItemData), "%d %d", bForce, iIndex);
+        ExecuteForward_OnDrawMenuItem(iIndex, iClient, szItemName, sizeof(szItemName));
+        AddMenuItem(hMenu, szItemData, szItemName);
     }
 
     DisplayMenu(hMenu, iClient, -1);
@@ -534,13 +521,51 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
 
         case MenuAction_Select:
         {
-            char sItemCode[8]; GetMenuItem(hMenu, iItem, sItemCode, sizeof(sItemCode));
+            char szItemData[8], szForce[1];
+            GetMenuItem(hMenu, iItem, szItemData, sizeof(szItemData));
 
-            char sForce[1], sMixIndex[3];
-            BreakString(sItemCode[BreakString(sItemCode, sForce, sizeof(sForce))], sMixIndex, sizeof(sMixIndex));
+            char szMixIndex[3];
+            BreakString(szItemData[BreakString(szItemData, szForce, sizeof(szForce))], szMixIndex, sizeof(szMixIndex));
 
-            bool bForce = view_as<bool>(StringToInt(sForce));
-            int iMixIndex = StringToInt(sMixIndex);
+            bool bForce = view_as<bool>(StringToInt(szForce));
+            int iMixIndex = StringToInt(szMixIndex);
+
+            if (iMixIndex == -1)
+            {
+                if (!IsMixStateInProgress())
+                {
+                    ShowMixMenu(iClient, bForce);
+                    return 0;
+                }
+
+                if (!g_bClientMixMember[iClient] && !bForce)
+                {
+                    ShowMixMenu(iClient, bForce);
+                    return 0;
+                }
+
+                int iEndTime = g_iAbortDelay - GetTime();
+
+                if (iEndTime <= 0 || bForce)
+                {
+                    CPrintToChatAll("%t%t", "TAG", "ABORT_MIX_SUCCESS", iClient);
+                    AbortPlayerMix();
+                }
+
+                else {
+                    CPrintToChat(iClient, "%T%T", "TAG", iClient, "ABORT_MIX_FAIL", iClient, iEndTime);
+                }
+
+                ShowMixMenu(iClient, bForce);
+
+                return 0;
+            }
+
+            if (IsMixStateInProgress())
+            {
+                CPrintToChat(iClient, "%T%T", "TAG", iClient, "ALREADY_IN_PROGRESS", iClient);
+                return 0;
+            }
 
             if (!NativeVotes_IsNewVoteAllowed())
             {
@@ -596,41 +621,6 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
 }
 
 /**
- * Abort the mix before it's finished.
- *
- * @param iClient           Client index.
- * @param iArgs             Number of parameters.
- */
-Action Cmd_AbortMix(int iClient, int iArgs)
-{
-    if (!g_bGamemodeAvailable) {
-        return Plugin_Continue;
-    }
-
-    if (!IsMixStateInProgress()) {
-        return Plugin_Handled;
-    }
-
-    if (!g_bClientMixMember[iClient]) {
-        return Plugin_Continue;
-    }
-
-    int iEndTime = g_iAbortDelay - GetTime();
-
-    if (iEndTime <= 0)
-    {
-        CPrintToChatAll("%t%t", "TAG", "ABORT_MIX_SUCCESS", iClient);
-        AbortPlayerMix();
-    }
-
-    else {
-        CReplyToCommand(iClient, "%T%T", "TAG", iClient, "ABORT_MIX_FAIL", iClient, iEndTime);
-    }
-
-    return Plugin_Handled;
-}
-
-/**
  * Action on command input at the start of the mix.
  *
  * @param iClient           Client index.
@@ -651,12 +641,6 @@ Action Cmd_ForceMix(int iClient, int iArgs)
     if (IsRoundStarted())
     {
         CReplyToCommand(iClient, "%T%T", "TAG", iClient, "ROUND_STARTED", iClient);
-        return Plugin_Handled;
-    }
-
-    if (IsMixStateInProgress())
-    {
-        CReplyToCommand(iClient, "%T%T", "TAG", iClient, "ALREADY_IN_PROGRESS", iClient);
         return Plugin_Handled;
     }
 
