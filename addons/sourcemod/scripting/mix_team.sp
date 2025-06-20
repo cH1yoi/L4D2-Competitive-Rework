@@ -561,6 +561,32 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
                 return 0;
             }
 
+            if (bForce)
+            {
+                g_iMixIndex = iMixIndex;
+                SetMixState(MixState_Voting);
+
+                for (int iPlayer = 1; iPlayer <= MaxClients; iPlayer ++)
+                {
+                    g_bClientMixMember[iPlayer] = false;
+
+                    if (!IsClientInGame(iPlayer) || IsFakeClient(iPlayer)) {
+                        continue;
+                    }
+
+                    int iTeam = GetClientTeam(iPlayer);
+
+                    if (IsValidTeam(iTeam))
+                    {
+                        g_bClientMixMember[iPlayer] = true;
+                        g_iClientTeamBeforePlayerMix[iPlayer] = iTeam;
+                    }
+                }
+
+                RunPlayerMix();
+                return 0;
+            }
+
             if (IsMixStateInProgress())
             {
                 CPrintToChat(iClient, "%T%T", "TAG", iClient, "ALREADY_IN_PROGRESS", iClient);
@@ -589,9 +615,6 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
             g_iMixIndex = iMixIndex;
             SetMixState(MixState_Voting);
 
-            /*
-             * Save player team and mark as mix member.
-             */
             for (int iPlayer = 1; iPlayer <= MaxClients; iPlayer ++)
             {
                 g_bClientMixMember[iPlayer] = false;
@@ -609,11 +632,7 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
                 }
             }
 
-            if (bForce) {
-                RunPlayerMix();
-            } else {
-                RunVoteMix(iClient);
-            }
+            RunVoteMix(iClient);
         }
     }
 
