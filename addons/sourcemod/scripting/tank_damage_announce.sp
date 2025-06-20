@@ -32,6 +32,7 @@ enum struct TankInfo {
 TankDamageStats g_TankDamage;
 bool g_bIsTankInPlay;
 char g_sLastHumanTankName[MAX_NAME_LENGTH];
+int g_iTankClient = 0;
 
 public void OnPluginStart()
 {
@@ -91,6 +92,7 @@ public void Event_TankSpawn(Event event, const char[] name, bool dontBroadcast)
     
     g_TankDamage.tanks.PushArray(tank);
     g_bIsTankInPlay = true;
+    g_iTankClient = client;
 }
 
 public void Event_PlayerHurt(Event event, const char[] name, bool dontBroadcast)
@@ -175,10 +177,21 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     }
 }
 
-Action Timer_DisplayDamage(Handle timer, int tank)
+Action Timer_DisplayDamage(Handle timer, int oldTankClient)
 {
-    DisplayTankDamage(tank);
+    if (g_iTankClient != oldTankClient) return Plugin_Stop;
+
+    int tankclient = FindTankClient();
+    if (tankclient && tankclient != oldTankClient)
+    {
+        g_iTankClient = tankclient;
+        return Plugin_Stop;
+    }
+
+    DisplayTankDamage(oldTankClient);
     ClearTankDamage();
+    g_bIsTankInPlay = false;
+    g_iTankClient = 0;
     return Plugin_Stop;
 }
 
@@ -289,6 +302,16 @@ int GetTankClient()
         {
             return i;
         }
+    }
+    return 0;
+}
+
+int FindTankClient()
+{
+    for (int i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && GetClientTeam(i) == TEAM_INFECTED && IsPlayerAlive(i) && GetEntProp(i, Prop_Send, "m_zombieClass") == SI_CLASS_TANK)
+            return i;
     }
     return 0;
 }
