@@ -11,6 +11,7 @@
 #include <godframecontrol>
 
 #define CVAR_FLAGS						FCVAR_NOTIFY
+#define SPRITE_MATERIALS_PATH           "materials/"
 
 #define MaxColorsType					9
 
@@ -534,10 +535,34 @@ public void OnClientDisconnect(int client)
 
 public void OnMapStart()
 {
-	PrecacheModel(SpritePathString, true);
-	PrecacheModel(SpriteCustomVMTPathString, true);
-	for (int i = 0; i < 5 ; i++)
-		PrecacheModel(SpriteSWPVMTPathString[i], true);
+    // 添加完整路径的文件到下载表
+    char vmt_path[PLATFORM_MAX_PATH];
+    char vtf_path[PLATFORM_MAX_PATH];
+    char weapon_vmt_path[PLATFORM_MAX_PATH];
+    char weapon_vtf_path[PLATFORM_MAX_PATH];
+    
+    // 添加主要sprite文件
+    Format(vmt_path, sizeof(vmt_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteCustomVMTPathString);
+    Format(vtf_path, sizeof(vtf_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteCustomVTFPathString);
+    AddFileToDownloadsTable(vmt_path);
+    AddFileToDownloadsTable(vtf_path);
+    
+    // 预缓存主要sprite文件
+    PrecacheGeneric(vmt_path, true);
+    PrecacheGeneric(vtf_path, true);
+    PrecacheModel(SpriteCustomVMTPathString, true);
+    
+    // 添加并预缓存武器sprite文件
+    for(int i = 0; i < 5; i++)
+    {
+        Format(weapon_vmt_path, sizeof(weapon_vmt_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteSWPVMTPathString[i]);
+        Format(weapon_vtf_path, sizeof(weapon_vtf_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteSWPVTFPathString[i]);
+        AddFileToDownloadsTable(weapon_vmt_path);
+        AddFileToDownloadsTable(weapon_vtf_path);
+        PrecacheGeneric(weapon_vmt_path, true);
+        PrecacheGeneric(weapon_vtf_path, true);
+        PrecacheModel(SpriteSWPVMTPathString[i], true);
+    }
 }
 
 public void OnMapEnd()
@@ -1081,7 +1106,7 @@ public void EveryOneSpriteCheck()
 					case 3 : // pump_shotgun  木喷
 						swpframe = CorrectInt((MyClip + 71), 71, 89);
 					case 7 : // SMG
-						swpframe = CorrectInt((MyClip + 90), 90, 160);
+					 swpframe = CorrectInt((MyClip + 90), 90, 160);
 					case 8 : // shotgun_chrome  铁喷
 						swpframe = CorrectInt((MyClip + 161), 161, 179);
 					case 33 : // MP5

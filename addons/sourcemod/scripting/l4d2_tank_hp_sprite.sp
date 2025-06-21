@@ -9,6 +9,7 @@
 
 #define SpriteCustomVMTPathString		"mart/mart_custombar2.vmt"
 #define SpriteCustomVTFPathString		"mart/mart_custombar2.vtf"	
+#define SPRITE_MATERIALS_PATH           "materials/"
 
 int SpriteEntityID[32];
 int SpriteFrameEntityID[32];
@@ -137,6 +138,18 @@ public void GetCvars()
 
 public void OnMapStart()
 {
+    // 添加完整路径的文件到下载表
+    char vmt_path[PLATFORM_MAX_PATH];
+    char vtf_path[PLATFORM_MAX_PATH];
+    Format(vmt_path, sizeof(vmt_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteCustomVMTPathString);
+    Format(vtf_path, sizeof(vtf_path), "%s%s", SPRITE_MATERIALS_PATH, SpriteCustomVTFPathString);
+    
+    AddFileToDownloadsTable(vmt_path);
+    AddFileToDownloadsTable(vtf_path);
+
+    // 预缓存模型和材质
+    PrecacheGeneric(vmt_path, true);
+    PrecacheGeneric(vtf_path, true);
 	PrecacheModel(SpriteCustomVMTPathString, true);
 }
 
