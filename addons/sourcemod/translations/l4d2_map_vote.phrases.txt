@@ -363,4 +363,22 @@
 		"en"	"Death Invade"
 		"chi"	"幽灵侵袭"
 	}
+
+	"Crash Course: ReRouted"
+	{
+		"en"	"Crash Course: ReRouted"
+		"chi"	"C9改"
+	}
+	
+	"Warcelona"
+	{
+		"en"	"Warcelona"
+		"chi"	"巴塞罗那"
+	}
+
+	"Whispers of Winter"
+	{
+		"en"	"Whispers of Winter"
+		"chi"	"冬日低语"
+	}
 }
