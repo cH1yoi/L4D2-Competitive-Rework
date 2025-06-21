@@ -111,9 +111,8 @@ bool
 public APLRes AskPluginLoad2(Handle hMyself, bool bLate, char[] sError, int iErrMax)
 {
 	CreateNative("GiveClientGodFrames", Native_GiveClientGodFrames);
-	
+	CreateNative("IsClientInGodFrames", Native_IsClientInGodFrames);
 	RegPluginLibrary("l4d2_godframes_control_merge");
-	
 	g_bLateLoad = bLate;
 	return APLRes_Success;
 }
@@ -1023,6 +1022,15 @@ int Native_GiveClientGodFrames(Handle hPlugin, int iNumParams)
 	SetGodFrameGlows(iClient);
 	
 	return 1;
+}
+
+public int Native_IsClientInGodFrames(Handle hPlugin, int iNumParams)
+{
+    int iClient = GetNativeCell(1);
+    if (!IsClientAndInGame(iClient) || !IsPlayerAlive(iClient)) {
+        return 0;
+    }
+    return (g_fFakeGodframeEnd[iClient] > GetGameTime()) ? 1 : 0;
 }
 
 void SetGodFrameGlows(int client)

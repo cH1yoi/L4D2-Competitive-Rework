@@ -13,6 +13,14 @@
  */
 native void GiveClientGodFrames(int client, float time, int zclass);
 
+/**
+ * Checks if a specified client is currently in god frames (invulnerable state)
+ *
+ * @param client    The client to check.
+ * @return          True if the client is in god frames, false otherwise.
+ */
+native bool IsClientInGodFrames(int client);
+
 public SharedPlugin __pl_godframecontrol =
 {
 	name = "l4d2_godframes_control_merge",
@@ -28,5 +36,6 @@ public SharedPlugin __pl_godframecontrol =
 public void __pl_godframecontrol_SetNTVOptional()
 {
 	MarkNativeAsOptional("GiveClientGodFrames");
+	MarkNativeAsOptional("IsClientInGodFrames");
 }
 #endif
