@@ -564,7 +564,6 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
             if (bForce)
             {
                 g_iMixIndex = iMixIndex;
-                SetMixState(MixState_Voting);
 
                 for (int iPlayer = 1; iPlayer <= MaxClients; iPlayer ++)
                 {
@@ -583,7 +582,13 @@ int HandleMenu(Menu hMenu, MenuAction hAction, int iClient, int iItem)
                     }
                 }
 
-                RunPlayerMix();
+                g_iAbortDelay = GetTime() + GetMixAbortDelay(g_iMixIndex);
+                SetAllClientSpectator();
+
+                if (SetMixState(MixState_InProgress) == Plugin_Continue) {
+                    FinishPlayerMix();
+                }
+
                 return 0;
             }
 
