@@ -34,6 +34,7 @@ int lilac_aimbot_get_client_detections(int client)
 
 public Action event_player_death(Event event, const char[] name, bool dontBroadcast)
 {
+	char wep[64];
 	int attackerid;
 	int victimid;
 	int client;
@@ -52,6 +53,11 @@ public Action event_player_death(Event event, const char[] name, bool dontBroadc
 	 * This can happen with explosives, like some projectiles.
 	 * This variable gets set in the "shared event" function. */
 	if (aimbot_timertick[client] == GetGameTickCount())
+		return Plugin_Continue;
+
+	/* Ignore kills performed with grenades. */
+	GetEventString(event, "weapon", wep, sizeof(wep));
+	if (strcmp(wep, "hegrenade") == 0)
 		return Plugin_Continue;
 	
 	event_death_shared(attackerid,
@@ -323,6 +329,17 @@ static void lilac_detected_aimbot(int client, float delta, float td, int flags)
 	/* Detection expires in 10 minutes. */
 	CreateTimer(600.0, timer_decrement_aimbot, GetClientUserId(client), TIMER_FLAG_NO_MAPCHANGE);
 
+	char sDetails[512];
+	Format(sDetails, sizeof(sDetails),
+			"Detection: %d | Delta: %.0f | TotalDelta: %.0f | Detected:%s%s%s%s%s",
+			aimbot_detection[client], delta, td,
+			((flags & AIMBOT_FLAG_SNAP)      ? " Aim-Snap"     : ""),
+			((flags & AIMBOT_FLAG_SNAP2)     ? " Aim-Snap2"    : ""),
+			((flags & AIMBOT_FLAG_AUTOSHOOT) ? " Autoshoot"    : ""),
+			((flags & AIMBOT_FLAG_REPEAT)    ? " Angle-Repeat" : ""),
+			((td > AIMBOT_MAX_TOTAL_DELTA)   ? " Total-Delta"  : ""));
+
+	lilac_save_player_details(client, sDetails);
 	lilac_forward_client_cheat(client, CHEAT_AIMBOT);
 
 	/* Don't log the first detection. */
@@ -335,13 +352,8 @@ static void lilac_detected_aimbot(int client, float delta, float td, int flags)
 	if (icvar[CVAR_LOG]) {
 		lilac_log_setup_client(client);
 		Format(line_buffer, sizeof(line_buffer),
-			"%s is suspected of using an aimbot (Detection: %d | Delta: %.0f | TotalDelta: %.0f | Detected:%s%s%s%s%s).",
-			line_buffer, aimbot_detection[client], delta, td,
-			((flags & AIMBOT_FLAG_SNAP)      ? " Aim-Snap"     : ""),
-			((flags & AIMBOT_FLAG_SNAP2)     ? " Aim-Snap2"    : ""),
-			((flags & AIMBOT_FLAG_AUTOSHOOT) ? " Autoshoot"    : ""),
-			((flags & AIMBOT_FLAG_REPEAT)    ? " Angle-Repeat" : ""),
-			((td > AIMBOT_MAX_TOTAL_DELTA)   ? " Total-Delta"  : ""));
+			"%s is suspected of using an aimbot (%s).",
+			line_buffer, sDetails);
 
 		lilac_log(true);
 
