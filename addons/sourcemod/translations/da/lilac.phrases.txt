@@ -63,6 +63,11 @@
 		"da"		"Aimlock Opdaget"
 	}
 
+	"ban_anti_duck_delay"
+	{
+		"da" 		"Anti-Duck-Forsinkelse Opdaget"
+	}
+
 	"ban_noisemaker"
 	{
 		"da" 		"Uendelig Støj Generator Opdaget"

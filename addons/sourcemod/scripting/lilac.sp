@@ -28,7 +28,6 @@
 #include <sdktools_engine>
 #include <sdktools_entoutput>
 #include <convar_class>
-#include <lilac>
 #undef REQUIRE_PLUGIN /* ... */
 #undef REQUIRE_EXTENSIONS
 #if defined TF2C
@@ -48,6 +47,7 @@
 #include "lilac/lilac_aimbot.sp"
 #include "lilac/lilac_aimlock.sp"
 #include "lilac/lilac_angles.sp"
+#include "lilac/lilac_anti_duck_delay.sp"
 #include "lilac/lilac_backtrack.sp"
 #include "lilac/lilac_bhop.sp"
 #include "lilac/lilac_config.sp"
@@ -91,6 +91,22 @@ public void OnPluginStart()
 	}
 	else if (StrEqual(gamefolder, "cstrike", false)) {
 		ggame = GAME_CSS;
+	}
+	else if (StrEqual(gamefolder, "csgo", false)) {
+		ConVar tvar;
+		ggame = GAME_CSGO;
+
+		if ((tvar = FindConVar("sv_autobunnyhopping")) != null) {
+			force_disable_bhop = tvar.IntValue;
+			tvar.AddChangeHook(cvar_change);
+		}
+		else {
+			/* We weren't able to get the cvar,
+			 * disable bhop checks just in case. */
+			force_disable_bhop = 1;
+
+			PrintToServer("[Lilac] Unable to to find convar \"sv_autobunnyhopping\", bhop checks have been forcefully disabled.");
+		}
 	}
 	else if (StrEqual(gamefolder, "left4dead2", false)) {
 		ggame = GAME_L4D2;
@@ -192,10 +208,6 @@ public void OnAllPluginsLoaded()
 
 public APLRes AskPluginLoad2(Handle hMyself, bool bLate, char[] sError, int err_max)
 {
-	RegPluginLibrary("lilac");
-
-	CreateNative("lilac_GetDetectedInfos", lilac_native_get_detected_infos);
-
 	/* Been told this isn't needed, but just in case. */
 	MarkNativeAsOptional("SBBanPlayer");
 	MarkNativeAsOptional("SBPP_BanPlayer");
@@ -324,6 +336,11 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 		playerinfo_actions[client][playerinfo_index[client]] |= ACTION_SHOT;
 
 	if (icvar[CVAR_ENABLE]) {
+#if !defined TF2C
+		/* Detect Anti-Duck-Delay. */
+		if (ggame == GAME_CSGO && icvar[CVAR_ANTI_DUCK_DELAY])
+			lilac_anti_duck_delay_check(client, buttons);
+#endif
 		/* Detect Angle-Cheats. */
 		if (icvar[CVAR_ANGLES])
 			lilac_angles_check(client, angles);

@@ -119,10 +119,6 @@ static void lilac_detected_macro(int client, int type)
 	default: { return; } /* Invalid type. */
 	}
 
-	char sDetails[512];
-	Format(sDetails, sizeof(sDetails), "Macro %s (Detection: %d | Max presses: %d)", string, macro_detected[client][type], macro_max);
-
-	lilac_save_player_details(client, sDetails);
 	lilac_forward_client_cheat(client, CHEAT_MACRO);
 
 	/* Ignore the first detection. */
@@ -133,8 +129,8 @@ static void lilac_detected_macro(int client, int type)
 	if (icvar[CVAR_LOG] && icvar[CVAR_MACRO] < 2) {
 		lilac_log_setup_client(client);
 		Format(line_buffer, sizeof(line_buffer),
-			"%s was detected of using %s.",
-			line_buffer, sDetails);
+			"%s was detected of using Macro %s (Detection: %d | Max presses: %d).",
+			line_buffer, string, macro_detected[client][type], macro_max);
 
 		lilac_log(true);
 

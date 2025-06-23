@@ -58,6 +58,11 @@
 		"fr"		"Aimlock détecté"
 	}
 
+	"ban_anti_duck_delay"
+	{
+		"fr" 		"Anti délai d'accroupissement détecté"
+	}
+
 	"ban_noisemaker"
 	{
 		"fr" 		"Spam deGénérateur de bruit infini détecté"

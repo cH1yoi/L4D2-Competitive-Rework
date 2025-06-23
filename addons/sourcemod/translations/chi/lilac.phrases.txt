@@ -61,6 +61,10 @@
 	{
 		"chi"		"检测到暴力锁头"
 	}
+	"ban_anti_duck_delay"
+	{
+		"chi"		"检测到下蹲辅助"
+	}
 
 	"ban_noisemaker"
 	{
