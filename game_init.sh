@@ -618,18 +618,6 @@ EOF
     cat << 'EOF' >> "$SCRIPT_DIR/server_config.sh"
 )
 
-# 为每个服务器配置启动参数（可选）/ Configure startup parameters for each server (optional)
-EOF
-
-    port=27015
-    for path in "${SERVER_PATHS[@]}"; do
-        echo "    # [\"$port\"]=\"-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg\"    # $(basename "$path") 启动参数" >> "$SCRIPT_DIR/server_config.sh"
-        ((port++))
-    done
-
-    cat << EOF >> "$SCRIPT_DIR/server_config.sh"
-)
-
 # ==================================================================
 # 启动参数配置 / Startup Parameters Configuration
 # ==================================================================
@@ -644,9 +632,15 @@ DEFAULT_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout
 # 如果不配置，将使用默认参数 / If not configured, default parameters will be used
 declare -A SERVER_PARAMS=(
     # 示例配置 / Example configurations:
-    # ["27015"]="-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
-    # ["27016"]="-game left4dead2 -sv_lan 0 -tickrate 128 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
-    # ["27017"]="-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 8 +sv_setmax 8 +map c1m1_hotel +servercfgfile server.cfg"
+EOF
+
+    port=27015
+    for path in "${SERVER_PATHS[@]}"; do
+        echo "    # [\"$port\"]=\"-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg\"    # $(basename "$path") 启动参数" >> "$SCRIPT_DIR/server_config.sh"
+        ((port++))
+    done
+
+    cat << EOF >> "$SCRIPT_DIR/server_config.sh"
 )
 
 # ==================================================================
