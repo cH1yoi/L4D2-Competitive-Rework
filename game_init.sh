@@ -121,15 +121,57 @@ function setup_steamcmd() {
 
 function setup_server() {
     echo_section "Server Installation" "服务端安装"
-    
+
     setup_steamcmd
     STEAMCMD_DIR="$HOME/steamcmd"
-    
-    for server_path in "${SERVER_PATHS[@]}"; do
-        echo_lang "Installing L4D2 Server to: $server_path" "正在安装 L4D2 服务端到: $server_path"
-        
-        echo_lang "Creating installation script..." "正在创建安装脚本..."
-        cat << STEAMCMD_EOF > "$STEAMCMD_DIR/Left4Dead2_Server.txt"
+
+    # 检查是否需要快速部署模式
+    local use_fast_deploy=false
+    if [ ${#SERVER_PATHS[@]} -gt 1 ]; then
+        echo_lang "Multiple servers detected. Use fast deployment mode? [Y/n]" "检测到多个服务器。是否使用快速部署模式？[Y/n]"
+        echo_lang "(Fast mode: Download once, then copy to other servers)" "（快速模式：下载一次，然后复制到其他服务器）"
+        if confirm; then
+            use_fast_deploy=true
+        fi
+    fi
+
+    if [ "$use_fast_deploy" = true ]; then
+        # 快速部署模式：先下载到第一个服务器，然后复制
+        local master_server="${SERVER_PATHS[0]}"
+        echo_lang "Using fast deployment mode with master server: $master_server" "使用快速部署模式，主服务器：$master_server"
+
+        echo_lang "Installing L4D2 Server to master location: $master_server" "正在安装 L4D2 服务端到主位置: $master_server"
+        install_single_server "$master_server"
+
+        # 复制到其他服务器
+        for ((i=1; i<${#SERVER_PATHS[@]}; i++)); do
+            local target_server="${SERVER_PATHS[$i]}"
+            echo_lang "Copying server files to: $target_server" "正在复制服务端文件到: $target_server"
+
+            # 创建目标目录
+            mkdir -p "$target_server"
+
+            # 复制文件（排除可能的日志和配置文件）
+            echo_lang "This may take a few minutes..." "这可能需要几分钟..."
+            rsync -a --progress --exclude="left4dead2/logs" --exclude="left4dead2/cfg/server.cfg" "$master_server/" "$target_server/"
+
+            echo_lang "Server copy completed for: $target_server" "服务端复制完成：$target_server"
+        done
+    else
+        # 传统模式：每个服务器单独下载
+        for server_path in "${SERVER_PATHS[@]}"; do
+            echo_lang "Installing L4D2 Server to: $server_path" "正在安装 L4D2 服务端到: $server_path"
+            install_single_server "$server_path"
+        done
+    fi
+}
+
+function install_single_server() {
+    local server_path=$1
+    local STEAMCMD_DIR="$HOME/steamcmd"
+
+    echo_lang "Creating installation script..." "正在创建安装脚本..."
+    cat << STEAMCMD_EOF > "$STEAMCMD_DIR/Left4Dead2_Server.txt"
 force_install_dir $server_path
 login anonymous
 @sSteamCmdForcePlatformType windows
@@ -139,11 +181,10 @@ app_update 222860 validate
 quit
 STEAMCMD_EOF
 
-        cd "$STEAMCMD_DIR" || exit 1
-        ./steamcmd.sh +runscript "$STEAMCMD_DIR/Left4Dead2_Server.txt"
-        
-        echo_lang "Server installation completed for: $server_path" "服务端安装完成：$server_path"
-    done
+    cd "$STEAMCMD_DIR" || exit 1
+    ./steamcmd.sh +runscript "$STEAMCMD_DIR/Left4Dead2_Server.txt"
+
+    echo_lang "Server installation completed for: $server_path" "服务端安装完成：$server_path"
 }
 
 function download_plugins() {
@@ -574,6 +615,18 @@ EOF
         ((port++))
     done
 
+    cat << 'EOF' >> "$SCRIPT_DIR/server_config.sh"
+)
+
+# 为每个服务器配置启动参数（可选）/ Configure startup parameters for each server (optional)
+EOF
+
+    port=27015
+    for path in "${SERVER_PATHS[@]}"; do
+        echo "    # [\"$port\"]=\"-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg\"    # $(basename "$path") 启动参数" >> "$SCRIPT_DIR/server_config.sh"
+        ((port++))
+    done
+
     cat << EOF >> "$SCRIPT_DIR/server_config.sh"
 )
 
@@ -582,8 +635,19 @@ EOF
 # ==================================================================
 # 可根据需要修改以下参数 / Modify these parameters as needed
 
-# 基础启动参数 / Basic startup parameters
-BASE_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout 10 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+# 默认启动参数 / Default startup parameters
+DEFAULT_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout 10 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+
+# 服务器启动参数配置 / Server startup parameters configuration
+# 格式：["端口"]="启动参数"
+# Format: ["port"]="startup_parameters"
+# 如果不配置，将使用默认参数 / If not configured, default parameters will be used
+declare -A SERVER_PARAMS=(
+    # 示例配置 / Example configurations:
+    # ["27015"]="-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+    # ["27016"]="-game left4dead2 -sv_lan 0 -tickrate 128 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
+    # ["27017"]="-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 8 +sv_setmax 8 +map c1m1_hotel +servercfgfile server.cfg"
+)
 
 # ==================================================================
 # 自动重启配置 / Auto Restart Configuration
@@ -635,11 +699,22 @@ function start_server() {
     local PORT=$1
     local NAME="$(echo "${SERVERS[$PORT]}" | cut -d: -f1)"
     local DIR=$(echo "${SERVERS[$PORT]}" | cut -d: -f2)
-    
+
+    # 获取启动参数
+    local PARAMS=""
+    if [ -n "${SERVER_PARAMS[$PORT]}" ]; then
+        # 使用配置的参数
+        PARAMS="${SERVER_PARAMS[$PORT]}"
+    else
+        # 使用默认参数
+        PARAMS="$DEFAULT_PARAMS"
+    fi
+
     if ! screen -ls | grep -q "$NAME"; then
         echo -e "${GREEN}Starting L4D2 $NAME on port $PORT${NC}"
+        echo -e "${YELLOW}Parameters: $PARAMS${NC}"
         cd "$DIR" || exit 1
-        screen -dmS "$NAME" ./srcds_run $BASE_PARAMS -port "$PORT"
+        screen -dmS "$NAME" ./srcds_run $PARAMS -port "$PORT"
     else
         echo -e "${YELLOW}$NAME is already running!${NC}"
     fi
