@@ -172,39 +172,85 @@ public void OnClientDisconnect(int client) {
 public void OnMapEnd() {
     delete g_hTimer;
     g_bLeftSafeArea = false;
-    g_bIsTankInPlay = false; // Reset Tank in play flag
-
+    // 注意：这里不再重置 g_bIsTankInPlay，让它在事件处理中最后重置
     ClearData();
     ClearTankData();
 }
 
 void Event_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
-    // 如果Tank仍在场，显示其伤害统计
-    if (g_bIsTankInPlay) {
-        PrintAllActiveTanksStats();
-    }
+    // 先显示所有存活Tank的统计（不检查g_bIsTankInPlay）
+    ArrayList aTanks = new ArrayList();
     
-    // 重置地图相关数据
+    // 收集所有存活Tank
+    for (int i = 1; i <= MaxClients; i++) {
+        if (IsClientInGame(i) && GetClientTeam(i) == 3 && IsPlayerAlive(i) && GetEntProp(i, Prop_Send, "m_zombieClass") == 8) {
+            aTanks.Push(i);
+        }
+    }
+
+    if (aTanks.Length > 0) {
+        for (int i = 0; i < aTanks.Length; i++) {
+            int tank = aTanks.Get(i);
+            int currentHealth = GetClientHealth(tank);
+            int maxHealth = GetEntProp(tank, Prop_Data, "m_iMaxHealth");
+            
+            CPrintToChatAll("{default}┌ [{red}%s{default}] {olive}%N {default}|{red}%d/%d {default}({green}%d%%{default})", 
+                IsFakeClient(tank) ? "AI" : "PZ", 
+                tank,
+                currentHealth,
+                maxHealth,
+                RoundToNearest(float(currentHealth) / float(maxHealth) * 100.0));
+                
+            PrintTankDamageSources(tank, maxHealth);
+        }
+    }
+
+    delete aTanks;
+    
+    // 然后重置数据
     OnMapEnd();
 }
 
-void Event_RoundStart(Event event, const char[] name, bool dontBroadcast) {
-	delete g_hTimer;
-}
-
 void Event_MapTransition(Event event, const char[] name, bool dontBroadcast) {
-    delete g_hTimer;
+    // 先显示所有存活Tank的统计（不检查g_bIsTankInPlay）
+    ArrayList aTanks = new ArrayList();
     
-    // 显示所有存活Tank的统计（如果有）
-    if (g_bIsTankInPlay) {
-        PrintAllActiveTanksStats();
+    // 收集所有存活Tank
+    for (int i = 1; i <= MaxClients; i++) {
+        if (IsClientInGame(i) && GetClientTeam(i) == 3 && IsPlayerAlive(i) && GetEntProp(i, Prop_Send, "m_zombieClass") == 8) {
+            aTanks.Push(i);
+        }
     }
+
+    if (aTanks.Length > 0) {
+        for (int i = 0; i < aTanks.Length; i++) {
+            int tank = aTanks.Get(i);
+            int currentHealth = GetClientHealth(tank);
+            int maxHealth = GetEntProp(tank, Prop_Data, "m_iMaxHealth");
+            
+            CPrintToChatAll("{default}┌ [{red}%s{default}] {olive}%N {default}|{red}%d/%d {default}({green}%d%%{default})", 
+                IsFakeClient(tank) ? "AI" : "PZ", 
+                tank,
+                currentHealth,
+                maxHealth,
+                RoundToNearest(float(currentHealth) / float(maxHealth) * 100.0));
+                
+            PrintTankDamageSources(tank, maxHealth);
+        }
+    }
+
+    delete aTanks;
     
-    // 重置数据
+    // 然后重置数据
+    delete g_hTimer;
     ClearData();
     ClearTankData();
     g_bLeftSafeArea = false;
     g_bIsTankInPlay = false;
+}
+
+void Event_RoundStart(Event event, const char[] name, bool dontBroadcast) {
+	delete g_hTimer;
 }
 
 // 修改 Event_PlayerHurt 事件处理
@@ -288,9 +334,19 @@ public void Event_PlayerDeath(Event event, const char[] name, bool dontBroadcast
     if (class == 8) {
         g_bIsTankInPlay = false; // 标记 Tank 已死亡
 
+        // 获取击杀者
+        int attacker = GetClientOfUserId(event.GetInt("attacker"));
+        
         // 立即获取 Tank 的最大血量
         int maxHealth = GetEntProp(victim, Prop_Data, "m_iMaxHealth");
-        g_esData[victim].totalTankDmg += g_esData[victim].lastTankHealth; // 加上剩余血量
+        
+        // 如果有有效的击杀者，将剩余血量分配给他
+        if (attacker > 0 && attacker <= MaxClients && IsClientInGame(attacker) && GetClientTeam(attacker) == 2) {
+            g_esData[victim].tankDmg[attacker] += g_esData[victim].lastTankHealth;
+        }
+        
+        // 更新总伤害（包括剩余血量）
+        g_esData[victim].totalTankDmg += g_esData[victim].lastTankHealth;
 
         // 直接调用 PrintTankStatistics，无需延迟
         PrintTankStatistics(victim, maxHealth);
