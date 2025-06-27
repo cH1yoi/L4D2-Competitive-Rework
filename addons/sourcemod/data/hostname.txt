@@ -1,35 +1,35 @@
 "hostname"
 {	"10721"
 	{
-		"hostname"		"天地乖离开辟之星"
+		"hostname"		"0721 ZoneMod #1"
 	}
 	"20721"
 	{
-		"hostname"		"神峰天回明星之虹"
+		"hostname"		"0721 ZoneMod #2"
 	}
 	"30721"
 	{
-		"hostname"		"灵峰踏抱冥府之鞴"
+		"hostname"		"0721 ZoneMod #3"
 	}
 	"40721"
 	{
-		"hostname"		"山脉震撼明星之薪"
+		"hostname"		"0721 ZoneMod #4"
 	}
 	"50721"
 	{
-		"hostname"		"宙宇闪耀王冠之辉"
+		"hostname"		"0721 ZoneMod #5"
 	}
 	"60721"
 	{
-		"hostname"		"百合花开豪华绚烂"
+		"hostname"		"0721 ZoneMod #6"
 	}
 	"10040"
 	{
-		"hostname"		"通往死亡满溢的魔境之门[8V8]"
+		"hostname"		"0721 ZoneMod #1[8V8]"
 	}
 	"10041"
 	{
-		"hostname"		"已然遥远的理想之城[速牛8V8]"
+		"hostname"		"0721 ZoneMod #2[速牛8V8]"
 	}
 	"20000"
 	{
