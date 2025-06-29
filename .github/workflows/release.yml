@@ -28,7 +28,6 @@ jobs:
         Copy-Item "cfg" -Destination "build/cfg" -Recurse
         Copy-Item "scripts" -Destination "build/scripts" -Recurse
         Copy-Item "sound" -Destination "build/sound" -Recurse
-        Copy-Item "materials" -Destination "build/materials" -Recurse
         
         Copy-Item "host.txt" -Destination "build/"
         Copy-Item "motd.txt" -Destination "build/"
