@@ -7,40 +7,4 @@
 	{
 		"hostname"		"0721 ZoneMod #2"
 	}
-	"30721"
-	{
-		"hostname"		"0721 ZoneMod #3"
-	}
-	"40721"
-	{
-		"hostname"		"0721 ZoneMod #4"
-	}
-	"50721"
-	{
-		"hostname"		"0721 ZoneMod #5"
-	}
-	"60721"
-	{
-		"hostname"		"0721 ZoneMod #6"
-	}
-	"10040"
-	{
-		"hostname"		"0721 ZoneMod #1[8V8]"
-	}
-	"10041"
-	{
-		"hostname"		"0721 ZoneMod #2[速牛8V8]"
-	}
-	"20000"
-	{
-		"hostname"		"怀黍离"
-	}
-	"20001"
-	{
-		"hostname"		"愚人号"
-	}
-	"20002"
-	{
-		"hostname"		"RHODES ISLAND"
-	}
 }

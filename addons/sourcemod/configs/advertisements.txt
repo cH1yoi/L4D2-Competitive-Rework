@@ -20,22 +20,6 @@
 {
     "1"
     {
-        "chat"      "[{green}!{default}] 本服标签为hana,防止失联的最好方法是加群加组~:489962242"
-    }
-    "2"
-    {
-        "chat"      "[{green}!{default}] /maps投票更换喵,可以自助上传~!"
-    }
-    "3"
-    {
-        "chat"      "[{green}!{default}] 本服严禁{green}外挂{default},{green}霸服{default},{green}辱骂等恶劣行为{default};逮到可就可就了"
-    }
-    "4"
-    {
-        "chat"      "[{green}!{default}] 群不搞你求群烂梗,佬文化,纯纯打给木"
-    }
-    "5"
-    {
-        "chat"      "[{green}!{default}] 本群组服可提供内战/混野/赛事支持~!"
+        "chat"      "[{green}!{default}] /maps 更换地图"
     }
 }
