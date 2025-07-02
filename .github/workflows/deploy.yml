@@ -70,8 +70,8 @@ jobs:
 
         # Process servers
         SERVERS=(
-          "1:${{ secrets.SERVER_1_HOST }}:${{ secrets.SERVER_1_USER }}:${{ secrets.SERVER_1_KEY }}:${{ secrets.SERVER_1_PATHS }}"
-          "2:${{ secrets.SERVER_2_HOST }}:${{ secrets.SERVER_2_USER }}:${{ secrets.SERVER_2_KEY }}:${{ secrets.SERVER_2_PATHS }}"
+          "1:${{ secrets.SERVER1_HOST }}:${{ secrets.SERVER1_USER }}:${{ secrets.SERVER1_SSH_KEY }}:${{ secrets.SERVER1_PATHS }}"
+          "2:${{ secrets.SERVER2_HOST }}:${{ secrets.SERVER2_USER }}:${{ secrets.SERVER2_SSH_KEY }}:${{ secrets.SERVER2_PATHS }}"
         )
 
         SUCCESS_COUNT=0
