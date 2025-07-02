@@ -3,6 +3,12 @@ name: Auto Sync to Servers
 on:
   push:
     branches: [ master ]
+    paths:
+      - 'addons/**'
+      - 'cfg/**'
+      - 'scripts/**'
+      - 'sound/**'
+      - 'whitelist.cfg'
 
 jobs:
   sync:
@@ -14,18 +20,6 @@ jobs:
       uses: actions/checkout@v4
       with:
         fetch-depth: 2
-
-    - name: Debug secrets
-      run: |
-        echo "Checking secrets availability..."
-        echo "SERVER1_HOST: ${{ secrets.SERVER1_HOST != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER1_USER: ${{ secrets.SERVER1_USER != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER1_SSH_KEY: ${{ secrets.SERVER1_SSH_KEY != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER1_PATHS: ${{ secrets.SERVER1_PATHS != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER2_HOST: ${{ secrets.SERVER2_HOST != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER2_USER: ${{ secrets.SERVER2_USER != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER2_SSH_KEY: ${{ secrets.SERVER2_SSH_KEY != '' && 'SET' || 'NOT SET' }}"
-        echo "SERVER2_PATHS: ${{ secrets.SERVER2_PATHS != '' && 'SET' || 'NOT SET' }}"
 
     - name: Sync to all servers
       run: |
@@ -80,78 +74,66 @@ jobs:
         echo "📤 Files to deploy: $DEPLOY_FILES"
         echo "🗑️ Files to delete: $DELETE_FILES"
 
-        # Process Server 1
-        if [ -n "${{ secrets.SERVER1_HOST }}" ] && [ -n "${{ secrets.SERVER1_USER }}" ] && [ -n "${{ secrets.SERVER1_SSH_KEY }}" ] && [ -n "${{ secrets.SERVER1_PATHS }}" ]; then
-          echo "🚀 Processing Server 1..."
+        # Check if SERVERS_CONFIG is available
+        if [ -z "${{ secrets.SERVERS_CONFIG }}" ]; then
+          echo "⚠️ SERVERS_CONFIG secret not found, skipping deployment"
+          exit 0
+        fi
 
-          # Setup SSH for Server 1
+        # Parse servers configuration
+        echo '${{ secrets.SERVERS_CONFIG }}' > servers_config.json
+
+        # Get server count
+        SERVER_COUNT=$(cat servers_config.json | jq '. | length')
+        echo "🖥️ Found $SERVER_COUNT server(s) to sync"
+
+        # Process each server
+        for i in $(seq 0 $((SERVER_COUNT-1))); do
+          SERVER_NAME=$(cat servers_config.json | jq -r ".[$i].name")
+          SERVER_HOST=$(cat servers_config.json | jq -r ".[$i].host")
+          SERVER_USER=$(cat servers_config.json | jq -r ".[$i].user")
+          SERVER_SSH_KEY=$(cat servers_config.json | jq -r ".[$i].ssh_key")
+          SERVER_PATHS=$(cat servers_config.json | jq -r ".[$i].paths")
+
+          echo "🚀 Processing $SERVER_NAME..."
+
+          # Validate server configuration
+          if [ "$SERVER_HOST" = "null" ] || [ "$SERVER_USER" = "null" ] || [ "$SERVER_SSH_KEY" = "null" ] || [ "$SERVER_PATHS" = "null" ]; then
+            echo "⚠️ $SERVER_NAME configuration incomplete, skipping"
+            continue
+          fi
+
+          # Setup SSH
+          SSH_KEY_FILE="~/.ssh/deploy_key_$i"
           mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER1_SSH_KEY }}" > ~/.ssh/deploy_key_1
-          chmod 600 ~/.ssh/deploy_key_1
-          ssh-keyscan -H ${{ secrets.SERVER1_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "$SERVER_SSH_KEY" > "$SSH_KEY_FILE"
+          chmod 600 "$SSH_KEY_FILE"
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
 
-          # Process each path for Server 1
-          IFS=',' read -ra PATH_ARRAY <<< "${{ secrets.SERVER1_PATHS }}"
-          for path in "${PATH_ARRAY[@]}"; do
-            path=$(echo "$path" | xargs)
-            echo "  📂 Syncing to Server 1: $path"
+          # Process each path for current server
+          echo "$SERVER_PATHS" | jq -r '.[]' | while read -r path; do
+            echo "  📂 Syncing to $SERVER_NAME: $path"
 
             # Deploy files
             for file in $DEPLOY_FILES; do
               echo "    ⬆️ Uploading: $file"
               remote_dir="$path/$(dirname $file)"
-              ssh -i ~/.ssh/deploy_key_1 -o StrictHostKeyChecking=no ${{ secrets.SERVER1_USER }}@${{ secrets.SERVER1_HOST }} "mkdir -p '$remote_dir'"
-              scp -i ~/.ssh/deploy_key_1 -o StrictHostKeyChecking=no "$file" "${{ secrets.SERVER1_USER }}@${{ secrets.SERVER1_HOST }}:$path/$file"
+              ssh -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "mkdir -p '$remote_dir'"
+              scp -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$file" "$SERVER_USER@$SERVER_HOST:$path/$file"
             done
 
             # Delete files
             for file in $DELETE_FILES; do
               echo "    🗑️ Deleting: $file"
-              ssh -i ~/.ssh/deploy_key_1 -o StrictHostKeyChecking=no ${{ secrets.SERVER1_USER }}@${{ secrets.SERVER1_HOST }} "rm -f '$path/$file'" || true
+              ssh -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "rm -f '$path/$file'" || true
             done
           done
 
-          rm -f ~/.ssh/deploy_key_1
-          echo "  ✅ Server 1 completed successfully"
-        else
-          echo "⚠️ Server 1 configuration incomplete, skipping"
-        fi
+          # Cleanup SSH key
+          rm -f "$SSH_KEY_FILE"
+          echo "  ✅ $SERVER_NAME completed successfully"
+        done
 
-        # Process Server 2
-        if [ -n "${{ secrets.SERVER2_HOST }}" ] && [ -n "${{ secrets.SERVER2_USER }}" ] && [ -n "${{ secrets.SERVER2_SSH_KEY }}" ] && [ -n "${{ secrets.SERVER2_PATHS }}" ]; then
-          echo "🚀 Processing Server 2..."
-
-          # Setup SSH for Server 2
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SERVER2_SSH_KEY }}" > ~/.ssh/deploy_key_2
-          chmod 600 ~/.ssh/deploy_key_2
-          ssh-keyscan -H ${{ secrets.SERVER2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
-
-          # Process each path for Server 2
-          IFS=',' read -ra PATH_ARRAY <<< "${{ secrets.SERVER2_PATHS }}"
-          for path in "${PATH_ARRAY[@]}"; do
-            path=$(echo "$path" | xargs)
-            echo "  📂 Syncing to Server 2: $path"
-
-            # Deploy files
-            for file in $DEPLOY_FILES; do
-              echo "    ⬆️ Uploading: $file"
-              remote_dir="$path/$(dirname $file)"
-              ssh -i ~/.ssh/deploy_key_2 -o StrictHostKeyChecking=no ${{ secrets.SERVER2_USER }}@${{ secrets.SERVER2_HOST }} "mkdir -p '$remote_dir'"
-              scp -i ~/.ssh/deploy_key_2 -o StrictHostKeyChecking=no "$file" "${{ secrets.SERVER2_USER }}@${{ secrets.SERVER2_HOST }}:$path/$file"
-            done
-
-            # Delete files
-            for file in $DELETE_FILES; do
-              echo "    🗑️ Deleting: $file"
-              ssh -i ~/.ssh/deploy_key_2 -o StrictHostKeyChecking=no ${{ secrets.SERVER2_USER }}@${{ secrets.SERVER2_HOST }} "rm -f '$path/$file'" || true
-            done
-          done
-
-          rm -f ~/.ssh/deploy_key_2
-          echo "  ✅ Server 2 completed successfully"
-        else
-          echo "⚠️ Server 2 configuration incomplete, skipping"
-        fi
-
+        # Cleanup
+        rm -f servers_config.json
         echo "🎉 Sync process completed!"
