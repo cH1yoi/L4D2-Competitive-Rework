@@ -1,16 +1,26 @@
-# 花のうた
+# 0721 Competitive
 
-小花服的插件包,内含大量私有设置,请修改各项配置
+0721插件包,内含大量私有设置,请修改各项配置
 
-自行创建修改databases.cfg 和 server.cfg 以及广告和sourcebans 等
+本库有个 game_init.sh 可以用介个一键安装服务端及启动脚本喵
 
-本库有个 game_init.sh 可以用介个一键安装服务端和插件以及启动脚本喵
+Fork本库使用Github Actions自动同步更新至服务器
 
-从Sir.P的库里偷偷偷
+进入仓库Settings - Secrets and variables - Actions - Repository secrets 创建SERVERS_CONFIG
 
-介个地方: [PencilMario/L4D2-Competitive-Rework: 0721服务器的Zonemod插件配置 (github.com)](https://github.com/PencilMario/L4D2-Competitive-Rework)
+内容请参考本库SERVERS_CONFIG.json
 
-如使用SourceTv启动项请添加+tv_enable 1 +sv_setmax 31
+请自行编辑私有化设置例如databases.cfg server.cfg sourcebans 以及广告服务器名及标签等
+
+
+
+|  √   | [0721] Zonemod 2.8.9 / ZoneMod TankFight / ZoneMod 1.9.3 / ZoneMod Quad |
+| :--: | :----------------------------------------------------------: |
+|  √   |      **ZoneMod 6V6 / ZoneMod 8V8 / ZoneMod 8v8闪电牛**       |
+|  √   |           **Advanced 4v4 / Advanced 8v8(进阶包)**            |
+|  😊   |        **<u>Maybe there might be more matchmods</u>**        |
+
+qiu~
 
 # **L4D2 Competitive Rework**
 

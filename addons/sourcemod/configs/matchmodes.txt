@@ -4,7 +4,7 @@
 	{
 		"zmcustom"
 		{
-			"name" "[0721] Zonemod 2.8.9"
+			"name" "[0721] ZoneMod 2.8.9"
 		}
 		"zonemod"
 		{
