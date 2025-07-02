@@ -25,7 +25,7 @@
 
 	"kick_ban_genetic"
 	{
-		"chi"		"您已经被此服务器封禁。"
+		"chi"		"已被此服务器封禁。"
 	}
 
 	"ban_angle"
