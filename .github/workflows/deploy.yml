@@ -46,10 +46,47 @@ jobs:
       if: steps.config.outputs.skip == 'false'
       id: changes
       run: |
+        # 获取所有变更文件（新增、修改、删除）
         CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        DELETED_FILES=$(git diff --name-only --diff-filter=D HEAD~1 HEAD)
         echo "Changed files: $CHANGED_FILES"
+        echo "Deleted files: $DELETED_FILES"
 
         DEPLOY_FILES=""
+        DELETE_FILES=""
+
+        # 处理删除的文件
+        for file in $DELETED_FILES; do
+          SKIP_FILE=false
+
+          # 应用相同的过滤规则
+          if [[ "$file" == .git* ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == .github/* ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == *.sh ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == "cfg/server.cfg" ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == addons/sourcemod/configs/sourcebans/* ]]; then
+            SKIP_FILE=true
+          elif [[ "$file" == cfg/spcontrol_server/* ]]; then
+            SKIP_FILE=true
+          fi
+
+          if [ "$SKIP_FILE" = false ]; then
+            DELETE_FILES="$DELETE_FILES $file"
+            echo "准备删除: $file"
+          else
+            echo "跳过删除: $file"
+          fi
+        done
+
+        # 处理新增和修改的文件
         for file in $CHANGED_FILES; do
           SKIP_FILE=false
 
@@ -108,13 +145,15 @@ jobs:
           fi
         done
 
-        if [ -z "$DEPLOY_FILES" ]; then
+        if [ -z "$DEPLOY_FILES" ] && [ -z "$DELETE_FILES" ]; then
           echo "has_files=false" >> $GITHUB_OUTPUT
-          echo "没有需要部署的文件"
+          echo "没有需要部署或删除的文件"
         else
           echo "has_files=true" >> $GITHUB_OUTPUT
           echo "files=$DEPLOY_FILES" >> $GITHUB_OUTPUT
+          echo "delete_files=$DELETE_FILES" >> $GITHUB_OUTPUT
           echo "最终部署文件列表: $DEPLOY_FILES"
+          echo "最终删除文件列表: $DELETE_FILES"
         fi
 
     - name: Deploy
@@ -124,31 +163,47 @@ jobs:
         USER=${{ steps.config.outputs.user }}
         PATHS="${{ steps.config.outputs.paths }}"
         FILES="${{ steps.changes.outputs.files }}"
+        DELETE_FILES="${{ steps.changes.outputs.delete_files }}"
 
         echo "Deploying to $HOST"
         echo "Deploy paths: $PATHS"
         echo "Files to deploy: $FILES"
+        echo "Files to delete: $DELETE_FILES"
 
-        # 为每个部署路径执行部署
+        # 为每个部署路径执行操作
         for path in $(echo $PATHS | tr ',' ' '); do
-          echo "Deploying to: $path"
+          echo "Processing path: $path"
 
-          # 为每个文件执行部署
-          for file in $FILES; do
-            echo "Deploying file: $file"
+          # 删除文件
+          if [ -n "$DELETE_FILES" ]; then
+            for file in $DELETE_FILES; do
+              echo "Deleting file: $file"
+              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rm -f '$path/$file'"
 
-            # 确保远程目录存在
-            remote_dir="$path/$(dirname $file)"
-            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'"
+              # 删除空目录
+              remote_dir="$path/$(dirname $file)"
+              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rmdir '$remote_dir' 2>/dev/null || true"
+            done
+          fi
 
-            # 复制文件
-            scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file"
+          # 部署文件
+          if [ -n "$FILES" ]; then
+            for file in $FILES; do
+              echo "Deploying file: $file"
 
-            # 如果是可执行文件，设置权限
-            if [[ "$file" == *.sh ]]; then
-              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "chmod +x '$path/$file'"
-            fi
-          done
+              # 确保远程目录存在
+              remote_dir="$path/$(dirname $file)"
+              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'"
+
+              # 复制文件
+              scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file"
+
+              # 如果是可执行文件，设置权限
+              if [[ "$file" == *.sh ]]; then
+                ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "chmod +x '$path/$file'"
+              fi
+            done
+          fi
         done
 
         echo "Deploy completed!"
