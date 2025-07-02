@@ -189,7 +189,7 @@ STEAMCMD_EOF
 
 function download_plugins() {
     echo_section "Plugin Installation" "插件安装"
-    
+
     echo_lang "Do you want to download plugins? [Y/n]" "是否下载插件？[Y/n]"
     if confirm; then
         echo_lang "Please select a plugin repository:" "请选择一个插件库:"
@@ -236,264 +236,20 @@ function download_plugins() {
             for server_path in "${SERVER_PATHS[@]}"; do
                 mkdir -p "$server_path/left4dead2"
                 chmod 775 -R "$server_path/left4dead2"
-                
+
                 cp -r "$REPO_NAME"/* "$server_path/left4dead2/"
-                
+
                 echo_lang "Plugins installed successfully for: $server_path" "插件安装成功：$server_path"
             done
 
-            create_plugin_update_script
-            
-            echo_lang "Plugin update script created successfully." "插件更新脚本创建成功。"
+            echo_lang "Plugin installation completed." "插件安装完成。"
         else
             echo_lang "Failed to clone the repository." "克隆仓库失败。"
         fi
     fi
 }
 
-function create_plugin_update_script() {
-    echo_lang "Creating plugin update script..." "正在创建插件更新脚本..."
-    
-    cat << 'PLUGIN_UPDATE_EOF' > "$SCRIPT_DIR/update_plugins.sh"
-#!/bin/bash
 
-# 获取脚本所在目录的绝对路径
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &> /dev/null && pwd)"
-source "$SCRIPT_DIR/server_config.sh"
-
-# 颜色定义
-RED='\e[1;31m'
-GREEN='\e[1;32m'
-YELLOW='\e[1;33m'
-BLUE='\e[1;34m'
-NC='\e[0m'
-
-echo -e "${BLUE}==================Plugin Update Time==================${NC}"
-TZ=UTC-8 date
-echo -e "${BLUE}==================Starting Update==================${NC}"
-
-if [ -z "$PLUGIN_REPO_URL" ] || [ -z "$REPO_NAME" ]; then
-    echo -e "${RED}Error: Repository information is missing in server_config.sh${NC}"
-    echo -e "${RED}Please check your configuration file.${NC}"
-    exit 1
-fi
-
-USER_HOME="$HOME"
-USER_REPO_DIR="$USER_HOME/$REPO_NAME"
-
-if [ ! -d "$USER_REPO_DIR" ]; then
-    echo -e "${YELLOW}Cloning repository to $USER_REPO_DIR...${NC}"
-    git clone "$PLUGIN_REPO_URL" "$USER_REPO_DIR" || {
-        echo -e "${RED}ERROR: Failed to clone repository.${NC}"
-        exit 1
-    }
-else
-    echo -e "${YELLOW}Updating repository in $USER_REPO_DIR...${NC}"
-    cd "$USER_REPO_DIR" || {
-        echo -e "${RED}ERROR: Cannot enter repository directory.${NC}"
-        exit 1
-    }
-    
-    OLD_COMMIT=$(git rev-parse HEAD)
-    
-    git pull --rebase || {
-        echo -e "${RED}ERROR: Failed to update repository.${NC}"
-        exit 1
-    }
-    
-    NEW_COMMIT=$(git rev-parse HEAD)
-    
-    if [ "$OLD_COMMIT" == "$NEW_COMMIT" ]; then
-        echo -e "${GREEN}Already up to date. No updates detected.${NC}"
-    fi
-fi
-
-# 要特殊处理的文件夹
-SPECIAL_FOLDERS=("data" "configs" "gamedata")
-
-check_special_folders() {
-    local repo_dir=$1
-    local server_dir=$2
-    local temp_dir=$3
-    
-    echo -e "${YELLOW}Checking special folders...${NC}"
-    
-    for folder in "${SPECIAL_FOLDERS[@]}"; do
-        REPO_FOLDER="$repo_dir/addons/sourcemod/$folder"
-        SERVER_FOLDER="$server_dir/addons/sourcemod/$folder"
-        
-        if [ -d "$REPO_FOLDER" ]; then
-            if [ ! -d "$SERVER_FOLDER" ]; then
-                echo -e "${GREEN}Folder $folder does not exist in server, creating...${NC}"
-                mkdir -p "$SERVER_FOLDER"
-                rsync -a "$REPO_FOLDER/" "$SERVER_FOLDER/"
-            else
-                mkdir -p "$temp_dir/repo/$folder" "$temp_dir/server/$folder"
-                rsync -a "$REPO_FOLDER/" "$temp_dir/repo/$folder/"
-                rsync -a "$SERVER_FOLDER/" "$temp_dir/server/$folder/"
-                
-                if ! diff -r "$temp_dir/repo/$folder" "$temp_dir/server/$folder" &>/dev/null; then
-                    echo -e "${YELLOW}Folder $folder has updates in repository, syncing changes...${NC}"
-                    rsync -a --update "$REPO_FOLDER/" "$SERVER_FOLDER/"
-                else
-                    echo -e "${GREEN}Folder $folder has no changes, keeping as is${NC}"
-                fi
-            fi
-        fi
-    done
-}
-
-backup_special_folders() {
-    local server_dir=$1
-    local temp_dir=$2
-    
-    echo -e "${YELLOW}Backing up special folders...${NC}"
-    
-    for folder in "${SPECIAL_FOLDERS[@]}"; do
-        local source_dir="$server_dir/addons/sourcemod/$folder"
-        if [ -d "$source_dir" ]; then
-            echo -e "${GREEN}Backing up $folder folder...${NC}"
-            mkdir -p "$temp_dir/backup/$folder"
-            rsync -a "$source_dir/" "$temp_dir/backup/$folder/"
-        fi
-    done
-}
-
-for server_path in "${SERVER_PATHS[@]}"; do
-    L4D2_DIR="$server_path/left4dead2"
-    
-    if [ ! -d "$server_path" ]; then
-        echo -e "${RED}Error: Server directory $server_path does not exist${NC}"
-        echo -e "${RED}Skipping this server...${NC}"
-        continue
-    fi
-    
-    echo -e "\n${BLUE}==================Processing Server: $server_path==================${NC}"
-    
-    if [ ! -d "$L4D2_DIR" ]; then
-        echo -e "${YELLOW}Creating left4dead2 directory...${NC}"
-        mkdir -p "$L4D2_DIR"
-    fi
-    
-    TEMP_DIR=$(mktemp -d)
-    trap 'rm -rf "$TEMP_DIR"' EXIT
-    
-    backup_special_folders "$L4D2_DIR" "$TEMP_DIR"
-    
-    if [ -f "$L4D2_DIR/cfg/server.cfg" ]; then
-        echo -e "${GREEN}Backing up server.cfg...${NC}"
-        mkdir -p "$TEMP_DIR"
-        cp "$L4D2_DIR/cfg/server.cfg" "$TEMP_DIR/server.cfg.backup"
-    fi
-    
-    echo -e "${YELLOW}Cleaning up old files...${NC}"
-    
-    mkdir -p "$L4D2_DIR/addons/sourcemod"
-    mkdir -p "$L4D2_DIR/cfg"
-    
-    if [ -d "$L4D2_DIR/addons/sourcemod" ]; then
-        for dir in "bin" "extensions" "plugins" "scripting" "translations"; do
-            if [ -d "$L4D2_DIR/addons/sourcemod/$dir" ]; then
-                echo -e "${YELLOW}Removing directory: addons/sourcemod/$dir${NC}"
-                rm -rf "$L4D2_DIR/addons/sourcemod/$dir"
-            fi
-        done
-    fi
-    
-    for item in "metamod" "stripper" "l4dtoolz.dll" "l4dtoolz.so" "tickrate_enabler.dll" "tickrate_enabler.so" "tickrate_enabler.vdf" "l4dtoolz.vdf" "metamod.vdf"; do
-        if [ -e "$L4D2_DIR/addons/$item" ]; then
-            echo -e "${YELLOW}Removing: addons/$item${NC}"
-            rm -rf "$L4D2_DIR/addons/$item"
-        fi
-    done
-    
-    for dir in "cfgogl" "mixmap" "sourcemod" "spcontrol_server" "stripper"; do
-        if [ -d "$L4D2_DIR/cfg/$dir" ]; then
-            echo -e "${YELLOW}Removing directory: cfg/$dir${NC}"
-            rm -rf "$L4D2_DIR/cfg/$dir"
-        fi
-    done
-    
-    echo -e "${GREEN}Copying addons folder...${NC}"
-    if [ -d "$USER_REPO_DIR/addons" ]; then
-        mkdir -p "$L4D2_DIR/addons"
-        rsync -a --exclude="sourcemod/configs" --exclude="sourcemod/data" --exclude="sourcemod/gamedata" "$USER_REPO_DIR/addons/" "$L4D2_DIR/addons/" || {
-            echo -e "${RED}Failed to copy addons folder${NC}"
-        }
-    else
-        echo -e "${RED}Warning: addons folder not found in repository${NC}"
-    fi
-    
-    check_special_folders "$USER_REPO_DIR" "$L4D2_DIR" "$TEMP_DIR"
-    
-    echo -e "${GREEN}Copying cfg folder...${NC}"
-    if [ -d "$USER_REPO_DIR/cfg" ]; then
-        rsync -a "$USER_REPO_DIR/cfg/" "$L4D2_DIR/cfg/" || {
-            echo -e "${RED}Failed to copy cfg folder${NC}"
-        }
-    else
-        echo -e "${RED}Warning: cfg folder not found in repository${NC}"
-    fi
-    
-    # 恢复原来的 server.cfg
-    if [ -f "$TEMP_DIR/server.cfg.backup" ]; then
-        echo -e "${GREEN}Restoring server.cfg...${NC}"
-        cp "$TEMP_DIR/server.cfg.backup" "$L4D2_DIR/cfg/server.cfg"
-    fi
-    
-    echo -e "${GREEN}Copying scripts folder...${NC}"
-    if [ -d "$USER_REPO_DIR/scripts" ]; then
-        mkdir -p "$L4D2_DIR/scripts"
-        rsync -a "$USER_REPO_DIR/scripts/" "$L4D2_DIR/scripts/" || {
-            echo -e "${RED}Failed to copy scripts folder${NC}"
-        }
-    else
-        echo -e "${YELLOW}Note: scripts folder not found in repository, skipping${NC}"
-    fi
-    
-    echo -e "${GREEN}Copying sound folder...${NC}"
-    if [ -d "$USER_REPO_DIR/sound" ]; then
-        mkdir -p "$L4D2_DIR/sound"
-        rsync -a "$USER_REPO_DIR/sound/" "$L4D2_DIR/sound/" || {
-            echo -e "${RED}Failed to copy sound folder${NC}"
-        }
-    else
-        echo -e "${YELLOW}Note: sound folder not found in repository, skipping${NC}"
-    fi
-    
-    for extra_folder in "materials" "models"; do
-        if [ -d "$USER_REPO_DIR/$extra_folder" ]; then
-            echo -e "${GREEN}Copying $extra_folder folder...${NC}"
-            mkdir -p "$L4D2_DIR/$extra_folder"
-            rsync -a "$USER_REPO_DIR/$extra_folder/" "$L4D2_DIR/$extra_folder/" || {
-                echo -e "${RED}Failed to copy $extra_folder folder${NC}"
-            }
-        fi
-    done
-    
-    echo -e "${GREEN}Copying configuration files...${NC}"
-    for file in "hana_host.txt" "hana_motd.txt" "whitelist.cfg"; do
-        if [ -f "$USER_REPO_DIR/$file" ]; then
-            echo -e "${GREEN}Copying $file...${NC}"
-            cp "$USER_REPO_DIR/$file" "$L4D2_DIR/" || {
-                echo -e "${RED}Failed to copy $file${NC}"
-            }
-        fi
-    done
-    
-    echo -e "${YELLOW}Setting permissions...${NC}"
-    chmod -R 775 "$L4D2_DIR/"
-    
-    echo -e "${GREEN}Update complete for server: $server_path${NC}"
-done
-
-echo -e "${BLUE}==================Current Commit==================${NC}"
-cd "$USER_REPO_DIR" || exit 1
-git log -1
-echo -e "${BLUE}==================Update Complete==================${NC}"
-PLUGIN_UPDATE_EOF
-    chmod +x "$SCRIPT_DIR/update_plugins.sh"
-}
 
 function create_game_update_script() {
     echo_lang "Creating update scripts..." "正在创建更新脚本..."
@@ -545,40 +301,22 @@ GAME_UPDATE_EOF
 
 function create_server_config() {
     echo_lang "Creating server configuration..." "正在创建服务器配置..."
-    
+
     echo_lang "Enter the hour (0-23) for daily restart:" "请输入每日重启的小时（0-23）:"
     read -r RESTART_HOUR
-    
+
     if ! [[ "$RESTART_HOUR" =~ ^[0-9]+$ ]] || [ "$RESTART_HOUR" -lt 0 ] || [ "$RESTART_HOUR" -gt 23 ]; then
         echo_lang "Invalid hour, setting default to 4" "无效的小时数，设置默认值为4点"
         RESTART_HOUR=4
     fi
-    
-    if [ -z "$PLUGIN_REPO_URL" ] || [ -z "$REPO_NAME" ]; then
-        PLUGIN_REPO_URL="https://github.com/cH1yoi/L4D2-Competitive-Rework.git"
-        REPO_NAME="L4D2-Competitive-Rework"
-    fi
-    
+
     cat << EOF > "$SCRIPT_DIR/server_config.sh"
 #!/bin/bash
 
-# ==================================================================
-# L4D2服务器配置文件 / L4D2 Server Configuration File
-# ==================================================================
-# 使用说明 / Instructions:
-# 1. 修改服务器实例配置 / Modify server instance configuration
-# 2. 保存文件后重启服务器 / Save and restart servers after modification
-# 3. 使用 ./start_servers.sh 管理服务器 / Use ./start_servers.sh to manage servers
-# ==================================================================
-
-# 语言设置 / Language setting (en/zh)
+# L4D2 Server Configuration
 LANGUAGE="${LANGUAGE}"
 
-# 插件仓库信息 / Plugin repository information
-PLUGIN_REPO_URL="${PLUGIN_REPO_URL}"
-REPO_NAME="${REPO_NAME}"
-
-# 服务器路径配置 / Server paths configuration
+# Server paths
 SERVER_PATHS=(
 EOF
 
@@ -589,67 +327,37 @@ EOF
     cat << 'EOF' >> "$SCRIPT_DIR/server_config.sh"
 )
 
-# ==================================================================
-# 服务器实例配置 / Server Instance Configuration
-# ==================================================================
-# 格式说明 / Format description:
-# ["端口"]="实例名称:服务器路径"
-# ["port"]="instance_name:server_path"
-# ==================================================================
-
+# Server instances: ["port"]="name:path"
 declare -A SERVERS=(
-    # 示例配置 / Example configurations:
-    
-    # 对抗服务器示例 / Versus server examples
-    #["27015"]="versus1:/home/hana/versus"    # 对抗服务器1 / Versus server 1
-    #["27016"]="coop1:/home/hana/coop"        # 对抗服务器2 / Versus server 2
-    
-    
-    # 当前配置 / Current configuration
 EOF
 
     local port=27015
     for path in "${SERVER_PATHS[@]}"; do
         local basename=$(basename "$path")
-        echo "    [\"$port\"]=\"${basename}1:$path\"    # ${basename} 实例1" >> "$SCRIPT_DIR/server_config.sh"
+        echo "    [\"$port\"]=\"${basename}1:$path\"" >> "$SCRIPT_DIR/server_config.sh"
         ((port++))
     done
 
     cat << 'EOF' >> "$SCRIPT_DIR/server_config.sh"
 )
 
-# ==================================================================
-# 启动参数配置 / Startup Parameters Configuration
-# ==================================================================
-# 可根据需要修改以下参数 / Modify these parameters as needed
-
-# 默认启动参数 / Default startup parameters
+# Default startup parameters
 DEFAULT_PARAMS="-game left4dead2 -sv_lan 0 +sv_clockcorrection_msecs 25 -timeout 10 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg"
 
-# 服务器启动参数配置 / Server startup parameters configuration
-# 格式：["端口"]="启动参数"
-# Format: ["port"]="startup_parameters"
-# 如果不配置，将使用默认参数 / If not configured, default parameters will be used
+# Custom startup parameters (optional)
 declare -A SERVER_PARAMS=(
-    # 示例配置 / Example configurations:
 EOF
 
     port=27015
     for path in "${SERVER_PATHS[@]}"; do
-        echo "    # [\"$port\"]=\"-game left4dead2 -sv_lan 0 -tickrate 100 -maxplayers 32 +sv_setmax 32 +map c2m1_highway +servercfgfile server.cfg\"    # $(basename "$path") 启动参数" >> "$SCRIPT_DIR/server_config.sh"
+        echo "    # [\"$port\"]=\"custom parameters here\"" >> "$SCRIPT_DIR/server_config.sh"
         ((port++))
     done
 
     cat << EOF >> "$SCRIPT_DIR/server_config.sh"
 )
 
-# ==================================================================
-# 自动重启配置 / Auto Restart Configuration
-# ==================================================================
-# 每日重启时间（24小时制）/ Daily restart time (24-hour format)
-# 可以修改此值来更改重启时间（0-23）/ You can modify this value to change restart time (0-23)
-# 例如：RESTART_HOUR=4  表示每天凌晨4点重启 / Example: RESTART_HOUR=4 means restart at 4 AM
-# 修改后需要重新运行脚本以更新crontab / After modification, re-run the script to update crontab
+# Daily restart time (0-23)
 RESTART_HOUR=${RESTART_HOUR}
 EOF
 
@@ -661,14 +369,10 @@ EOF
     if [ "$LANGUAGE" == "zh" ]; then
         echo -e "${GREEN}配置文件已生成：$SCRIPT_DIR/server_config.sh${NC}"
         echo -e "${YELLOW}请编辑此文件来配置您的服务器实例${NC}"
-        echo -e "${YELLOW}文件中包含了详细的配置示例和说明${NC}"
-        echo -e "${YELLOW}如需修改重启时间，请修改 RESTART_HOUR 的值（0-23）${NC}"
         echo -e "${YELLOW}配置完成后使用 ./start_servers.sh 来管理服务器${NC}"
     else
         echo -e "${GREEN}Configuration file generated: $SCRIPT_DIR/server_config.sh${NC}"
         echo -e "${YELLOW}Please edit this file to configure your server instances${NC}"
-        echo -e "${YELLOW}The file includes detailed examples and instructions${NC}"
-        echo -e "${YELLOW}To change restart time, modify the RESTART_HOUR value (0-23)${NC}"
         echo -e "${YELLOW}After configuration, use ./start_servers.sh to manage servers${NC}"
     fi
 }
@@ -841,23 +545,23 @@ SERVER_START_EOF
 
 function show_final_message() {
     echo_section "Installation Complete" "安装完成"
-    
+
     if [ "$LANGUAGE" == "zh" ]; then
         echo -e "${GREEN}安装已完成！${NC}"
         echo -e "${YELLOW}请按照以下步骤操作：${NC}"
         echo "1. 编辑 server_config.sh 配置服务器实例"
         echo "2. 使用 start_servers.sh 管理服务器"
         echo -e "${YELLOW}以下辅助脚本已生成：${NC}"
-        echo "- update_plugins.sh：更新服务器插件"
         echo "- update_game.sh：更新游戏文件"
+        echo "- start_servers.sh：服务器管理脚本"
     else
         echo -e "${GREEN}Installation completed!${NC}"
         echo -e "${YELLOW}Please follow these steps:${NC}"
         echo "1. Edit server_config.sh to configure server instances"
         echo "2. Use start_servers.sh to manage servers"
         echo -e "${YELLOW}The following utility scripts have been generated:${NC}"
-        echo "- update_plugins.sh: Update server plugins"
         echo "- update_game.sh: Update game files"
+        echo "- start_servers.sh: Server management script"
     fi
 }
 
