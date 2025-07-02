@@ -1,0 +1,154 @@
+name: Incremental Deploy
+
+on:
+  push:
+    branches: [ master ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        server: [1, 2]
+      fail-fast: false
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+
+    - name: Check server config
+      id: config
+      run: |
+        case ${{ matrix.server }} in
+          1) HOST="${{ secrets.SERVER1_HOST }}"; USER="${{ secrets.SERVER1_USER }}"; KEY="${{ secrets.SERVER1_SSH_KEY }}"; PATHS="${{ secrets.SERVER1_PATHS }}" ;;
+          2) HOST="${{ secrets.SERVER2_HOST }}"; USER="${{ secrets.SERVER2_USER }}"; KEY="${{ secrets.SERVER2_SSH_KEY }}"; PATHS="${{ secrets.SERVER2_PATHS }}" ;;
+        esac
+
+        if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$KEY" ] || [ -z "$PATHS" ]; then
+          echo "skip=true" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        echo "skip=false" >> $GITHUB_OUTPUT
+        echo "host=$HOST" >> $GITHUB_OUTPUT
+        echo "user=$USER" >> $GITHUB_OUTPUT
+        echo "paths=$PATHS" >> $GITHUB_OUTPUT
+
+        mkdir -p ~/.ssh
+        echo "$KEY" > ~/.ssh/deploy_key
+        chmod 600 ~/.ssh/deploy_key
+        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
+
+    - name: Get changed files
+      if: steps.config.outputs.skip == 'false'
+      id: changes
+      run: |
+        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        echo "Changed files: $CHANGED_FILES"
+
+        DEPLOY_FILES=""
+        for file in $CHANGED_FILES; do
+          SKIP_FILE=false
+
+          # 跳过Git相关文件
+          if [[ "$file" == .git* ]]; then
+            echo "跳过Git文件: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过GitHub Actions目录
+          if [[ "$file" == .github/* ]]; then
+            echo "跳过GitHub Actions文件: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过文档和说明文件
+          if [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]]; then
+            echo "跳过文档文件: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过脚本文件
+          if [[ "$file" == *.sh ]]; then
+            echo "跳过脚本文件: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过受保护的配置文件
+          if [[ "$file" == "cfg/server.cfg" ]]; then
+            echo "跳过受保护的服务器配置: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过数据库配置文件
+          if [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]]; then
+            echo "跳过数据库配置文件: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过sourcebans配置目录
+          if [[ "$file" == addons/sourcemod/configs/sourcebans/* ]]; then
+            echo "跳过SourceBans配置: $file"
+            SKIP_FILE=true
+          fi
+
+          # 跳过spcontrol_server配置目录
+          if [[ "$file" == cfg/spcontrol_server/* ]]; then
+            echo "跳过SPControl服务器配置: $file"
+            SKIP_FILE=true
+          fi
+
+          # 如果文件不需要跳过且存在，则添加到部署列表
+          if [ "$SKIP_FILE" = false ] && [ -f "$file" ]; then
+            DEPLOY_FILES="$DEPLOY_FILES $file"
+            echo "准备部署: $file"
+          fi
+        done
+
+        if [ -z "$DEPLOY_FILES" ]; then
+          echo "has_files=false" >> $GITHUB_OUTPUT
+          echo "没有需要部署的文件"
+        else
+          echo "has_files=true" >> $GITHUB_OUTPUT
+          echo "files=$DEPLOY_FILES" >> $GITHUB_OUTPUT
+          echo "最终部署文件列表: $DEPLOY_FILES"
+        fi
+
+    - name: Deploy
+      if: steps.config.outputs.skip == 'false' && steps.changes.outputs.has_files == 'true'
+      run: |
+        HOST=${{ steps.config.outputs.host }}
+        USER=${{ steps.config.outputs.user }}
+        PATHS="${{ steps.config.outputs.paths }}"
+        FILES="${{ steps.changes.outputs.files }}"
+
+        echo "Deploying to $HOST"
+        echo "Deploy paths: $PATHS"
+        echo "Files to deploy: $FILES"
+
+        # 为每个部署路径执行部署
+        for path in $(echo $PATHS | tr ',' ' '); do
+          echo "Deploying to: $path"
+
+          # 为每个文件执行部署
+          for file in $FILES; do
+            echo "Deploying file: $file"
+
+            # 确保远程目录存在
+            remote_dir="$path/$(dirname $file)"
+            ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'"
+
+            # 复制文件
+            scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file"
+
+            # 如果是可执行文件，设置权限
+            if [[ "$file" == *.sh ]]; then
+              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "chmod +x '$path/$file'"
+            fi
+          done
+        done
+
+        echo "Deploy completed!"
