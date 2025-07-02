@@ -81,56 +81,62 @@ jobs:
         fi
 
         # Parse servers configuration
-        echo '${{ secrets.SERVERS_CONFIG }}' > servers_config.json
+        cat << 'EOF' > servers_config.json
+        ${{ secrets.SERVERS_CONFIG }}
+        EOF
+
+        # Validate JSON format
+        if ! jq empty servers_config.json 2>/dev/null; then
+          echo "❌ Invalid JSON format in SERVERS_CONFIG"
+          cat servers_config.json
+          exit 1
+        fi
 
         # Get server count
-        SERVER_COUNT=$(cat servers_config.json | jq '. | length')
+        SERVER_COUNT=$(jq '. | length' servers_config.json)
         echo "🖥️ Found $SERVER_COUNT server(s) to sync"
+
+        # Install sshpass for password authentication
+        sudo apt-get update && sudo apt-get install -y sshpass
 
         # Process each server
         for i in $(seq 0 $((SERVER_COUNT-1))); do
-          SERVER_NAME=$(cat servers_config.json | jq -r ".[$i].name")
-          SERVER_HOST=$(cat servers_config.json | jq -r ".[$i].host")
-          SERVER_USER=$(cat servers_config.json | jq -r ".[$i].user")
-          SERVER_SSH_KEY=$(cat servers_config.json | jq -r ".[$i].ssh_key")
-          SERVER_PATHS=$(cat servers_config.json | jq -r ".[$i].paths")
+          SERVER_NAME=$(jq -r ".[$i].name" servers_config.json)
+          SERVER_HOST=$(jq -r ".[$i].host" servers_config.json)
+          SERVER_USER=$(jq -r ".[$i].user" servers_config.json)
+          SERVER_PASSWORD=$(jq -r ".[$i].password" servers_config.json)
+          SERVER_PATHS=$(jq -r ".[$i].paths" servers_config.json)
 
           echo "🚀 Processing $SERVER_NAME..."
 
           # Validate server configuration
-          if [ "$SERVER_HOST" = "null" ] || [ "$SERVER_USER" = "null" ] || [ "$SERVER_SSH_KEY" = "null" ] || [ "$SERVER_PATHS" = "null" ]; then
+          if [ "$SERVER_HOST" = "null" ] || [ "$SERVER_USER" = "null" ] || [ "$SERVER_PASSWORD" = "null" ] || [ "$SERVER_PATHS" = "null" ]; then
             echo "⚠️ $SERVER_NAME configuration incomplete, skipping"
             continue
           fi
 
-          # Setup SSH
-          SSH_KEY_FILE="~/.ssh/deploy_key_$i"
-          mkdir -p ~/.ssh
-          echo "$SERVER_SSH_KEY" > "$SSH_KEY_FILE"
-          chmod 600 "$SSH_KEY_FILE"
-          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Add host to known_hosts
+          ssh-keyscan -H "$SERVER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
 
           # Process each path for current server
-          echo "$SERVER_PATHS" | jq -r '.[]' | while read -r path; do
+          jq -r ".[$i].paths[]" servers_config.json | while read -r path; do
             echo "  📂 Syncing to $SERVER_NAME: $path"
 
             # Deploy files
             for file in $DEPLOY_FILES; do
               echo "    ⬆️ Uploading: $file"
-              remote_dir="$path/$(dirname $file)"
-              ssh -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "mkdir -p '$remote_dir'"
-              scp -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$file" "$SERVER_USER@$SERVER_HOST:$path/$file"
+              remote_dir="$path/$(dirname "$file")"
+              sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "mkdir -p '$remote_dir'"
+              sshpass -p "$SERVER_PASSWORD" scp -o StrictHostKeyChecking=no "$file" "$SERVER_USER@$SERVER_HOST:$path/$file"
             done
 
             # Delete files
             for file in $DELETE_FILES; do
               echo "    🗑️ Deleting: $file"
-              ssh -i "$SSH_KEY_FILE" -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "rm -f '$path/$file'" || true
+              sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "rm -f '$path/$file'" || true
             done
           done
 
-          # Cleanup SSH key
-          rm -f "$SSH_KEY_FILE"
           echo "  ✅ $SERVER_NAME completed successfully"
         done
 
