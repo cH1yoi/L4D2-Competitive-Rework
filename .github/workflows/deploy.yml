@@ -1,11 +1,12 @@
-name: Incremental Deploy
+name: Auto Sync to Servers
 
 on:
   push:
     branches: [ master ]
 
 jobs:
-  deploy:
+  sync:
+    name: Sync Server ${{ matrix.server }}
     runs-on: ubuntu-latest
 
     strategy:
@@ -19,7 +20,7 @@ jobs:
       with:
         fetch-depth: 2
 
-    - name: Check server config
+    - name: Load server configuration
       id: config
       run: |
         case ${{ matrix.server }} in
@@ -29,6 +30,7 @@ jobs:
 
         if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$KEY" ] || [ -z "$PATHS" ]; then
           echo "skip=true" >> $GITHUB_OUTPUT
+          echo "Server ${{ matrix.server }} configuration incomplete, skipping deployment"
           exit 0
         fi
 
@@ -42,11 +44,13 @@ jobs:
         chmod 600 ~/.ssh/deploy_key
         ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
 
-    - name: Get changed files
+        echo "Server ${{ matrix.server }} configuration loaded successfully"
+
+    - name: Detect file changes
       if: steps.config.outputs.skip == 'false'
       id: changes
       run: |
-        # 获取所有变更文件（新增、修改、删除）
+        # Get all changed files (added, modified, deleted)
         CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
         DELETED_FILES=$(git diff --name-only --diff-filter=D HEAD~1 HEAD)
         echo "Changed files: $CHANGED_FILES"
@@ -55,11 +59,11 @@ jobs:
         DEPLOY_FILES=""
         DELETE_FILES=""
 
-        # 处理删除的文件
+        # Process deleted files
         for file in $DELETED_FILES; do
           SKIP_FILE=false
 
-          # 应用相同的过滤规则
+          # Apply same filtering rules
           if [[ "$file" == .git* ]]; then
             SKIP_FILE=true
           elif [[ "$file" == .github/* ]]; then
@@ -80,83 +84,83 @@ jobs:
 
           if [ "$SKIP_FILE" = false ]; then
             DELETE_FILES="$DELETE_FILES $file"
-            echo "准备删除: $file"
+            echo "Marked for deletion: $file"
           else
-            echo "跳过删除: $file"
+            echo "Skipping deletion: $file"
           fi
         done
 
-        # 处理新增和修改的文件
+        # Process added and modified files
         for file in $CHANGED_FILES; do
           SKIP_FILE=false
 
-          # 跳过Git相关文件
+          # Skip Git related files
           if [[ "$file" == .git* ]]; then
-            echo "跳过Git文件: $file"
+            echo "Skipping Git file: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过GitHub Actions目录
+          # Skip GitHub Actions directory
           if [[ "$file" == .github/* ]]; then
-            echo "跳过GitHub Actions文件: $file"
+            echo "Skipping GitHub Actions file: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过文档和说明文件
+          # Skip documentation files
           if [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]]; then
-            echo "跳过文档文件: $file"
+            echo "Skipping documentation file: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过脚本文件
+          # Skip script files
           if [[ "$file" == *.sh ]]; then
-            echo "跳过脚本文件: $file"
+            echo "Skipping script file: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过受保护的配置文件
+          # Skip protected server configuration
           if [[ "$file" == "cfg/server.cfg" ]]; then
-            echo "跳过受保护的服务器配置: $file"
+            echo "Skipping protected server config: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过数据库配置文件
+          # Skip database configuration
           if [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]]; then
-            echo "跳过数据库配置文件: $file"
+            echo "Skipping database config: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过sourcebans配置目录
+          # Skip sourcebans configuration directory
           if [[ "$file" == addons/sourcemod/configs/sourcebans/* ]]; then
-            echo "跳过SourceBans配置: $file"
+            echo "Skipping SourceBans config: $file"
             SKIP_FILE=true
           fi
 
-          # 跳过spcontrol_server配置目录
+          # Skip spcontrol_server configuration directory
           if [[ "$file" == cfg/spcontrol_server/* ]]; then
-            echo "跳过SPControl服务器配置: $file"
+            echo "Skipping SPControl server config: $file"
             SKIP_FILE=true
           fi
 
-          # 如果文件不需要跳过且存在，则添加到部署列表
+          # Add to deploy list if file should not be skipped and exists
           if [ "$SKIP_FILE" = false ] && [ -f "$file" ]; then
             DEPLOY_FILES="$DEPLOY_FILES $file"
-            echo "准备部署: $file"
+            echo "Marked for deployment: $file"
           fi
         done
 
         if [ -z "$DEPLOY_FILES" ] && [ -z "$DELETE_FILES" ]; then
           echo "has_files=false" >> $GITHUB_OUTPUT
-          echo "没有需要部署或删除的文件"
+          echo "No files to deploy or delete"
         else
           echo "has_files=true" >> $GITHUB_OUTPUT
           echo "files=$DEPLOY_FILES" >> $GITHUB_OUTPUT
           echo "delete_files=$DELETE_FILES" >> $GITHUB_OUTPUT
-          echo "最终部署文件列表: $DEPLOY_FILES"
-          echo "最终删除文件列表: $DELETE_FILES"
+          echo "Final deployment list: $DEPLOY_FILES"
+          echo "Final deletion list: $DELETE_FILES"
         fi
 
-    - name: Deploy
+    - name: Sync files to server
       if: steps.config.outputs.skip == 'false' && steps.changes.outputs.has_files == 'true'
       run: |
         HOST=${{ steps.config.outputs.host }}
@@ -165,45 +169,47 @@ jobs:
         FILES="${{ steps.changes.outputs.files }}"
         DELETE_FILES="${{ steps.changes.outputs.delete_files }}"
 
-        echo "Deploying to $HOST"
-        echo "Deploy paths: $PATHS"
+        echo "Syncing to $HOST"
+        echo "Target paths: $PATHS"
         echo "Files to deploy: $FILES"
         echo "Files to delete: $DELETE_FILES"
 
-        # 为每个部署路径执行操作
+        # Process each deployment path
         for path in $(echo $PATHS | tr ',' ' '); do
           echo "Processing path: $path"
 
-          # 删除文件
+          # Delete files
           if [ -n "$DELETE_FILES" ]; then
             for file in $DELETE_FILES; do
               echo "Deleting file: $file"
               ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rm -f '$path/$file'"
 
-              # 删除空目录
+              # Remove empty directories
               remote_dir="$path/$(dirname $file)"
               ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rmdir '$remote_dir' 2>/dev/null || true"
             done
           fi
 
-          # 部署文件
+          # Deploy files
           if [ -n "$FILES" ]; then
             for file in $FILES; do
               echo "Deploying file: $file"
 
-              # 确保远程目录存在
+              # Ensure remote directory exists
               remote_dir="$path/$(dirname $file)"
               ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'"
 
-              # 复制文件
+              # Copy file
               scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file"
 
-              # 如果是可执行文件，设置权限
+              # Set executable permissions for shell scripts
               if [[ "$file" == *.sh ]]; then
                 ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "chmod +x '$path/$file'"
               fi
             done
           fi
         done
+
+        echo "Sync completed successfully"
 
         echo "Deploy completed!"
