@@ -44,7 +44,7 @@ jobs:
         for file in $DELETED_FILES; do
           SKIP_FILE=false
 
-          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]]; then
+          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]] || [[ "$file" == "*.json" ]]; then
             SKIP_FILE=true
           fi
 
@@ -57,7 +57,7 @@ jobs:
         for file in $CHANGED_FILES; do
           SKIP_FILE=false
 
-          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]]; then
+          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]] || [[ "$file" == *.json ]]; then
             SKIP_FILE=true
           fi
 
