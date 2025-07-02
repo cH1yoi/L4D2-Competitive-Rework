@@ -116,6 +116,7 @@ jobs:
           fi
 
           # Add host to known_hosts
+          mkdir -p "$HOME/.ssh"
           ssh-keyscan -H "$SERVER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
 
           # Process each path for current server
