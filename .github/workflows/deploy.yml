@@ -6,13 +6,8 @@ on:
 
 jobs:
   sync:
-    name: Sync Server ${{ matrix.server }}
+    name: Auto Sync to Servers Done
     runs-on: ubuntu-latest
-
-    strategy:
-      matrix:
-        server: [1, 2]
-      fail-fast: false
 
     steps:
     - name: Checkout
@@ -20,197 +15,128 @@ jobs:
       with:
         fetch-depth: 2
 
-    - name: Load server configuration
-      id: config
+    - name: Sync to all servers
       run: |
-        case ${{ matrix.server }} in
-          1) HOST="${{ secrets.SERVER1_HOST }}"; USER="${{ secrets.SERVER1_USER }}"; KEY="${{ secrets.SERVER1_SSH_KEY }}"; PATHS="${{ secrets.SERVER1_PATHS }}" ;;
-          2) HOST="${{ secrets.SERVER2_HOST }}"; USER="${{ secrets.SERVER2_USER }}"; KEY="${{ secrets.SERVER2_SSH_KEY }}"; PATHS="${{ secrets.SERVER2_PATHS }}" ;;
-        esac
+        echo "🔍 Detecting file changes..."
 
-        if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$KEY" ] || [ -z "$PATHS" ]; then
-          echo "skip=true" >> $GITHUB_OUTPUT
-          echo "Server ${{ matrix.server }} configuration incomplete, skipping deployment"
+        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
+        DELETED_FILES=$(git diff --name-only --diff-filter=D HEAD~1 HEAD)
+
+        if [ -z "$CHANGED_FILES" ] && [ -z "$DELETED_FILES" ]; then
+          echo "ℹ️ No file changes detected"
           exit 0
         fi
 
-        echo "skip=false" >> $GITHUB_OUTPUT
-        echo "host=$HOST" >> $GITHUB_OUTPUT
-        echo "user=$USER" >> $GITHUB_OUTPUT
-        echo "paths=$PATHS" >> $GITHUB_OUTPUT
+        echo "📁 Changed files: $CHANGED_FILES"
+        echo "🗑️ Deleted files: $DELETED_FILES"
 
-        mkdir -p ~/.ssh
-        echo "$KEY" > ~/.ssh/deploy_key
-        chmod 600 ~/.ssh/deploy_key
-        ssh-keyscan -H $HOST >> ~/.ssh/known_hosts
-
-        echo "Server ${{ matrix.server }} configuration loaded successfully"
-
-    - name: Detect file changes
-      if: steps.config.outputs.skip == 'false'
-      id: changes
-      run: |
-        CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD)
-        DELETED_FILES=$(git diff --name-only --diff-filter=D HEAD~1 HEAD)
-        echo "Changed files: $CHANGED_FILES"
-        echo "Deleted files: $DELETED_FILES"
-
+        # Filter files
         DEPLOY_FILES=""
         DELETE_FILES=""
 
+        # Process deleted files
         for file in $DELETED_FILES; do
           SKIP_FILE=false
 
-          if [[ "$file" == .git* ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == .github/* ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == *.sh ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == "cfg/server.cfg" ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == addons/sourcemod/configs/sourcebans/* ]]; then
-            SKIP_FILE=true
-          elif [[ "$file" == cfg/spcontrol_server/* ]]; then
+          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]]; then
             SKIP_FILE=true
           fi
 
           if [ "$SKIP_FILE" = false ]; then
             DELETE_FILES="$DELETE_FILES $file"
-            echo "Marked for deletion: $file"
-          else
-            echo "Skipping deletion: $file"
           fi
         done
 
+        # Process changed files
         for file in $CHANGED_FILES; do
           SKIP_FILE=false
 
-          if [[ "$file" == .git* ]]; then
-            echo "Skipping Git file: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == .github/* ]]; then
-            echo "Skipping GitHub Actions file: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]]; then
-            echo "Skipping documentation file: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == *.sh ]]; then
-            echo "Skipping script file: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == "cfg/server.cfg" ]]; then
-            echo "Skipping protected server config: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]]; then
-            echo "Skipping database config: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == addons/sourcemod/configs/sourcebans/* ]]; then
-            echo "Skipping SourceBans config: $file"
-            SKIP_FILE=true
-          fi
-
-          if [[ "$file" == cfg/spcontrol_server/* ]]; then
-            echo "Skipping SPControl server config: $file"
+          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]]; then
             SKIP_FILE=true
           fi
 
           if [ "$SKIP_FILE" = false ] && [ -f "$file" ]; then
             DEPLOY_FILES="$DEPLOY_FILES $file"
-            echo "Marked for deployment: $file"
           fi
         done
 
         if [ -z "$DEPLOY_FILES" ] && [ -z "$DELETE_FILES" ]; then
-          echo "has_files=false" >> $GITHUB_OUTPUT
-          echo "No files to deploy or delete"
-        else
-          echo "has_files=true" >> $GITHUB_OUTPUT
-          echo "files=$DEPLOY_FILES" >> $GITHUB_OUTPUT
-          echo "delete_files=$DELETE_FILES" >> $GITHUB_OUTPUT
-          echo "Final deployment list: $DEPLOY_FILES"
-          echo "Final deletion list: $DELETE_FILES"
+          echo "ℹ️ All changes are in excluded files, skipping deployment"
+          exit 0
         fi
 
-    - name: Sync files to server
-      if: steps.config.outputs.skip == 'false' && steps.changes.outputs.has_files == 'true'
-      run: |
-        HOST=${{ steps.config.outputs.host }}
-        USER=${{ steps.config.outputs.user }}
-        PATHS="${{ steps.config.outputs.paths }}"
-        FILES="${{ steps.changes.outputs.files }}"
-        DELETE_FILES="${{ steps.changes.outputs.delete_files }}"
+        echo "📤 Files to deploy: $DEPLOY_FILES"
+        echo "🗑️ Files to delete: $DELETE_FILES"
 
-        echo "Syncing to $HOST"
-        echo "Target paths: $PATHS"
-        echo "Files to deploy: $FILES"
-        echo "Files to delete: $DELETE_FILES"
+        # Process servers
+        SERVERS=(
+          "1:${{ secrets.SERVER1_HOST }}:${{ secrets.SERVER1_USER }}:${{ secrets.SERVER1_SSH_KEY }}:${{ secrets.SERVER1_PATHS }}"
+          "2:${{ secrets.SERVER2_HOST }}:${{ secrets.SERVER2_USER }}:${{ secrets.SERVER2_SSH_KEY }}:${{ secrets.SERVER2_PATHS }}"
+        )
 
-        for path in $(echo $PATHS | tr ',' ' '); do
-          echo "Processing path: $path"
+        SUCCESS_COUNT=0
+        TOTAL_COUNT=0
 
-          if [ -n "$DELETE_FILES" ]; then
+        for server_config in "${SERVERS[@]}"; do
+          IFS=':' read -r SERVER_NUM HOST USER KEY PATHS <<< "$server_config"
+
+          if [ -z "$HOST" ] || [ -z "$USER" ] || [ -z "$KEY" ] || [ -z "$PATHS" ]; then
+            echo "⚠️ Server $SERVER_NUM configuration incomplete, skipping"
+            continue
+          fi
+
+          TOTAL_COUNT=$((TOTAL_COUNT + 1))
+          echo "🚀 Processing Server $SERVER_NUM ($HOST)..."
+
+          # Setup SSH
+          mkdir -p ~/.ssh
+          echo "$KEY" > ~/.ssh/deploy_key_$SERVER_NUM
+          chmod 600 ~/.ssh/deploy_key_$SERVER_NUM
+          ssh-keyscan -H $HOST >> ~/.ssh/known_hosts 2>/dev/null
+
+          # Process each path
+          IFS=',' read -ra PATH_ARRAY <<< "$PATHS"
+          SERVER_SUCCESS=true
+
+          for path in "${PATH_ARRAY[@]}"; do
+            path=$(echo "$path" | xargs)
+            echo "  📂 Syncing to: $path"
+
+            # Deploy files
+            for file in $DEPLOY_FILES; do
+              echo "    ⬆️ Uploading: $file"
+              remote_dir="$path/$(dirname $file)"
+              ssh -i ~/.ssh/deploy_key_$SERVER_NUM -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'" || SERVER_SUCCESS=false
+              scp -i ~/.ssh/deploy_key_$SERVER_NUM -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file" || SERVER_SUCCESS=false
+            done
+
+            # Delete files
             for file in $DELETE_FILES; do
-              echo "Deleting file: $file"
-              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rm -f '$path/$file'"
-
+              echo "    🗑️ Deleting: $file"
+              ssh -i ~/.ssh/deploy_key_$SERVER_NUM -o StrictHostKeyChecking=no $USER@$HOST "rm -f '$path/$file'" || true
               remote_dir="$path/$(dirname $file)"
-              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "rmdir '$remote_dir' 2>/dev/null || true"
+              ssh -i ~/.ssh/deploy_key_$SERVER_NUM -o StrictHostKeyChecking=no $USER@$HOST "rmdir '$remote_dir' 2>/dev/null || true" || true
             done
+          done
+
+          if [ "$SERVER_SUCCESS" = true ]; then
+            echo "  ✅ Server $SERVER_NUM completed successfully"
+            SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
+          else
+            echo "  ❌ Server $SERVER_NUM failed"
           fi
 
-          if [ -n "$FILES" ]; then
-            for file in $FILES; do
-              echo "Deploying file: $file"
-
-              remote_dir="$path/$(dirname $file)"
-              ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "mkdir -p '$remote_dir'"
-
-              scp -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no "$file" "$USER@$HOST:$path/$file"
-
-              if [[ "$file" == *.sh ]]; then
-                ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no $USER@$HOST "chmod +x '$path/$file'"
-              fi
-            done
-          fi
+          rm -f ~/.ssh/deploy_key_$SERVER_NUM
         done
 
-        echo "Sync completed successfully"
-
-  summary:
-    name: Auto Sync to Servers Done
-    runs-on: ubuntu-latest
-    needs: sync
-    if: always()
-
-    steps:
-    - name: Check sync results
-      run: |
-        if [[ "${{ needs.sync.result }}" == "failure" ]]; then
-          echo "❌ Some servers failed to sync"
+        echo ""
+        echo "📊 Final Result:"
+        if [ $SUCCESS_COUNT -eq $TOTAL_COUNT ] && [ $TOTAL_COUNT -gt 0 ]; then
+          echo "🎉 All $TOTAL_COUNT servers synced successfully!"
+        elif [ $SUCCESS_COUNT -gt 0 ]; then
+          echo "⚠️ Partial success: $SUCCESS_COUNT/$TOTAL_COUNT servers synced"
           exit 1
-        elif [[ "${{ needs.sync.result }}" == "cancelled" ]]; then
-          echo "⚠️ Sync was cancelled"
-          exit 1
-        elif [[ "${{ needs.sync.result }}" == "skipped" ]]; then
-          echo "⏭️ Sync was skipped (no configured servers)"
         else
-          echo "✅ All servers synced successfully"
+          echo "❌ All server syncs failed"
+          exit 1
         fi
-
-        echo "Deploy completed!"
