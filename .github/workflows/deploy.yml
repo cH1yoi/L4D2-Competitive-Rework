@@ -36,32 +36,35 @@ jobs:
         echo "📁 Changed files: $CHANGED_FILES"
         echo "🗑️ Deleted files: $DELETED_FILES"
 
-        # Filter files
+        should_skip_file() {
+          local file="$1"
+          [[ "$file" == .git* ]] || \
+          [[ "$file" == .github/* ]] || \
+          [[ "$file" == *.md ]] || \
+          [[ "$file" == LICENSE ]] || \
+          [[ "$file" == "Dedicated Server Install Guide"* ]] || \
+          [[ "$file" == *.sh ]] || \
+          [[ "$file" == "cfg/server.cfg" ]] || \
+          [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || \
+          [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || \
+          [[ "$file" == cfg/spcontrol_server/* ]] || \
+          [[ "$file" == addons/sourcemod/scripting/* ]] || \
+          [[ "$file" == "*.json" ]] || \
+          [[ "$file" == "addons/sourcemod/data/hostname.txt" ]] || \
+          [[ "$file" == "addons/sourcemod/configs/advertisements.txt" ]]
+        }
+
         DEPLOY_FILES=""
         DELETE_FILES=""
 
-        # Process deleted files
         for file in $DELETED_FILES; do
-          SKIP_FILE=false
-
-          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]] || [[ "$file" == "*.json" ]]; then
-            SKIP_FILE=true
-          fi
-
-          if [ "$SKIP_FILE" = false ]; then
+          if ! should_skip_file "$file"; then
             DELETE_FILES="$DELETE_FILES $file"
           fi
         done
 
-        # Process changed files
         for file in $CHANGED_FILES; do
-          SKIP_FILE=false
-
-          if [[ "$file" == .git* ]] || [[ "$file" == .github/* ]] || [[ "$file" == *.md ]] || [[ "$file" == LICENSE ]] || [[ "$file" == "Dedicated Server Install Guide"* ]] || [[ "$file" == *.sh ]] || [[ "$file" == "cfg/server.cfg" ]] || [[ "$file" == "addons/sourcemod/configs/databases.cfg" ]] || [[ "$file" == addons/sourcemod/configs/sourcebans/* ]] || [[ "$file" == cfg/spcontrol_server/* ]] || [[ "$file" == addons/sourcemod/scripting/* ]] || [[ "$file" == *.json ]]; then
-            SKIP_FILE=true
-          fi
-
-          if [ "$SKIP_FILE" = false ] && [ -f "$file" ]; then
+          if ! should_skip_file "$file" && [ -f "$file" ]; then
             DEPLOY_FILES="$DEPLOY_FILES $file"
           fi
         done
@@ -74,32 +77,26 @@ jobs:
         echo "📤 Files to deploy: $DEPLOY_FILES"
         echo "🗑️ Files to delete: $DELETE_FILES"
 
-        # Check if SERVERS_CONFIG is available
         if [ -z "${{ secrets.SERVERS_CONFIG }}" ]; then
           echo "⚠️ SERVERS_CONFIG secret not found, skipping deployment"
           exit 0
         fi
 
-        # Parse servers configuration
         cat << 'EOF' > servers_config.json
         ${{ secrets.SERVERS_CONFIG }}
         EOF
 
-        # Validate JSON format
         if ! jq empty servers_config.json 2>/dev/null; then
           echo "❌ Invalid JSON format in SERVERS_CONFIG"
           cat servers_config.json
           exit 1
         fi
 
-        # Get server count
         SERVER_COUNT=$(jq '. | length' servers_config.json)
         echo "🖥️ Found $SERVER_COUNT server(s) to sync"
 
-        # Install sshpass for password authentication
         sudo apt-get update && sudo apt-get install -y sshpass
 
-        # Process each server
         for i in $(seq 0 $((SERVER_COUNT-1))); do
           SERVER_NAME=$(jq -r ".[$i].name" servers_config.json)
           SERVER_HOST=$(jq -r ".[$i].host" servers_config.json)
@@ -109,21 +106,17 @@ jobs:
 
           echo "🚀 Processing $SERVER_NAME..."
 
-          # Validate server configuration
           if [ "$SERVER_HOST" = "null" ] || [ "$SERVER_USER" = "null" ] || [ "$SERVER_PASSWORD" = "null" ] || [ "$SERVER_PATHS" = "null" ]; then
             echo "⚠️ $SERVER_NAME configuration incomplete, skipping"
             continue
           fi
 
-          # Add host to known_hosts
           mkdir -p "$HOME/.ssh"
           ssh-keyscan -H "$SERVER_HOST" >> "$HOME/.ssh/known_hosts" 2>/dev/null
 
-          # Process each path for current server
           jq -r ".[$i].paths[]" servers_config.json | while read -r path; do
             echo "  📂 Syncing to $SERVER_NAME: $path"
 
-            # Deploy files
             for file in $DEPLOY_FILES; do
               echo "    ⬆️ Uploading: $file"
               remote_dir="$path/$(dirname "$file")"
@@ -131,7 +124,6 @@ jobs:
               sshpass -p "$SERVER_PASSWORD" scp -o StrictHostKeyChecking=no "$file" "$SERVER_USER@$SERVER_HOST:$path/$file"
             done
 
-            # Delete files
             for file in $DELETE_FILES; do
               echo "    🗑️ Deleting: $file"
               sshpass -p "$SERVER_PASSWORD" ssh -o StrictHostKeyChecking=no "$SERVER_USER@$SERVER_HOST" "rm -f '$path/$file'" || true
@@ -141,6 +133,5 @@ jobs:
           echo "  ✅ $SERVER_NAME completed successfully"
         done
 
-        # Cleanup
         rm -f servers_config.json
         echo "🎉 Sync process completed!"
