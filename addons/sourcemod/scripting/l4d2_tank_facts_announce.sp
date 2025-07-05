@@ -117,6 +117,8 @@ public void OnClientDisconnect(int client)
 {
 	SDKUnhook(client, SDKHook_OnTakeDamage, OnTakeDamage);
 	
+	if (client <= 0 || client > MaxClients) return;
+	
 	if (g_bTankInPlay && !IsFakeClient(client) && client == g_iTankClient)
 	{
 		CreateTimer(0.1, Timer_CheckTank, client); // Use a delayed timer due to bugs where the tank passes to another player
@@ -153,6 +155,13 @@ Action OnTakeDamage(int victim, int &attacker, int &inflictor, float &damage, in
 void Event_OnTankSpawn(Event event, const char[] name, bool dontBroadcast)
 {
 	int client = GetClientOfUserId(event.GetInt("userid"));
+	
+	if (client <= 0 || client > MaxClients || !IsClientInGame(client))
+	{
+		LogError("Tank spawn event received invalid client: %d", client);
+		return;
+	}
+	
 	g_iTankClient = client;
 	
 	// In case the tank control becomes AI, keep his name first.
@@ -242,7 +251,7 @@ Action Timer_CheckTank(Handle timer, int oldtankclient)
 	if (g_iTankClient != oldtankclient) return Plugin_Stop; // Tank passed
 
 	int tankclient = FindTankClient(-1);
-	if (tankclient && tankclient != oldtankclient)
+	if (tankclient > 0 && tankclient <= MaxClients && tankclient != oldtankclient)
 	{
 		g_iTankClient = tankclient;
 		return Plugin_Stop;
@@ -345,10 +354,11 @@ stock int GetTankClient()
 
 	int tankclient = g_iTankClient;
 
-	if (!IsClientInGame(tankclient)) // If tank somehow is no longer in the game (kicked, hence events didn't fire)
+	// 先检查客户端索引是否有效，再检查是否在游戏中
+	if (tankclient <= 0 || tankclient > MaxClients || !IsClientInGame(tankclient)) // If tank somehow is no longer in the game (kicked, hence events didn't fire)
 	{
 		tankclient = FindTankClient(-1); // find the tank client
-		if (!tankclient) return 0;
+		if (tankclient <= 0 || tankclient > MaxClients) return 0;
 		g_iTankClient = tankclient;
 	}
 
